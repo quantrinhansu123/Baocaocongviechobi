@@ -36,29 +36,11 @@ const generateWeeks = () => {
 const WEEK_OPTIONS = generateWeeks();
 
 // ─── DỮ LIỆU ĐẦY ĐỦ ─────────────────────────────────────────────────────────
-// kyBaoCao: 'Tuần' | 'Tháng' | 'Quý'
+// kyBaoCao: 'Tháng' | 'Quý'
 const ALL_TASKS: Record<string, any> = {
   // ── NHÀ MÁY ──
-  'nm-1': {
-    stt: 1, kyBaoCao: 'Tuần',
-    congViec: 'Sản xuất đơn hàng ván sàn A',
-    nguoiGiao: 'Anh Tài', ngayGiao: '14/04/2026', ycXong: '23/04/2026',
-    giaHan1: '25/04/2026', giaHan2: '28/04/2026', giaHan3: '30/04/2026',
-    ketQua: 'Đã sản xuất xong 500m2', linkKQ: 'https://docs.google.com/hang-a',
-    tienDo: 'Hoàn thành', vuongMac: 'Giao hàng bị chậm do xe tải hỏng',
-    canLD: 'Không', anhHuong: 4,
-  },
-  'nm-2': {
-    stt: 2, kyBaoCao: 'Tuần',
-    congViec: 'Fix lỗi ván ép lô B',
-    nguoiGiao: 'Anh Tuấn', ngayGiao: '01/04/2026', ycXong: '07/04/2026',
-    giaHan1: '10/04/2026', giaHan2: '14/04/2026', giaHan3: '16/04/2026',
-    ketQua: 'Tháo dỡ máy ép số 2', linkKQ: 'https://docs.google.com/lo-b',
-    tienDo: 'Quá hạn', vuongMac: 'Thiếu linh kiện thay thế',
-    canLD: 'Có', anhHuong: 3,
-  },
   'nm-3': {
-    stt: 3, kyBaoCao: 'Tháng',
+    stt: 1, kyBaoCao: 'Tháng',
     congViec: 'Bảo trì máy nghiền gỗ',
     nguoiGiao: 'Chú Hải', ngayGiao: '01/04/2026', ycXong: '10/04/2026',
     giaHan1: '15/04/2026', giaHan2: '18/04/2026', giaHan3: '22/04/2026',
@@ -67,7 +49,7 @@ const ALL_TASKS: Record<string, any> = {
     canLD: 'Có', anhHuong: 4,
   },
   'nm-4': {
-    stt: 4, kyBaoCao: 'Tháng',
+    stt: 2, kyBaoCao: 'Tháng',
     congViec: 'Lên kế hoạch sản xuất tháng 5',
     nguoiGiao: 'Anh Tuyển', ngayGiao: '14/04/2026', ycXong: '28/04/2026',
     giaHan1: '29/04/2026', giaHan2: '30/04/2026', giaHan3: '02/05/2026',
@@ -76,7 +58,7 @@ const ALL_TASKS: Record<string, any> = {
     canLD: 'Không', anhHuong: 3,
   },
   'nm-5': {
-    stt: 5, kyBaoCao: 'Quý',
+    stt: 3, kyBaoCao: 'Quý',
     congViec: 'Cập nhật định mức',
     nguoiGiao: 'Anh Hòa', ngayGiao: '07/04/2026', ycXong: '30/04/2026',
     giaHan1: '02/05/2026', giaHan2: '04/05/2026', giaHan3: '06/05/2026',
@@ -95,17 +77,8 @@ const ALL_TASKS: Record<string, any> = {
     tienDo: 'Đang làm', vuongMac: 'Đối tác muốn tăng hạn mức tín dụng',
     canLD: 'Có', anhHuong: 4,
   },
-  'oem-2': {
-    stt: 2, kyBaoCao: 'Tuần',
-    congViec: 'Báo cáo sản lượng OEM tuần 15',
-    nguoiGiao: 'Anh Hùng', ngayGiao: '14/04/2026', ycXong: '14/04/2026',
-    giaHan1: '15/04/2026', giaHan2: '16/04/2026', giaHan3: '17/04/2026',
-    ketQua: 'Tổng sản lượng 12400', linkKQ: 'https://docs.google.com/oem2',
-    tienDo: 'Hoàn thành', vuongMac: 'Hệ thống báo cáo bị lỗi 1 ngày',
-    canLD: 'Không', anhHuong: 2,
-  },
   'oem-3': {
-    stt: 3, kyBaoCao: 'Quý',
+    stt: 2, kyBaoCao: 'Quý',
     congViec: 'Đánh giá & hạn mức OEM Q2',
     nguoiGiao: 'Chị Mai', ngayGiao: '01/04/2026', ycXong: '10/05/2026',
     giaHan1: '', giaHan2: '', giaHan3: '',
@@ -124,17 +97,8 @@ const ALL_TASKS: Record<string, any> = {
     tienDo: 'Chưa bắt đầu', vuongMac: 'Sếp chưa phê duyệt lại chỉ tiêu',
     canLD: 'Không', anhHuong: 3,
   },
-  'tm-2': {
-    stt: 2, kyBaoCao: 'Tuần',
-    congViec: 'Kiểm tra tồn kho thương mại',
-    nguoiGiao: 'Anh Hùng', ngayGiao: '07/04/2026', ycXong: '15/04/2026',
-    giaHan1: '18/04/2026', giaHan2: '20/04/2026', giaHan3: '22/04/2026',
-    ketQua: 'Đang kiểm đếm vật tư', linkKQ: 'https://docs.google.com/tm2',
-    tienDo: 'Đang làm', vuongMac: 'Kho bãi lộn xộn, kiểm đếm khó khăn',
-    canLD: 'Không', anhHuong: 2,
-  },
   'tm-3': {
-    stt: 3, kyBaoCao: 'Quý',
+    stt: 2, kyBaoCao: 'Quý',
     congViec: 'Báo cáo doanh thu Q1',
     nguoiGiao: 'Mrs Thao', ngayGiao: '01/04/2026', ycXong: '10/04/2026',
     giaHan1: '12/04/2026', giaHan2: '', giaHan3: '',
@@ -144,17 +108,8 @@ const ALL_TASKS: Record<string, any> = {
   },
 
   // ── DỰ ÁN ──
-  'da-1': {
-    stt: 1, kyBaoCao: 'Tuần',
-    congViec: 'Họp kickoff dự án nhà xưởng mới',
-    nguoiGiao: 'Anh Tuyển', ngayGiao: '14/04/2026', ycXong: '21/04/2026',
-    giaHan1: '', giaHan2: '', giaHan3: '',
-    ketQua: 'Đã lên lịch họp', linkKQ: 'https://docs.google.com/da1',
-    tienDo: 'Đang làm', vuongMac: 'Một số thành viên chưa xác nhận tham dự',
-    canLD: 'Không', anhHuong: 3,
-  },
   'da-2': {
-    stt: 2, kyBaoCao: 'Tháng',
+    stt: 1, kyBaoCao: 'Tháng',
     congViec: 'Lập dự toán ngân sách dự án',
     nguoiGiao: 'Chị Lan', ngayGiao: '01/04/2026', ycXong: '30/04/2026',
     giaHan1: '05/05/2026', giaHan2: '', giaHan3: '',
@@ -173,17 +128,8 @@ const ALL_TASKS: Record<string, any> = {
     tienDo: 'Hoàn thành', vuongMac: 'Kế toán viên nghỉ ốm 1 tuần',
     canLD: 'Không', anhHuong: 3,
   },
-  'kt-2': {
-    stt: 2, kyBaoCao: 'Tuần',
-    congViec: 'Kiểm tra công nợ nhà cung cấp',
-    nguoiGiao: 'Chị Lan', ngayGiao: '07/04/2026', ycXong: '18/04/2026',
-    giaHan1: '20/04/2026', giaHan2: '22/04/2026', giaHan3: '25/04/2026',
-    ketQua: 'Đã gửi email đối chiếu', linkKQ: 'https://docs.google.com/kt2',
-    tienDo: 'Đang làm', vuongMac: 'Chờ nhà cung cấp ký xác nhận biên bản',
-    canLD: 'Không', anhHuong: 2,
-  },
   'kt-3': {
-    stt: 3, kyBaoCao: 'Quý',
+    stt: 2, kyBaoCao: 'Quý',
     congViec: 'Quyết toán thuế Q1',
     nguoiGiao: 'Chị Lan', ngayGiao: '01/04/2026', ycXong: '30/04/2026',
     giaHan1: '05/05/2026', giaHan2: '', giaHan3: '',
@@ -195,49 +141,27 @@ const ALL_TASKS: Record<string, any> = {
 
 // ─── CÂY THƯ MỤC ─────────────────────────────────────────────────────────────
 const TREE_RAW = [
-  { key: 'nha-may', label: 'Nhà Máy', tasks: ['nm-1', 'nm-2', 'nm-3', 'nm-4', 'nm-5'] },
-  { key: 'oem', label: 'OEM', tasks: ['oem-1', 'oem-2', 'oem-3'] },
-  { key: 'thuong-mai', label: 'Thương Mại', tasks: ['tm-1', 'tm-2', 'tm-3'] },
-  { key: 'du-an', label: 'Dự Án', tasks: ['da-1', 'da-2'] },
-  { key: 'ke-toan', label: 'Kế Toán', tasks: ['kt-1', 'kt-2', 'kt-3'] },
+  { key: 'nha-may', label: 'Nhà Máy', tasks: ['nm-3', 'nm-4', 'nm-5'] },
+  { key: 'oem', label: 'OEM', tasks: ['oem-1', 'oem-3'] },
+  { key: 'thuong-mai', label: 'Thương Mại', tasks: ['tm-1', 'tm-3'] },
+  { key: 'du-an', label: 'Dự Án', tasks: ['da-2'] },
+  { key: 'ke-toan', label: 'Kế Toán', tasks: ['kt-1', 'kt-3'] },
   { key: 'marketing', label: 'Marketing', tasks: [] },
   { key: 'khac', label: 'Khác (phát sinh)', tasks: [] },
 ];
 
-// Build tree: Bộ phận → Tuần/Tháng/Quý → Công việc
+// Build tree: Bộ phận → Công việc (FLATTEN - không có cấp trung gian)
 const buildTree = () =>
   TREE_RAW.map((dept, idx) => {
-    const periods: Record<string, string[]> = {
-      'Công việc Tuần': [],
-      'Công việc Tháng': [],
-      'Công việc Quý': [],
-    };
-
-    dept.tasks.forEach(tk => {
+    // Hiển thị trực tiếp tất cả công việc dưới bộ phận
+    const childrenNodes = dept.tasks.map(tk => {
       const task = ALL_TASKS[tk];
-      if (!task) return;
-      const ky = (task.kyBaoCao || '').toLowerCase();
-      if (ky.includes('tuần')) periods['Công việc Tuần'].push(tk);
-      else if (ky.includes('tháng')) periods['Công việc Tháng'].push(tk);
-      else if (ky.includes('quý')) periods['Công việc Quý'].push(tk);
-      else periods['Công việc Tháng'].push(tk);
-    });
-
-    const childrenNodes: any[] = [];
-    Object.entries(periods).forEach(([pLabel, keys]) => {
-      if (keys.length > 0) {
-        childrenNodes.push({
-          key: `${dept.key}-${pLabel}`,
-          title: pLabel,
-          isLeaf: false,
-          isPeriod: true,
-          children: keys.map(k => ({
-            key: k,
-            title: ALL_TASKS[k]?.congViec ?? k,
-            isLeaf: true,
-          })),
-        });
-      }
+      return {
+        key: tk,
+        title: task?.congViec ?? tk,
+        kyBaoCao: task?.kyBaoCao ?? 'Tháng', // Lưu loại kỳ để dùng trong renderTitle
+        isLeaf: true,
+      };
     });
 
     return {
@@ -295,36 +219,34 @@ const TaskView: React.FC = () => {
     }
   };
 
-  const renderTitle = (nodeData: any) => (
-    <Dropdown
-      menu={{
-        items: [
-          { key: 'add', label: 'Thêm công việc', icon: <PlusOutlined /> },
-          { key: 'edit', label: 'Đổi tên', icon: <EditOutlined /> },
-          { key: 'delete', label: 'Xoá', icon: <DeleteOutlined />, danger: true },
-        ],
-        onClick: ({ key }) => message.info(`${key}: ${nodeData.title}`),
-      }}
-      trigger={['contextMenu']}
-    >
-      <div className="flex items-center gap-1.5 py-0.5 w-full">
-        {nodeData.isLeaf
-          ? <CheckSquareOutlined className="text-gray-400 text-xs flex-shrink-0" />
-          : nodeData.isPeriod
-            ? <FolderOutlined className="text-[#1E386B] flex-shrink-0" />
+  const renderTitle = (nodeData: any) => {
+    return (
+      <Dropdown
+        menu={{
+          items: [
+            { key: 'add', label: 'Thêm công việc', icon: <PlusOutlined /> },
+            { key: 'edit', label: 'Đổi tên', icon: <EditOutlined /> },
+            { key: 'delete', label: 'Xoá', icon: <DeleteOutlined />, danger: true },
+          ],
+          onClick: ({ key }) => message.info(`${key}: ${nodeData.title}`),
+        }}
+        trigger={['contextMenu']}
+      >
+        <div className="flex items-center gap-1.5 py-0.5 w-full">
+          {nodeData.isLeaf
+            ? <CheckSquareOutlined className="text-gray-400 text-xs flex-shrink-0" />
             : <FolderOutlined className="text-[#F38320] flex-shrink-0" />}
-        <span className={
-          nodeData.isLeaf
-            ? 'text-gray-700 text-sm leading-snug'
-            : nodeData.isPeriod
-              ? 'font-semibold text-[#1E386B] text-sm'
+          <span className={
+            nodeData.isLeaf
+              ? 'text-gray-700 text-sm leading-snug flex items-center gap-2 flex-1'
               : 'font-bold text-[#1E386B] text-sm'
-        }>
-          {nodeData.title}
-        </span>
-      </div>
-    </Dropdown>
-  );
+          }>
+            {nodeData.title}
+          </span>
+        </div>
+      </Dropdown>
+    );
+  };
 
   const loopTree = (data: any[]): any[] =>
     data.map(item => ({

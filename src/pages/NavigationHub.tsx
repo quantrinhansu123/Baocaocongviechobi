@@ -1,5 +1,6 @@
-import React, { useState } from 'react';
-import { Tree, Typography, Tag, Empty, Dropdown, message, Drawer } from 'antd';
+import React, { useState, useMemo } from 'react';
+import { Tree, Typography, Tag, Empty, Dropdown, message, Drawer, Select } from 'antd';
+import dayjs from 'dayjs';
 import type { TreeProps } from 'antd';
 import {
   FolderOutlined,
@@ -19,17 +20,14 @@ const { Text } = Typography;
 
 // ─── DỮ LIỆU BÁO CÁO ─────────────────────────────────────────────────────────
 const ALL_REPORTS: Record<string, any> = {
-  'nm-r1': { stt: 1, name: 'Báo cáo tuần của Mr Hùng/phụ trách NM', noidung: 'Tình hình sản xuất tuần tại NM', ngay: 'Thứ 2', ky: 'Tuần', nguoiGui: 'Mr Hùng – Nhà máy', nguoiNhan: 'Mr Tuyển + BLĐ', luong: 'Base', link: 'https://docs.google.com/spreadsheets/d/A71' },
-  'nm-r2': { stt: 2, name: 'Báo cáo tháng Mr Hùng/phụ trách NM', noidung: 'Tổng hợp tháng tại nhà máy', ngay: 'Ngày 5', ky: 'Tháng', nguoiGui: 'Mr Hùng – Nhà máy', nguoiNhan: 'Mr Tuyển + BLĐ', luong: 'Base', link: 'https://docs.google.com/spreadsheets/d/B2' },
-  'nm-r3': { stt: 3, name: 'Tổng hợp biên bản xử lý lỗi trong sản xuất cả tháng trước', noidung: 'Xử lý các lỗi trong ca tháng trước', ngay: 'Ngày 5', ky: 'Tháng', nguoiGui: 'Mr Hùng – Nhà máy', nguoiNhan: 'Mr Tuyển + BLĐ', luong: 'Base', link: 'https://docs.google.com/spreadsheets/d/C1' },
-  'nm-r4': { stt: 4, name: 'Cập nhật định mức sản xuất', noidung: 'Các thay đổi định mức trong sản xuất', ngay: 'Ngày 30 tháng đầu tiên', ky: 'Quý', nguoiGui: 'Mr Hòa – Kế hoạch sx NM', nguoiNhan: 'Mr Tuyển + BLĐ + Kế toán', luong: 'Base', link: 'https://docs.google.com/spreadsheets/d/D8' },
-  'nm-r5': { stt: 5, name: 'Cập nhật bổ công thức trong sản xuất', noidung: 'Khi có thay đổi công thức đóng hàng', ngay: 'Ngày 5 / Khi thay đổi', ky: 'Tháng', nguoiGui: 'Mr Hòa – Kế hoạch sx NM', nguoiNhan: 'BLĐ + Kế toán', luong: 'Base', link: 'https://docs.google.com/spreadsheets/d/E3' },
-  'nm-r6': { stt: 6, name: 'Báo cáo kết quả SX – biến động nhân sự – sản lượng bán NM', noidung: 'Sản lượng bán nhà máy theo tuần và tháng', ngay: '• Thứ 3\n• Ngày 8', ky: 'Tuần/Tháng', nguoiGui: 'Mr Tuyển', nguoiNhan: 'Mr Thụ, Mrs Thao', luong: 'Base', link: 'https://docs.google.com/spreadsheets/d/F9' },
+  'nm-r2': { stt: 1, name: 'Báo cáo tháng Mr Hùng/phụ trách NM', noidung: 'Tổng hợp tháng tại nhà máy', ngay: 'Ngày 5', ky: 'Tháng', nguoiGui: 'Mr Hùng – Nhà máy', nguoiNhan: 'Mr Tuyển + BLĐ', luong: 'Base', link: 'https://docs.google.com/spreadsheets/d/B2' },
+  'nm-r3': { stt: 2, name: 'Tổng hợp biên bản xử lý lỗi trong sản xuất cả tháng trước', noidung: 'Xử lý các lỗi trong ca tháng trước', ngay: 'Ngày 5', ky: 'Tháng', nguoiGui: 'Mr Hùng – Nhà máy', nguoiNhan: 'Mr Tuyển + BLĐ', luong: 'Base', link: 'https://docs.google.com/spreadsheets/d/C1' },
+  'nm-r4': { stt: 3, name: 'Cập nhật định mức sản xuất', noidung: 'Các thay đổi định mức trong sản xuất', ngay: 'Ngày 30 tháng đầu tiên', ky: 'Quý', nguoiGui: 'Mr Hòa – Kế hoạch sx NM', nguoiNhan: 'Mr Tuyển + BLĐ + Kế toán', luong: 'Base', link: 'https://docs.google.com/spreadsheets/d/D8' },
+  'nm-r5': { stt: 4, name: 'Cập nhật bổ công thức trong sản xuất', noidung: 'Khi có thay đổi công thức đóng hàng', ngay: 'Ngày 5 / Khi thay đổi', ky: 'Tháng', nguoiGui: 'Mr Hòa – Kế hoạch sx NM', nguoiNhan: 'BLĐ + Kế toán', luong: 'Base', link: 'https://docs.google.com/spreadsheets/d/E3' },
 
   'oem-r1': { stt: 1, name: 'Báo cáo công nợ OEM', noidung: 'Theo dõi công nợ khách hàng OEM', ngay: 'Ngày 5', ky: 'Tháng', nguoiGui: 'Chị Lan – Kế toán', nguoiNhan: 'Mr Tuyển + BLĐ', luong: 'Base', link: 'https://docs.google.com' },
-  'oem-r2': { stt: 2, name: 'Báo cáo sản lượng OEM', noidung: 'Tổng hợp sản lượng đơn OEM', ngay: 'Thứ 2', ky: 'Tuần', nguoiGui: 'Mr Hùng – OEM', nguoiNhan: 'Mr Tuyển', luong: 'Base', link: 'https://docs.google.com' },
-  'oem-r3': { stt: 3, name: 'Tồn kho OEM', noidung: 'Báo cáo tồn kho nguyên liệu OEM', ngay: 'Ngày 5', ky: 'Tháng', nguoiGui: 'Anh Hùng – Kho', nguoiNhan: 'Mr Tuyển + Kế toán', luong: 'Base', link: 'https://docs.google.com' },
-  'oem-r4': { stt: 4, name: 'Đánh giá & hạn mức OEM', noidung: 'Đánh giá khách hàng và hạn mức tín dụng', ngay: 'Ngày 10', ky: 'Quý', nguoiGui: 'Chị Mai – Kinh doanh', nguoiNhan: 'Mr Tuyển + Kế toán', luong: 'Base', link: 'https://docs.google.com' },
+  'oem-r3': { stt: 2, name: 'Tồn kho OEM', noidung: 'Báo cáo tồn kho nguyên liệu OEM', ngay: 'Ngày 5', ky: 'Tháng', nguoiGui: 'Anh Hùng – Kho', nguoiNhan: 'Mr Tuyển + Kế toán', luong: 'Base', link: 'https://docs.google.com' },
+  'oem-r4': { stt: 3, name: 'Đánh giá & hạn mức OEM', noidung: 'Đánh giá khách hàng và hạn mức tín dụng', ngay: 'Ngày 10', ky: 'Quý', nguoiGui: 'Chị Mai – Kinh doanh', nguoiNhan: 'Mr Tuyển + Kế toán', luong: 'Base', link: 'https://docs.google.com' },
 
   'tm-r1': { stt: 1, name: 'KPI kinh doanh', noidung: 'Theo dõi KPI đội kinh doanh thương mại', ngay: 'Ngày 5', ky: 'Tháng', nguoiGui: 'Mrs Thao – KD', nguoiNhan: 'Mr Tuyển + BLĐ', luong: 'Base', link: 'https://docs.google.com' },
   'tm-r2': { stt: 2, name: 'Công nợ thương mại', noidung: 'Tổng hợp công nợ khách thương mại', ngay: 'Ngày 5', ky: 'Tháng', nguoiGui: 'Chị Lan – Kế toán', nguoiNhan: 'Mr Tuyển', luong: 'Base', link: 'https://docs.google.com' },
@@ -40,11 +38,11 @@ const ALL_REPORTS: Record<string, any> = {
 const TREE_RAW = [
   {
     key: 'nha-may', label: 'Nhà Máy',
-    children: ['nm-r1', 'nm-r2', 'nm-r3', 'nm-r4', 'nm-r5', 'nm-r6'],
+    children: ['nm-r2', 'nm-r3', 'nm-r4', 'nm-r5'],
   },
   {
     key: 'oem', label: 'OEM',
-    children: ['oem-r1', 'oem-r2', 'oem-r3', 'oem-r4'],
+    children: ['oem-r1', 'oem-r3', 'oem-r4'],
   },
   {
     key: 'thuong-mai', label: 'Thương Mại',
@@ -56,7 +54,23 @@ const TREE_RAW = [
   { key: 'khac', label: 'Khác (phát sinh)', children: [] },
 ];
 
-const buildTreeData = () =>
+// ─── GENERATE 52 TUẦN ────────────────────────────────────────────────────────
+const generateWeeks = () => {
+  const weeks = [];
+  let start = dayjs('2026-01-04');
+  for (let i = 1; i <= 52; i++) {
+    const end = start.add(6, 'day');
+    weeks.push({
+      value: `week_${i}`,
+      label: `Tuần ${i}  (${start.format('DD/MM')} - ${end.format('DD/MM')})`,
+    });
+    start = start.add(7, 'day');
+  }
+  return weeks;
+};
+const WEEK_OPTIONS = generateWeeks();
+
+const buildTreeData = (filterPeriod: string) =>
   TREE_RAW.map((dept, idx) => {
     const periods: Record<string, string[]> = {
       'Báo cáo Tuần': [],
@@ -72,24 +86,26 @@ const buildTreeData = () =>
       if (ky.includes('tuần')) periods['Báo cáo Tuần'].push(rKey);
       else if (ky.includes('tháng')) periods['Báo cáo Tháng'].push(rKey);
       else if (ky.includes('quý')) periods['Báo cáo Quý'].push(rKey);
-      else periods['Báo cáo Tháng'].push(rKey); // fallback
+      else periods['Báo cáo Tháng'].push(rKey);
     });
+
+    const allowedLabel = filterPeriod !== 'all' ? PERIOD_MAP[filterPeriod] : null;
 
     const childrenNodes: any[] = [];
     Object.entries(periods).forEach(([pLabel, keys]) => {
-      if (keys.length > 0) {
-        childrenNodes.push({
-          key: `${dept.key}-${pLabel}`,
-          title: pLabel,
-          isLeaf: false,
-          isPeriod: true,
-          children: keys.map(k => ({
-            key: k,
-            title: ALL_REPORTS[k]?.name ?? k,
-            isLeaf: true,
-          })),
-        });
-      }
+      if (keys.length === 0) return;
+      if (allowedLabel && pLabel !== allowedLabel) return; // lọc theo kỳ
+      childrenNodes.push({
+        key: `${dept.key}-${pLabel}`,
+        title: pLabel,
+        isLeaf: false,
+        isPeriod: true,
+        children: keys.map(k => ({
+          key: k,
+          title: ALL_REPORTS[k]?.name ?? k,
+          isLeaf: true,
+        })),
+      });
     });
 
     return {
@@ -136,6 +152,8 @@ const NavigationHub: React.FC = () => {
   const [selectedReport, setSelectedReport] = useState<any>(null);
   const [selectedDept, setSelectedDept] = useState<string | null>(null);
   const [mobileDrawerOpen, setMobileDrawerOpen] = useState(false);
+  const [selectedWeek, setSelectedWeek] = useState('week_16');
+  const [filterPeriod] = useState<string>('all');
 
   const onSelect: TreeProps['onSelect'] = (_, info) => {
     const node = info.node as any;
@@ -185,16 +203,39 @@ const NavigationHub: React.FC = () => {
       children: item.children ? loopTree(item.children) : undefined,
     }));
 
-  return (
-    <div className="flex flex-col md:flex-row h-full md:h-[calc(100vh-80px)] bg-gray-100">
+  const treeData = useMemo(
+    () => loopTree(buildTreeData(filterPeriod)),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [filterPeriod, selectedReport]
+  );
 
-      {/* ── MOBILE OVERRIDE: HEADER & DRAWER ── */}
-      <div className="md:hidden flex items-center justify-between bg-white border-b border-gray-200 px-4 py-3 shadow-sm z-10 flex-shrink-0">
+  return (
+    <div className="flex flex-col h-[calc(100vh-80px)] bg-gray-100">
+
+      {/* ── TOP BAR: CHỌN TUẦN ── */}
+      <div className="bg-white px-4 md:px-5 py-3 border-b border-gray-200 flex flex-col md:flex-row md:items-center justify-between shadow-sm z-10 flex-shrink-0 gap-3 md:gap-0">
+        <div className="flex items-center gap-2" />
+        <div className="flex items-center gap-3 w-full md:w-auto">
+          <Text strong className="text-gray-600 text-sm hidden md:inline">Chọn tuần:</Text>
+          <Select
+            showSearch
+            value={selectedWeek}
+            onChange={setSelectedWeek}
+            options={WEEK_OPTIONS}
+            placeholder="Chọn tuần"
+            size="middle"
+            className="w-full md:w-64"
+          />
+        </div>
+      </div>
+
+      {/* ── MOBILE: NÚT MỞ DRAWER ── */}
+      <div className="md:hidden bg-white px-4 py-2 border-b border-gray-200 shadow-sm flex-shrink-0 z-10">
         <button
           onClick={() => setMobileDrawerOpen(true)}
-          className="text-[#1E386B] text-lg px-3 py-2 bg-blue-50 rounded-lg hover:bg-blue-100 transition-colors flex items-center gap-2 border border-blue-100"
+          className="w-full flex items-center justify-center gap-2 bg-blue-50 text-[#1E386B] py-2.5 rounded-lg font-bold text-sm border border-blue-100 hover:bg-blue-100 transition-colors"
         >
-          <span className="text-sm font-bold">Danh sách báo cáo & Menu</span>
+          Danh sách báo cáo & Menu
         </button>
       </div>
 
@@ -210,31 +251,34 @@ const NavigationHub: React.FC = () => {
           blockNode
           defaultExpandAll
           onSelect={onSelect}
-          treeData={loopTree(buildTreeData())}
+          treeData={treeData}
           selectedKeys={selectedReport ? [selectedReport.key] : []}
           className="bg-transparent"
         />
       </Drawer>
 
-      {/* ── CỘT TRÁI: CÂY (Desktop & Tablet) ── */}
-      <div className="hidden md:flex flex-col w-56 lg:w-72 flex-shrink-0 bg-white border-r border-gray-200 shadow-md transition-all">
-        <div className="px-4 py-3 bg-[#1E386B]">
-          <h2 className="m-0 text-white font-bold text-sm tracking-wide">📁 Cấu trúc báo cáo</h2>
+      <div className="flex flex-1 overflow-hidden">
+        {/* ── CỘT TRÁI: CÂY (Desktop & Tablet) ── */}
+        <div className="hidden md:flex flex-col w-56 lg:w-72 flex-shrink-0 bg-white border-r border-gray-200 shadow-md transition-all">
+          <div className="px-4 py-3 bg-[#1E386B]">
+            <h2 className="m-0 text-white font-bold text-sm tracking-wide flex items-center gap-2">
+              <span>📁</span> Cấu trúc báo cáo
+            </h2>
+          </div>
+          <div className="flex-1 overflow-auto p-2 lg:p-3">
+            <Tree
+              blockNode
+              defaultExpandAll
+              onSelect={onSelect}
+              treeData={treeData}
+              selectedKeys={selectedReport ? [selectedReport.key] : []}
+              className="bg-transparent"
+            />
+          </div>
         </div>
-        <div className="flex-1 overflow-auto p-2 lg:p-3">
-          <Tree
-            blockNode
-            defaultExpandAll
-            onSelect={onSelect}
-            treeData={loopTree(buildTreeData())}
-            selectedKeys={selectedReport ? [selectedReport.key] : []}
-            className="bg-transparent"
-          />
-        </div>
-      </div>
 
-      {/* ── CỘT PHẢI: CHI TIẾT ── */}
-      <div className="flex-1 flex flex-col overflow-hidden relative">
+        {/* ── CỘT PHẢI: CHI TIẾT ── */}
+        <div className="flex-1 flex flex-col overflow-hidden relative">
         {selectedReport ? (
           <>
             {/* Header detail */}
@@ -372,6 +416,7 @@ const NavigationHub: React.FC = () => {
             </Text>
           </div>
         )}
+        </div>
       </div>
     </div>
   );

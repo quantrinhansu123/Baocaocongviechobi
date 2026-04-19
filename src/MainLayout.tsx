@@ -26,6 +26,7 @@ import SmartView from './pages/SmartView';
 import AdminView from './pages/AdminView';
 import WorkReportDetail from './pages/WorkReportDetail';
 import TaskView from './pages/TaskView';
+import logo from './img/logo.png';
 
 const { Content, Header, Sider } = Layout;
 
@@ -38,7 +39,7 @@ const MainLayout: React.FC = () => {
   const menuItems = [
     { key: '/', icon: <DashboardOutlined />, label: 'ĐIỀU HÀNH CÔNG VIỆC' },
     { key: '/navigation', icon: <ClusterOutlined />, label: 'BÁO CÁO ĐỊNH KỲ' },
-    { key: '/tasks', icon: <CheckSquareOutlined />, label: 'NHÀ MÁY' },
+    { key: '/tasks', icon: <CheckSquareOutlined />, label: 'CÔNG VIỆC CHI TIẾT' },
   ];
 
   const userMenuItems = [
@@ -62,7 +63,7 @@ const MainLayout: React.FC = () => {
         <div className={`h-16 flex items-center px-6 bg-[#002140] transition-all duration-300 ${collapsed ? 'justify-center px-0' : ''}`}>
           <div className="flex-shrink-0 h-10 w-10 flex items-center justify-center overflow-hidden mr-2 bg-white p-1 rounded-lg shadow-sm cursor-pointer" onClick={() => navigate('/')}>
             <img
-              src={"../src/img/logo.png"}
+              src={logo}
               alt="Hobiwood Logo"
               className="w-full h-auto object-contain"
             />
@@ -101,7 +102,7 @@ const MainLayout: React.FC = () => {
                 <MenuOutlined />
               </button>
               <div className="custom-navbar-brand cursor-pointer flex items-center" onClick={() => navigate('/')}>
-                <img src={"../src/img/logo.png"} alt="Hobiwood Logo" className="h-8 w-auto object-contain mr-2" />
+                <img src={logo} alt="Hobiwood Logo" className="h-8 w-auto object-contain mr-2" />
                 <div className="leading-tight">
                   <p className="font-bold text-[#1E386B] text-base m-0 tracking-wide">HOBI WOOD</p>
                 </div>
@@ -131,7 +132,7 @@ const MainLayout: React.FC = () => {
           title={
             <div className="flex items-center">
               <div className="flex-shrink-0 h-8 w-8 flex items-center justify-center overflow-hidden mr-2 bg-white p-1 rounded-md shadow-sm">
-                <img src={"../src/img/logo.png"} alt="Hobiwood Logo" className="w-full h-auto object-contain" />
+                <img src={logo} alt="Hobiwood Logo" className="w-full h-auto object-contain" />
               </div>
               <span className="font-bold text-lg text-white tracking-wider">HoBi Wood</span>
             </div>
