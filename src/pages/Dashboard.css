@@ -1,0 +1,67 @@
+/* Dashboard.css - Custom Responsive Styles */
+
+/* Base adjustments for the dashboard */
+.dashboard-container {
+  overflow-x: hidden;
+}
+
+/* Ép toàn bộ các thẻ Select trong khung lọc ở mobile thành dạng Compact nhỏ xíu */
+@media (max-width: 767px) {
+  .dashboard-filters .ant-space {
+    width: 100%;
+  }
+
+  .dashboard-filters .ant-space-item {
+    width: 100%;
+    margin-right: 0 !important;
+    margin-bottom: 4px !important;
+    /* Siết chặt khoảng cách giữa các ô xuống còn 4px */
+  }
+
+  .dashboard-filters .ant-space-item:last-child {
+    margin-bottom: 0 !important;
+  }
+
+  /* Overrideinline styles for Select to span full column */
+  .dashboard-filters .filter-select {
+    width: 100% !important;
+  }
+
+  /* Bắt chước chính xác giao diện size="small" nhưng đè thêm nét cực mịn (font 12px) */
+  .dashboard-filters .filter-select .ant-select-selector {
+    height: 28px !important;
+    padding: 0 8px !important;
+    border-radius: 6px !important;
+  }
+
+  /* Chỉnh font text và placeholder mỏng nhẹ 12px như yêu cầu */
+  .dashboard-filters .filter-select .ant-select-selection-item,
+  .dashboard-filters .filter-select .ant-select-selection-placeholder {
+    font-size: 12px !important;
+    line-height: 26px !important;
+  }
+}
+
+/* Ensure padding adjustments on Antd Cards on very small screens */
+@media (max-width: 480px) {
+  .dashboard-container .ant-card-head {
+    padding: 0 12px;
+    font-size: 14px;
+    min-height: 48px;
+  }
+
+  .dashboard-container .ant-card-body {
+    padding: 12px;
+  }
+}
+
+/* Improve scrollbars for tables on mobile */
+.ant-table-body::-webkit-scrollbar {
+  height: 6px;
+  width: 6px;
+}
+
+.ant-table-body::-webkit-scrollbar-thumb {
+  background-color: rgba(0, 0, 0, 0.2);
+  border-radius: 4px;
+}

@@ -1,0 +1,90 @@
+/* --- TOP BAR (Tầng 1) --- */
+.custom-header-top {
+    display: flex;
+    background-color: #1E386B;
+    /* Đổi sang Xanh than Hobi Wood */
+    padding: 6px 24px;
+    justify-content: space-between;
+    align-items: center;
+    font-size: 13px;
+}
+
+.custom-header-top a {
+    text-decoration: none;
+    color: #e2e8f0;
+    margin-right: 15px;
+    transition: all 0.3s;
+}
+
+.custom-header-top a:hover {
+    color: #F38320 !important;
+    /* Hover ra màu Cam */
+}
+
+/* --- LOGO BRAND --- */
+.custom-navbar-brand {
+    display: flex;
+    align-items: center;
+    text-decoration: none;
+}
+
+.custom-navbar-brand .brand-title {
+    font-size: 24px;
+    font-weight: 800;
+    margin-bottom: 0;
+    color: #1E386B;
+    line-height: 1;
+}
+
+.custom-navbar-brand .brand-subtitle {
+    font-size: 10px;
+    letter-spacing: 2px;
+    color: #F38320;
+    /* Chữ phụ màu Cam */
+    margin-bottom: 0;
+    font-weight: 700;
+}
+
+/* --- MENU TABS DESKTOP (Tầng 2) --- */
+.custom-nav-item {
+    margin: 0 12px;
+    position: relative;
+    display: flex;
+    align-items: center;
+    height: 100%;
+}
+
+.custom-nav-item .nav-link {
+    font-weight: 700;
+    font-size: 14px;
+    color: #475569;
+    text-decoration: none;
+    transition: all 0.3s;
+    padding: 24px 0;
+    /* Căn giữa theo chiều dọc */
+    display: block;
+}
+
+/* Hiệu ứng hover & active ra màu Cam */
+.custom-nav-item:hover .nav-link,
+.custom-nav-item.active .nav-link {
+    color: #F38320;
+}
+
+/* Thanh gạch chân trượt ra (Màu cam) */
+.custom-nav-item::after {
+    content: "";
+    display: block;
+    width: 0;
+    height: 3px;
+    background-color: #F38320;
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    transition: all 0.4s ease-out;
+}
+
+.custom-nav-item:hover::after,
+.custom-nav-item.active::after {
+    width: 100%;
+}
