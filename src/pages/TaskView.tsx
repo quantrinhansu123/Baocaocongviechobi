@@ -212,10 +212,17 @@ const TaskView: React.FC = () => {
       const task = ALL_TASKS[node.key];
       if (task) {
         setSelected({ ...task, key: node.key });
-        if (window.innerWidth < 768) setDrawerOpen(false);
+        setDrawerOpen(false); // Auto-close Drawer khi chọn công việc
       }
     } else {
       setSelected(null);
+    }
+  };
+
+  const handleWeekChange = (weekValue: string) => {
+    setSelectedWeek(weekValue);
+    if (window.innerWidth < 768) {
+      setDrawerOpen(true); // Auto-open Drawer chỉ trên mobile
     }
   };
 
@@ -268,7 +275,7 @@ const TaskView: React.FC = () => {
           <Select
             showSearch
             value={selectedWeek}
-            onChange={setSelectedWeek}
+            onChange={handleWeekChange}
             options={WEEK_OPTIONS}
             placeholder="Chọn tuần"
             size="middle"
@@ -294,6 +301,7 @@ const TaskView: React.FC = () => {
         open={drawerOpen}
         styles={{ body: { padding: '12px 8px' } }}
         width={300}
+        destroyOnClose
       >
         <Tree
           blockNode

@@ -692,14 +692,14 @@ const Dashboard: React.FC = () => {
                     {/* Nút Đã giải quyết */}
                     <div className="mt-2 flex justify-end items-center">
                       <Tag
-                        icon={<CheckOutlined style={{ fontSize: '11px' }} />}
+                        // icon={<CheckOutlined style={{ fontSize: '11px' }} />}
                         className="m-0 bg-green-50 text-green-600 border-none rounded text-[11px] px-2 py-0.5 cursor-pointer hover:bg-green-100 font-semibold"
                         onClick={(e) => {
                           e.stopPropagation();
                           handleResolveIssue(issue.id);
                         }}
                       >
-                        Giải quyết
+                         Đã Giải quyết
                       </Tag>
                     </div>
                   </div>

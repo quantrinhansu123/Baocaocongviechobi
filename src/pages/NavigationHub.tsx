@@ -70,6 +70,12 @@ const generateWeeks = () => {
 };
 const WEEK_OPTIONS = generateWeeks();
 
+const PERIOD_MAP: Record<string, string> = {
+  'week': 'Báo cáo Tuần',
+  'month': 'Báo cáo Tháng',
+  'quarter': 'Báo cáo Quý',
+};
+
 const buildTreeData = (filterPeriod: string) =>
   TREE_RAW.map((dept, idx) => {
     const periods: Record<string, string[]> = {
@@ -161,11 +167,18 @@ const NavigationHub: React.FC = () => {
       const report = ALL_REPORTS[node.key];
       if (report) {
         setSelectedReport({ ...report, key: node.key });
-        setMobileDrawerOpen(false); // Mobile: tự đóng sau khi chọn
+        setMobileDrawerOpen(false); // Auto-close Drawer khi chọn báo cáo
       }
     } else {
       setSelectedReport(null);
       setSelectedDept(node.key);
+    }
+  };
+
+  const handleWeekChange = (weekValue: string) => {
+    setSelectedWeek(weekValue);
+    if (window.innerWidth < 768) {
+      setMobileDrawerOpen(true); // Auto-open Drawer chỉ trên mobile
     }
   };
 
@@ -220,7 +233,7 @@ const NavigationHub: React.FC = () => {
           <Select
             showSearch
             value={selectedWeek}
-            onChange={setSelectedWeek}
+            onChange={handleWeekChange}
             options={WEEK_OPTIONS}
             placeholder="Chọn tuần"
             size="middle"
@@ -246,6 +259,7 @@ const NavigationHub: React.FC = () => {
         open={mobileDrawerOpen}
         styles={{ body: { padding: '12px 8px' } }}
         width={280}
+        destroyOnClose
       >
         <Tree
           blockNode
