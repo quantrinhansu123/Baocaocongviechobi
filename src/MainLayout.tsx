@@ -38,7 +38,7 @@ const MainLayout: React.FC = () => {
   const menuItems = [
     { key: '/', icon: <DashboardOutlined />, label: 'ĐIỀU HÀNH CÔNG VIỆC' },
     { key: '/navigation', icon: <ClusterOutlined />, label: 'BÁO CÁO ĐỊNH KỲ' },
-    { key: '/tasks', icon: <CheckSquareOutlined />, label: 'CÔNG VIỆC' },
+    { key: '/tasks', icon: <CheckSquareOutlined />, label: 'NHÀ MÁY' },
   ];
 
   const userMenuItems = [
@@ -48,14 +48,14 @@ const MainLayout: React.FC = () => {
 
   return (
     <Layout style={{ minHeight: '100vh', display: 'flex', flexDirection: 'row' }}>
-      
+
       {/* --- DESKTOP SIDER (Ẩn trên màn hình mobile) --- */}
-      <Sider 
-        trigger={null} 
-        collapsible 
-        collapsed={collapsed} 
-        theme="dark" 
-        width={240} 
+      <Sider
+        trigger={null}
+        collapsible
+        collapsed={collapsed}
+        theme="dark"
+        width={240}
         collapsedWidth={80}
         className="shadow-lg hidden md:block"
       >
@@ -82,7 +82,7 @@ const MainLayout: React.FC = () => {
       <Layout className="main flex flex-col min-w-0" style={{ flex: 1 }}>
         {/* --- COMMON HEADER --- */}
         <Header className="bg-white p-0 flex items-center justify-between shadow-sm px-4 md:px-6 z-10 h-16 border-b border-gray-200">
-          
+
           <div className="flex items-center">
             {/* Desktop: Nút gập Sider */}
             <div className="hidden md:flex items-center">
@@ -91,21 +91,21 @@ const MainLayout: React.FC = () => {
                 onClick: () => setCollapsed(!collapsed),
               })}
             </div>
-            
+
             {/* Mobile: Nút Hamburger + Logo gốc */}
             <div className="flex md:hidden items-center">
-               <button
-                 className="mr-3 text-xl text-[#1E386B] p-1.5 hover:bg-gray-100 rounded-md transition-colors flex items-center"
-                 onClick={() => setMobileMenuOpen(true)}
-               >
-                 <MenuOutlined />
-               </button>
-               <div className="custom-navbar-brand cursor-pointer flex items-center" onClick={() => navigate('/')}>
-                  <img src={"../src/img/logo.png"} alt="Hobiwood Logo" className="h-8 w-auto object-contain mr-2" />
-                  <div className="leading-tight">
-                    <p className="font-bold text-[#1E386B] text-base m-0 tracking-wide">HOBI WOOD</p>
-                  </div>
-               </div>
+              <button
+                className="mr-3 text-xl text-[#1E386B] p-1.5 hover:bg-gray-100 rounded-md transition-colors flex items-center"
+                onClick={() => setMobileMenuOpen(true)}
+              >
+                <MenuOutlined />
+              </button>
+              <div className="custom-navbar-brand cursor-pointer flex items-center" onClick={() => navigate('/')}>
+                <img src={"../src/img/logo.png"} alt="Hobiwood Logo" className="h-8 w-auto object-contain mr-2" />
+                <div className="leading-tight">
+                  <p className="font-bold text-[#1E386B] text-base m-0 tracking-wide">HOBI WOOD</p>
+                </div>
+              </div>
             </div>
           </div>
 
@@ -141,8 +141,8 @@ const MainLayout: React.FC = () => {
           open={mobileMenuOpen}
           width={280}
           styles={{
-            body: { padding: '16px 0', backgroundColor: '#001529' }, 
-            header: { backgroundColor: '#002140', borderBottom: 'none', padding: '16px 24px' } 
+            body: { padding: '16px 0', backgroundColor: '#001529' },
+            header: { backgroundColor: '#002140', borderBottom: 'none', padding: '16px 24px' }
           }}
           closeIcon={<span className="text-white hover:text-gray-300 transition-colors text-lg">✖</span>}
         >
