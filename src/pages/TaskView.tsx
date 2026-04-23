@@ -567,7 +567,7 @@ const TaskView: React.FC = () => {
             tienDo: 'Chưa bắt đầu',
             vuongMac: '',
             canLD: 'Không',
-            anhHuong: 2,
+            anhHuong: Number(values.anhHuong),
           };
           return next;
         });
@@ -810,6 +810,22 @@ const TaskView: React.FC = () => {
             rules={[{ required: true, message: 'Nhập người phụ trách' }]}
           >
             <Input placeholder="Họ tên" />
+          </Form.Item>
+          <Form.Item
+            name="anhHuong"
+            label="Mức độ ảnh hưởng"
+            initialValue={2}
+            rules={[{ required: true, message: 'Chọn mức độ ảnh hưởng' }]}
+          >
+            <Select
+              options={[
+                { value: 1, label: 'Mức 1 - Thấp' },
+                { value: 2, label: 'Mức 2 - Trung bình' },
+                { value: 3, label: 'Mức 3 - Cao' },
+                { value: 4, label: 'Mức 4 - Rất cao' },
+              ]}
+              placeholder="Chọn mức độ ảnh hưởng"
+            />
           </Form.Item>
           <Form.Item name="deadline" label="Deadline" rules={[{ required: true, message: 'Chọn deadline' }]}>
             <DatePicker className="w-full" format="DD/MM/YYYY" />
