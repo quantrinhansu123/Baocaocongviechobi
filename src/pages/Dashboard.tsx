@@ -48,9 +48,30 @@ const TASK_NAMES = [
   'Chạy quảng cáo Tháng 4', 'Đăng ký nhãn hiệu', 'Khảo sát kho chứa mới', 'Lắp đặt máy CNC mới',
   'Phỏng vấn kế toán trưởng', 'Lập ngân sách 2026', 'Tuyển thêm 5 LĐPT', 'Xử lý khiếu nại chất lượng', 'Mở rộng kênh TMĐT'
 ];
-const DEPARTMENTS = ['Nhà máy', 'Kế toán', 'OEM', 'Thương mại'];
+const DEPARTMENTS = [
+  'Công việc cá nhân',
+  'Công việc của BLĐ',
+  'Phòng HCNS',
+  'Phòng KD Hobi Gỗ',
+  'Phòng KD Hobi Nhựa',
+  'Phòng Xuất khẩu',
+  'Phòng Dự án',
+  'Chi nhánh HCM',
+  'Phòng Marketing',
+  'Phòng Kế toán TM',
+  'Phòng Kho',
+  'Phòng KD OEM',
+  'Phòng Kế toán sản xuất',
+  'Nhà máy Wilson HB',
+  'Mua Thương mại',
+  'Mua sản xuất',
+];
 const STATUSES = ['Hoàn thành', 'Đang làm', 'Quá hạn', 'Hoàn thành gia hạn 1', 'Hoàn thành gia hạn 2', 'Hoàn thành gia hạn 3'];
 const OWNERS = ['Anh Tài', 'Chị Lan', 'Anh Tuấn', 'Anh Hùng', 'Chị Mai', 'Sếp Tuyển'];
+const DEPARTMENT_FILTER_OPTIONS = [
+  { value: 'all', label: 'Tất cả phòng ban' },
+  ...DEPARTMENTS.map(dept => ({ value: dept, label: dept })),
+];
 
 // Sinh ra 1500 dữ liệu mẫu khổng lồ, rải đều ngẫu nhiên
 const ALL_TASKS = Array.from({ length: 1500 }).map((_, i) => {
@@ -299,13 +320,7 @@ const Dashboard: React.FC = () => {
             onChange={setFilterDept}
             className="filter-select rounded-lg"
             style={{ width: 160 }}
-            options={[
-              { value: 'all', label: 'Tất cả phòng ban' },
-              { value: 'Nhà máy', label: 'Nhà máy' },
-              { value: 'OEM', label: 'OEM' },
-              { value: 'Thương mại', label: 'Thương mại' },
-              { value: 'Kế toán', label: 'Kế toán' },
-            ]}
+            options={DEPARTMENT_FILTER_OPTIONS}
           />
           <Select
             value={filterPriority}
@@ -358,13 +373,7 @@ const Dashboard: React.FC = () => {
           onChange={setFilterDept}
           className="filter-select rounded-sm"
           style={{ width: '100%' }}
-          options={[
-            { value: 'all', label: 'Tất cả phòng ban' },
-            { value: 'Nhà máy', label: 'Nhà máy' },
-            { value: 'OEM', label: 'OEM' },
-            { value: 'Thương mại', label: 'Thương mại' },
-            { value: 'Kế toán', label: 'Kế toán' },
-          ]}
+          options={DEPARTMENT_FILTER_OPTIONS}
         />
         <Select
           size="small"
@@ -417,13 +426,7 @@ const Dashboard: React.FC = () => {
           onChange={setFilterDept}
           className="filter-select rounded-sm"
           style={{ width: '100%' }}
-          options={[
-            { value: 'all', label: 'Tất cả phòng ban' },
-            { value: 'Nhà máy', label: 'Nhà máy' },
-            { value: 'OEM', label: 'OEM' },
-            { value: 'Thương mại', label: 'Thương mại' },
-            { value: 'Kế toán', label: 'Kế toán' },
-          ]}
+          options={DEPARTMENT_FILTER_OPTIONS}
         />
         <Select
           size="small"
