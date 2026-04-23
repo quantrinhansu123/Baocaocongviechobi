@@ -70,7 +70,22 @@ const STATUSES = ['Hoàn thành', 'Đang làm', 'Quá hạn', 'Hoàn thành gia 
 const OWNERS = ['Anh Tài', 'Chị Lan', 'Anh Tuấn', 'Anh Hùng', 'Chị Mai', 'Sếp Tuyển'];
 const DEPARTMENT_FILTER_OPTIONS = [
   { value: 'all', label: 'Tất cả phòng ban' },
-  ...DEPARTMENTS.map(dept => ({ value: dept, label: dept })),
+  { value: 'Công việc cá nhân', label: 'I. BAN LÃNH ĐẠO — 1. CÔNG VIỆC CÁ NHÂN' },
+  { value: 'Công việc của BLĐ', label: 'I. BAN LÃNH ĐẠO — 2. CÔNG VIỆC CỦA BLĐ' },
+  { value: 'Phòng HCNS', label: 'II. KHỐI THƯƠNG MẠI — 1. PHÒNG HCNS' },
+  { value: 'Phòng KD Hobi Gỗ', label: 'II. KHỐI THƯƠNG MẠI — 2. PHÒNG KD HOBI GỖ' },
+  { value: 'Phòng KD Hobi Nhựa', label: 'II. KHỐI THƯƠNG MẠI — 3. PHÒNG KD HOBI NHỰA' },
+  { value: 'Phòng Xuất khẩu', label: 'II. KHỐI THƯƠNG MẠI — 4. PHÒNG XUẤT KHẨU' },
+  { value: 'Phòng Dự án', label: 'II. KHỐI THƯƠNG MẠI — 5. PHÒNG DỰ ÁN' },
+  { value: 'Chi nhánh HCM', label: 'II. KHỐI THƯƠNG MẠI — 6. CHI NHÁNH HCM' },
+  { value: 'Phòng Marketing', label: 'II. KHỐI THƯƠNG MẠI — 7. PHÒNG MARKETING' },
+  { value: 'Phòng Kế toán TM', label: 'II. KHỐI THƯƠNG MẠI — 8. PHÒNG KẾ TOÁN TM' },
+  { value: 'Phòng Kho', label: 'II. KHỐI THƯƠNG MẠI — 9. PHÒNG KHO' },
+  { value: 'Phòng KD OEM', label: 'III. KHỐI SẢN XUẤT — 1. PHÒNG KD OEM' },
+  { value: 'Phòng Kế toán sản xuất', label: 'III. KHỐI SẢN XUẤT — 2. PHÒNG KẾ TOÁN SẢN XUẤT' },
+  { value: 'Nhà máy Wilson HB', label: 'III. KHỐI SẢN XUẤT — 3. NHÀ MÁY WILSON HB' },
+  { value: 'Mua Thương mại', label: 'IV. PHÒNG MUA NỘI ĐỊA, QUỐC TẾ — 1. MUA THƯƠNG MẠI' },
+  { value: 'Mua sản xuất', label: 'IV. PHÒNG MUA NỘI ĐỊA, QUỐC TẾ — 2. MUA SẢN XUẤT' },
 ];
 
 // Sinh ra 1500 dữ liệu mẫu khổng lồ, rải đều ngẫu nhiên
