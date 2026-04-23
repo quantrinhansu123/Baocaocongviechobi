@@ -334,7 +334,9 @@ const Dashboard: React.FC = () => {
             value={filterDept}
             onChange={setFilterDept}
             className="filter-select rounded-lg"
-            style={{ width: 160 }}
+            style={{ width: 260 }}
+            popupMatchSelectWidth={false}
+            dropdownStyle={{ minWidth: 520 }}
             options={DEPARTMENT_FILTER_OPTIONS}
           />
           <Select
@@ -388,6 +390,8 @@ const Dashboard: React.FC = () => {
           onChange={setFilterDept}
           className="filter-select rounded-sm"
           style={{ width: '100%' }}
+          popupMatchSelectWidth={false}
+          dropdownStyle={{ minWidth: 360 }}
           options={DEPARTMENT_FILTER_OPTIONS}
         />
         <Select
@@ -441,6 +445,8 @@ const Dashboard: React.FC = () => {
           onChange={setFilterDept}
           className="filter-select rounded-sm"
           style={{ width: '100%' }}
+          popupMatchSelectWidth={false}
+          dropdownStyle={{ minWidth: 360 }}
           options={DEPARTMENT_FILTER_OPTIONS}
         />
         <Select
