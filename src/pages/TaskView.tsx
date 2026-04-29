@@ -1,27 +1,21 @@
-import React, { useCallback, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import { useParams } from 'react-router-dom';
 import {
-  Tree,
   Typography,
   Tag,
-  Dropdown,
-  message,
   Select,
-  Drawer,
   Table,
   Button,
   Modal,
   Form,
   Input,
   DatePicker,
+  message,
 } from 'antd';
-import type { TreeProps } from 'antd';
 import type { ColumnsType } from 'antd/es/table';
 import {
-  FolderOutlined,
   CheckSquareOutlined,
   PlusOutlined,
-  EditOutlined,
-  DeleteOutlined,
   LinkOutlined,
   UserOutlined,
   CalendarOutlined,
@@ -456,18 +450,41 @@ type TableRow = {
 const DEPT_OPTIONS = flattenDeptOptions();
 
 const TaskView: React.FC = () => {
+  const { blockKey: blockKeyParam, deptKey: deptKeyParam } = useParams<{ blockKey?: string; deptKey?: string }>();
+
   const [tasksByDept, setTasksByDept] = useState<Record<string, Record<string, TaskRecord>>>(() =>
     cloneTasksMap(INITIAL_TASKS_BY_DEPT)
   );
   const [detailTask, setDetailTask] = useState<(TaskRecord & { key: string; deptKey: string }) | null>(null);
   const [listScope, setListScope] = useState<ListScope | null>(null);
-  const [treeSelectedKeys, setTreeSelectedKeys] = useState<React.Key[]>([]);
   const [selectedWeek, setSelectedWeek] = useState('week_16');
-  const [drawerOpen, setDrawerOpen] = useState(false);
   const [createOpen, setCreateOpen] = useState(false);
   const [form] = Form.useForm();
 
-  const baseTree = useMemo(() => buildTreeData(tasksByDept), [tasksByDept]);
+  useEffect(() => {
+    if (!blockKeyParam) {
+      setListScope(null);
+      setDetailTask(null);
+      return;
+    }
+    const block = ORG_BLOCKS.find(b => b.key === blockKeyParam);
+    if (!block) {
+      setListScope(null);
+      setDetailTask(null);
+      return;
+    }
+    if (deptKeyParam) {
+      const dept = block.depts.find(d => d.key === deptKeyParam);
+      if (dept) {
+        setListScope({ kind: 'dept', deptKey: deptKeyParam });
+      } else {
+        setListScope({ kind: 'block', blockKey: blockKeyParam });
+      }
+    } else {
+      setListScope({ kind: 'block', blockKey: blockKeyParam });
+    }
+    setDetailTask(null);
+  }, [blockKeyParam, deptKeyParam]);
 
   const collectRowsForScope = useCallback(
     (scope: ListScope): TableRow[] => {
@@ -583,104 +600,11 @@ const TaskView: React.FC = () => {
     if (!t) return;
     setDetailTask({ ...t, key: taskKey, deptKey });
     setListScope(null);
-    setTreeSelectedKeys([taskKey]);
-    setDrawerOpen(false);
-  };
-
-  const onSelect: TreeProps['onSelect'] = (keys, info) => {
-    const node = info.node as any;
-    if (node.isLeaf && node.deptKey) {
-      openDetail(node.key as string, node.deptKey as string);
-      return;
-    }
-    if (node.isDept && node.deptKey) {
-      setDetailTask(null);
-      setListScope({ kind: 'dept', deptKey: node.deptKey });
-      setTreeSelectedKeys(keys);
-      setDrawerOpen(false);
-      return;
-    }
-    if (node.isBlock && node.blockKey) {
-      setDetailTask(null);
-      setListScope({ kind: 'block', blockKey: node.blockKey });
-      setTreeSelectedKeys(keys);
-      setDrawerOpen(false);
-    }
   };
 
   const handleWeekChange = (weekValue: string) => {
     setSelectedWeek(weekValue);
-    if (window.innerWidth < 768) {
-      setDrawerOpen(true);
-    }
   };
-
-  const renderTitle = (nodeData: TreeNodeBase, onCtxAdd?: () => void) => {
-    const menuItems =
-      nodeData.isLeaf
-        ? [
-            { key: 'edit', label: 'Đổi tên', icon: <EditOutlined /> },
-            { key: 'delete', label: 'Xoá', icon: <DeleteOutlined />, danger: true },
-          ]
-        : [
-            { key: 'add', label: 'Thêm công việc', icon: <PlusOutlined /> },
-            { key: 'edit', label: 'Đổi tên', icon: <EditOutlined /> },
-            { key: 'delete', label: 'Xoá', icon: <DeleteOutlined />, danger: true },
-          ];
-
-    return (
-      <Dropdown
-        menu={{
-          items: menuItems,
-          onClick: ({ key, domEvent }) => {
-            domEvent.stopPropagation();
-            if (key === 'add') {
-              onCtxAdd?.();
-              return;
-            }
-            message.info(`${key}: ${nodeData.displayTitle}`);
-          },
-        }}
-        trigger={['contextMenu']}
-      >
-        <div className="flex items-center gap-1.5 py-0.5 w-full min-w-0">
-          {nodeData.isLeaf ? (
-            <CheckSquareOutlined className="text-gray-400 text-xs flex-shrink-0" />
-          ) : nodeData.isBlock ? (
-            <FolderOutlined className={`${nodeData.titleClass} flex-shrink-0`} />
-          ) : (
-            <FolderOutlined className="text-[#F38320] flex-shrink-0 text-sm" />
-          )}
-          <span
-            className={
-              nodeData.isLeaf
-                ? 'text-gray-800 text-sm leading-snug flex-1 truncate'
-                : nodeData.isBlock
-                  ? `font-bold uppercase text-[11px] md:text-xs tracking-wide leading-snug flex-1 ${nodeData.titleClass}`
-                  : `font-semibold uppercase text-[10px] md:text-[11px] tracking-wide leading-snug flex-1 ${nodeData.deptTitleClass}`
-            }
-          >
-            {nodeData.displayTitle}
-          </span>
-        </div>
-      </Dropdown>
-    );
-  };
-
-  const loopTree = (data: TreeNodeBase[]): any[] =>
-    data.map(item => {
-      const ctxAdd = () => {
-        if (item.isDept && item.deptKey) openCreateModal(item.deptKey);
-        else if (item.isBlock) openCreateModal(undefined);
-      };
-      return {
-        ...item,
-        title: renderTitle(item, item.isLeaf ? undefined : ctxAdd),
-        children: item.children ? loopTree(item.children) : undefined,
-      };
-    });
-
-  const treeData = loopTree(baseTree);
 
   const tableColumns: ColumnsType<TableRow> = [
     {
@@ -755,36 +679,6 @@ const TaskView: React.FC = () => {
         </div>
       </div>
 
-      {/* ── MOBILE: NÚT MỞ DRAWER ── */}
-      <div className="md:hidden bg-white px-4 py-2 border-b border-gray-200 shadow-sm flex-shrink-0 z-10">
-        <button
-          type="button"
-          onClick={() => setDrawerOpen(true)}
-          className="w-full flex items-center justify-center gap-2 bg-blue-50 text-[#1E386B] py-2.5 rounded-lg font-bold text-sm border border-blue-100 hover:bg-blue-100 transition-colors"
-        >
-          Danh sách công việc
-        </button>
-      </div>
-
-      <Drawer
-        title={<span className="font-bold text-[#1E386B]">Danh mục công việc</span>}
-        placement="left"
-        onClose={() => setDrawerOpen(false)}
-        open={drawerOpen}
-        styles={{ body: { padding: '12px 8px' } }}
-        width={300}
-        destroyOnClose
-      >
-        <Tree
-          blockNode
-          defaultExpandAll
-          onSelect={onSelect}
-          treeData={treeData}
-          selectedKeys={treeSelectedKeys}
-          className="bg-transparent"
-        />
-      </Drawer>
-
       <Modal
         title="Tạo công việc mới"
         open={createOpen}
@@ -834,24 +728,6 @@ const TaskView: React.FC = () => {
       </Modal>
 
       <div className="flex flex-1 overflow-hidden">
-        <div className="hidden md:flex w-56 lg:w-80 flex-shrink-0 bg-white border-r border-gray-200 flex-col shadow-md transition-all">
-          <div className="px-4 py-3 bg-[#1E386B]">
-            <h2 className="m-0 text-white font-bold text-sm tracking-wide flex items-center gap-2">
-              <FolderOutlined /> Danh mục công việc
-            </h2>
-          </div>
-          <div className="flex-1 overflow-auto p-2 md:p-3">
-            <Tree
-              blockNode
-              defaultExpandAll
-              onSelect={onSelect}
-              treeData={treeData}
-              selectedKeys={treeSelectedKeys}
-              className="bg-transparent"
-            />
-          </div>
-        </div>
-
         <div className="flex-1 flex flex-col overflow-hidden">
           {listScope && !detailTask ? (
             <div className="flex-1 flex flex-col overflow-hidden p-3 md:p-5">
@@ -1062,9 +938,9 @@ const TaskView: React.FC = () => {
             <div className="flex-1 flex flex-col items-center justify-center text-gray-400 gap-2 md:gap-3 p-6 text-center">
               <CheckSquareOutlined className="text-4xl md:text-6xl text-gray-200" />
               <Text type="secondary" className="text-sm md:text-base max-w-md">
-                <span className="md:hidden">Chọn khối / phòng ban trên cây để xem danh sách, hoặc chọn một công việc để xem chi tiết.</span>
+                <span className="md:hidden">Chọn mục trong menu bên trái để xem danh sách công việc, hoặc chọn một công việc để xem chi tiết.</span>
                 <span className="hidden md:inline">
-                  Chọn khối hoặc phòng ban trên cây bên trái để xem bảng công việc (STT, Phòng ban, Công việc, Người phụ trách, Deadline), hoặc chọn một công việc để xem chi tiết.
+                  Chọn khối hoặc phòng ban ở sidebar để xem bảng công việc (STT, Phòng ban, Công việc, Người phụ trách, Deadline), hoặc chọn một công việc để xem chi tiết.
                 </span>
               </Text>
             </div>

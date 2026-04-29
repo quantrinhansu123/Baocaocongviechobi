@@ -4,6 +4,7 @@ import type { MenuProps } from 'antd';
 import {
   DashboardOutlined,
   ClusterOutlined,
+  CheckSquareOutlined,
   BellOutlined,
   UserOutlined,
   MenuOutlined,
@@ -24,22 +25,102 @@ import CalendarView from './pages/CalendarView';
 import SmartView from './pages/SmartView';
 import AdminView from './pages/AdminView';
 import WorkReportDetail from './pages/WorkReportDetail';
+import TaskView from './pages/TaskView';
 import logo from './img/logo.png';
 
 const { Content, Header, Sider } = Layout;
+
+const TASK_MENU_TREE = [
+  {
+    key: 'bld',
+    label: 'I. BAN LÃNH ĐẠO',
+    depts: [
+      { key: 'bld-ca-nhan', label: '1. CÔNG VIỆC CÁ NHÂN' },
+      { key: 'bld-cong-viec-bld', label: '2. CÔNG VIỆC CỦA BLĐ' },
+    ],
+  },
+  {
+    key: 'tm',
+    label: 'II. KHỐI THƯƠNG MẠI',
+    depts: [
+      { key: 'tm-hcns', label: '1. PHÒNG HCNS' },
+      { key: 'tm-kd-go', label: '2. PHÒNG KD HOBI GỖ' },
+      { key: 'tm-kd-nhua', label: '3. PHÒNG KD HOBI NHỰA' },
+      { key: 'tm-xuat-khau', label: '4. PHÒNG XUẤT KHẨU' },
+      { key: 'tm-du-an', label: '5. PHÒNG DỰ ÁN' },
+      { key: 'tm-cn-hcm', label: '6. CHI NHÁNH HCM' },
+      { key: 'tm-marketing', label: '7. PHÒNG MARKETING' },
+      { key: 'tm-ke-toan', label: '8. PHÒNG KẾ TOÁN TM' },
+      { key: 'tm-kho', label: '9. PHÒNG KHO' },
+    ],
+  },
+  {
+    key: 'sx',
+    label: 'III. KHỐI SẢN XUẤT',
+    depts: [
+      { key: 'sx-kd-oem', label: '1. PHÒNG KD OEM' },
+      { key: 'sx-ke-toan', label: '2. PHÒNG KẾ TOÁN SẢN XUẤT' },
+      { key: 'sx-nm-wilson', label: '3. NHÀ MÁY WILSON HB' },
+    ],
+  },
+  {
+    key: 'mua',
+    label: 'IV. PHÒNG MUA NỘI ĐỊA, QUỐC TẾ',
+    depts: [
+      { key: 'mua-thuong-mai', label: '1. MUA THƯƠNG MẠI' },
+      { key: 'mua-san-xuat', label: '2. MUA SẢN XUẤT' },
+    ],
+  },
+];
+
+function sidebarSelectedKey(pathname: string): string {
+  if (pathname === '/' || pathname === '/navigation' || pathname === '/tasks') return pathname;
+  if (pathname.startsWith('/tasks/')) {
+    const parts = pathname.split('/').filter(Boolean);
+    const blockKey = parts[1];
+    const deptKey = parts[2];
+    if (blockKey && deptKey) return `/tasks/${blockKey}/${deptKey}`;
+    if (blockKey) return `/tasks/${blockKey}`;
+    return '/tasks';
+  }
+  return pathname;
+}
+
+function sidebarOpenKeys(pathname: string): string[] {
+  if (!pathname.startsWith('/tasks')) return [];
+  const parts = pathname.split('/').filter(Boolean);
+  const blockKey = parts[1];
+  if (blockKey) {
+    return ['/tasks', `/tasks/${blockKey}`];
+  }
+  return ['/tasks'];
+}
 
 const MainLayout: React.FC = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false); // Mobile Menu State
   const [collapsed, setCollapsed] = useState(false); // Desktop Sider State
-  const [menuOpenKeys, setMenuOpenKeys] = useState<string[]>(['sub-bao-cao']);
+  const [controlledOpenKeys, setControlledOpenKeys] = useState<string[]>(['sub-bao-cao']);
 
   const reportMenuChildren = useMemo(() => buildReportMenuItems(), []);
 
   const menuItems: MenuProps['items'] = useMemo(
     () => [
       { key: '/', icon: <DashboardOutlined className="sidebar-nav-icon" />, label: 'ĐIỀU HÀNH CÔNG VIỆC' },
+      {
+        key: '/tasks',
+        icon: <CheckSquareOutlined className="sidebar-nav-icon" />,
+        label: 'CÔNG VIỆC CHI TIẾT',
+        children: TASK_MENU_TREE.map(block => ({
+          key: `/tasks/${block.key}`,
+          label: block.label,
+          children: block.depts.map(dept => ({
+            key: `/tasks/${block.key}/${dept.key}`,
+            label: dept.label,
+          })),
+        })),
+      },
       {
         key: 'sub-bao-cao',
         icon: <ClusterOutlined className="sidebar-nav-icon" />,
@@ -52,7 +133,7 @@ const MainLayout: React.FC = () => {
 
   /** Chiều rộng khi sidebar đang mở (Ant Design tự dùng collapsedWidth khi thu gọn). */
   const expandedSiderWidth = useMemo(() => {
-    const open = menuOpenKeys;
+    const open = controlledOpenKeys;
     const hasBaoCao = open.includes('sub-bao-cao');
     const deptOpen = open.filter(k => k.startsWith('dept-')).length;
     const periodOpen = open.filter(k => k.startsWith('period-')).length;
@@ -62,14 +143,14 @@ const MainLayout: React.FC = () => {
     if (deptOpen >= 2 || periodOpen >= 1) w = 380;
     if (deptOpen >= 3) w = 412;
     return Math.min(w, 440);
-  }, [menuOpenKeys]);
+  }, [controlledOpenKeys]);
 
   useEffect(() => {
     if (location.pathname !== '/navigation') return;
     const r = new URLSearchParams(location.search).get('r');
     const required = openKeysForReportId(r);
     if (required.length <= 1) return;
-    setMenuOpenKeys(prev => Array.from(new Set([...prev, ...required])));
+    setControlledOpenKeys(prev => Array.from(new Set([...prev, ...required])));
   }, [location.pathname, location.search]);
 
   const selectedMenuKeys = useMemo(() => {
@@ -78,9 +159,19 @@ const MainLayout: React.FC = () => {
       if (r && ALL_REPORTS[r]) return [`report-${r}`];
       return [];
     }
+    if (location.pathname.startsWith('/tasks')) {
+      const k = sidebarSelectedKey(location.pathname);
+      return k ? [k] : [];
+    }
     if (location.pathname === '/') return ['/'];
     return [];
   }, [location.pathname, location.search]);
+
+  const syncTaskOpenKeys = useMemo(() => sidebarOpenKeys(location.pathname), [location.pathname]);
+  const mergedOpenKeys = useMemo(
+    () => Array.from(new Set([...controlledOpenKeys, ...syncTaskOpenKeys])),
+    [controlledOpenKeys, syncTaskOpenKeys]
+  );
 
   const handleMenuClick: MenuProps['onClick'] = ({ key }) => {
     if (key.startsWith('report-')) {
@@ -91,6 +182,11 @@ const MainLayout: React.FC = () => {
     }
     if (key === '/') {
       navigate('/');
+      setMobileMenuOpen(false);
+      return;
+    }
+    if (key === '/tasks' || key.startsWith('/tasks/')) {
+      navigate(key);
       setMobileMenuOpen(false);
       return;
     }
@@ -132,8 +228,8 @@ const MainLayout: React.FC = () => {
           theme="dark"
           mode="inline"
           selectedKeys={selectedMenuKeys}
-          openKeys={menuOpenKeys}
-          onOpenChange={keys => setMenuOpenKeys(keys as string[])}
+          openKeys={mergedOpenKeys}
+          onOpenChange={keys => setControlledOpenKeys(keys as string[])}
           items={menuItems}
           onClick={handleMenuClick}
           inlineIndent={14}
@@ -201,7 +297,7 @@ const MainLayout: React.FC = () => {
           placement="left"
           onClose={() => setMobileMenuOpen(false)}
           open={mobileMenuOpen}
-          width={Math.max(300, Math.min(360, 280 + menuOpenKeys.filter(k => k.startsWith('dept-') || k.startsWith('period-')).length * 28))}
+          width={Math.max(300, Math.min(360, 280 + mergedOpenKeys.filter(k => k.startsWith('dept-') || k.startsWith('period-')).length * 28))}
           styles={{
             body: { padding: '16px 0', backgroundColor: '#001529' },
             header: { backgroundColor: '#002140', borderBottom: 'none', padding: '16px 24px' }
@@ -212,8 +308,8 @@ const MainLayout: React.FC = () => {
             theme="dark"
             mode="inline"
             selectedKeys={selectedMenuKeys}
-            openKeys={menuOpenKeys}
-            onOpenChange={keys => setMenuOpenKeys(keys as string[])}
+            openKeys={mergedOpenKeys}
+            onOpenChange={keys => setControlledOpenKeys(keys as string[])}
             items={menuItems}
             onClick={handleMenuClick}
             inlineIndent={14}
@@ -233,6 +329,9 @@ const MainLayout: React.FC = () => {
             <Route path="/calendar" element={<CalendarView />} />
             <Route path="/smart-view" element={<SmartView />} />
             <Route path="/admin" element={<AdminView />} />
+            <Route path="/tasks/:blockKey/:deptKey" element={<TaskView />} />
+            <Route path="/tasks/:blockKey" element={<TaskView />} />
+            <Route path="/tasks" element={<TaskView />} />
             <Route path="/work-report-detail" element={<WorkReportDetail />} />
           </Routes>
         </Content>
