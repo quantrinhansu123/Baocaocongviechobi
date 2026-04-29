@@ -121,7 +121,19 @@ const AdminView: React.FC = () => {
             </div>
             <Button type="primary" icon={<PlusOutlined />} className="bg-blue-600">Tạo Template Mới</Button>
           </div>
-          <Table columns={templateColumns} dataSource={MOCK_TEMPLATES} pagination={false} size="middle" />
+          <div className="hidden md:block">
+            <Table columns={templateColumns} dataSource={MOCK_TEMPLATES} pagination={false} size="middle" />
+          </div>
+          <div className="block md:hidden space-y-2">
+            {MOCK_TEMPLATES.map(item => (
+              <div key={item.key} className="rounded-lg border border-gray-200 p-3 bg-white">
+                <p className="font-semibold text-blue-600 text-sm">{item.name}</p>
+                <p className="text-xs text-gray-600 mt-1">Định dạng: {item.type}</p>
+                <p className="text-xs text-gray-600">Cập nhật: {item.lastUpdate}</p>
+                <p className="text-xs mt-1">Trạng thái: <Tag color={item.status === 'Active' ? 'green' : 'default'}>{item.status}</Tag></p>
+              </div>
+            ))}
+          </div>
         </div>
       ),
     },
@@ -140,7 +152,19 @@ const AdminView: React.FC = () => {
               <Button type="primary" icon={<PlusOutlined />} className="bg-blue-600">Thêm User</Button>
             </Space>
           </div>
-          <Table columns={userColumns} dataSource={MOCK_USERS} pagination={false} size="middle" />
+          <div className="hidden md:block">
+            <Table columns={userColumns} dataSource={MOCK_USERS} pagination={false} size="middle" />
+          </div>
+          <div className="block md:hidden space-y-2">
+            {MOCK_USERS.map(item => (
+              <div key={item.key} className="rounded-lg border border-gray-200 p-3 bg-white">
+                <p className="font-semibold text-sm">{item.name}</p>
+                <p className="text-xs text-gray-600 mt-1">{item.email}</p>
+                <p className="text-xs text-gray-600">Phòng ban: {item.department}</p>
+                <p className="text-xs mt-1">Vai trò: <Tag color={item.role === 'Super Admin' ? 'red' : item.role === 'Quản lý' ? 'green' : 'blue'}>{item.role}</Tag></p>
+              </div>
+            ))}
+          </div>
         </div>
       ),
     },
@@ -166,7 +190,22 @@ const AdminView: React.FC = () => {
             />
             <Button type="primary" className="bg-green-600 ml-auto">Lưu cấu hình</Button>
           </div>
-          <Table columns={permissionColumns} dataSource={permissionData} pagination={false} size="middle" bordered />
+          <div className="hidden md:block">
+            <Table columns={permissionColumns} dataSource={permissionData} pagination={false} size="middle" bordered />
+          </div>
+          <div className="block md:hidden space-y-2">
+            {permissionData.map(item => (
+              <div key={item.key} className="rounded-lg border border-gray-200 p-3 bg-white">
+                <p className="font-semibold text-sm">{item.feature}</p>
+                <div className="mt-2 grid grid-cols-2 gap-2 text-xs text-gray-700">
+                  <p>Xem: {item.read ? 'Bật' : 'Tắt'}</p>
+                  <p>Thêm/Sửa: {item.write ? 'Bật' : 'Tắt'}</p>
+                  <p>Xóa: {item.delete ? 'Bật' : 'Tắt'}</p>
+                  <p>Phê duyệt: {item.approve ? 'Bật' : 'Tắt'}</p>
+                </div>
+              </div>
+            ))}
+          </div>
         </div>
       ),
     },

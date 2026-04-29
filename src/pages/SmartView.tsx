@@ -93,14 +93,40 @@ const SmartView: React.FC = () => {
               label: 'Công nợ',
               children: (
                 <div className="pt-4">
-                  <Table
-                    columns={debtColumns}
-                    dataSource={summaryData}
-                    variant="bordered"
-                    pagination={false}
-                    scroll={{ x: 1000 }}
-                    rowClassName={(record) => record.key === 'total' ? 'bg-gray-100 font-bold' : ''}
-                  />
+                  <div className="hidden md:block">
+                    <Table
+                      columns={debtColumns}
+                      dataSource={summaryData}
+                      variant="bordered"
+                      pagination={false}
+                      scroll={{ x: 1000 }}
+                      rowClassName={(record) => record.key === 'total' ? 'bg-gray-100 font-bold' : ''}
+                    />
+                  </div>
+                  <div className="block md:hidden space-y-2">
+                    {summaryData.map((row: any) => (
+                      <div
+                        key={row.key}
+                        className={`rounded-lg border p-3 ${row.key === 'total' ? 'bg-gray-100 border-gray-300 font-semibold' : 'bg-white border-gray-200'}`}
+                      >
+                        <p className="font-medium">{row.customer}</p>
+                        <div className="mt-2 grid grid-cols-2 gap-2 text-xs">
+                          <div>
+                            <p className="font-medium text-gray-600">Thương mại</p>
+                            <p>Tổng nợ: {row.trade.total}M</p>
+                            <p className="text-green-600">Đã thu: {row.trade.collected}M</p>
+                            <p className="text-red-600">Quá hạn: {row.trade.overdue}M</p>
+                          </div>
+                          <div>
+                            <p className="font-medium text-gray-600">OEM</p>
+                            <p>Tổng nợ: {row.oem.total}M</p>
+                            <p className="text-green-600">Đã thu: {row.oem.collected}M</p>
+                            <p className="text-red-600">Quá hạn: {row.oem.overdue}M</p>
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
                 </div>
               ),
             },

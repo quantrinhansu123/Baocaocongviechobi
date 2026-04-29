@@ -167,188 +167,74 @@ type TaskRecord = {
   anhHuong: number;
 };
 
-const INITIAL_TASKS_BY_DEPT: Record<string, Record<string, TaskRecord>> = {
-  'sx-nm-wilson': {
-    'nm-3': {
-      stt: 1,
-      kyBaoCao: 'Tháng',
-      congViec: 'Bảo trì máy nghiền gỗ',
-      nguoiGiao: 'Chú Hải',
-      ngayGiao: '01/04/2026',
-      ycXong: '10/04/2026',
-      giaHan1: '15/04/2026',
-      giaHan2: '18/04/2026',
-      giaHan3: '22/04/2026',
-      ketQua: 'Đã hoàn thiện phần cơ khí',
-      linkKQ: 'https://docs.google.com/bao-tri',
-      tienDo: 'Quá hạn',
-      vuongMac: 'Đội bảo trì đang rút đi sửa chữa gấp chỗ khác',
-      canLD: 'Có',
-      anhHuong: 4,
-    },
-    'nm-4': {
-      stt: 2,
-      kyBaoCao: 'Tháng',
-      congViec: 'Lên kế hoạch sản xuất tháng 5',
-      nguoiGiao: 'Anh Tuyển',
-      ngayGiao: '14/04/2026',
-      ycXong: '28/04/2026',
-      giaHan1: '29/04/2026',
-      giaHan2: '30/04/2026',
-      giaHan3: '02/05/2026',
-      ketQua: 'Đang lên danh sách nguyên vật liệu',
-      linkKQ: 'https://docs.google.com/kh-t5',
-      tienDo: 'Đang làm',
-      vuongMac: 'Phòng kinh doanh gửi số liệu chậm',
-      canLD: 'Không',
-      anhHuong: 3,
-    },
-    'nm-5': {
-      stt: 3,
-      kyBaoCao: 'Quý',
-      congViec: 'Cập nhật định mức',
-      nguoiGiao: 'Anh Hòa',
-      ngayGiao: '07/04/2026',
-      ycXong: '30/04/2026',
-      giaHan1: '02/05/2026',
-      giaHan2: '04/05/2026',
-      giaHan3: '06/05/2026',
-      ketQua: 'Đang đối soát lại giá',
-      linkKQ: 'https://docs.google.com/dinh-muc',
-      tienDo: 'Đang làm',
-      vuongMac: 'Nhà cung cấp chưa chốt giá nguyên liệu',
-      canLD: 'Không',
-      anhHuong: 2,
-    },
-  },
-  'sx-kd-oem': {
-    'oem-1': {
-      stt: 1,
-      kyBaoCao: 'Tháng',
-      congViec: 'Ký hợp đồng OEM',
-      nguoiGiao: 'Chị Mai',
-      ngayGiao: '07/04/2026',
-      ycXong: '30/04/2026',
-      giaHan1: '05/05/2026',
-      giaHan2: '08/05/2026',
-      giaHan3: '12/05/2026',
-      ketQua: 'Đang chốt điều khoản pháp lý',
-      linkKQ: 'https://docs.google.com/oem1',
-      tienDo: 'Đang làm',
-      vuongMac: 'Đối tác muốn tăng hạn mức tín dụng',
-      canLD: 'Có',
-      anhHuong: 4,
-    },
-    'oem-3': {
-      stt: 2,
-      kyBaoCao: 'Quý',
-      congViec: 'Đánh giá & hạn mức OEM Q2',
-      nguoiGiao: 'Chị Mai',
-      ngayGiao: '01/04/2026',
-      ycXong: '10/05/2026',
-      giaHan1: '',
-      giaHan2: '',
-      giaHan3: '',
-      ketQua: 'Đang tổng hợp dữ liệu',
-      linkKQ: 'https://docs.google.com/oem3',
-      tienDo: 'Chưa bắt đầu',
-      vuongMac: 'Chờ số liệu từ kế toán',
-      canLD: 'Không',
-      anhHuong: 3,
-    },
-  },
-  'tm-kd-go': {
-    'tm-1': {
-      stt: 1,
-      kyBaoCao: 'Tháng',
-      congViec: 'Duyệt KPI kinh doanh Q2',
-      nguoiGiao: 'Mrs Thao',
-      ngayGiao: '14/04/2026',
-      ycXong: '25/04/2026',
-      giaHan1: '28/04/2026',
-      giaHan2: '30/04/2026',
-      giaHan3: '02/05/2026',
-      ketQua: 'Đang soạn văn bản',
-      linkKQ: 'https://docs.google.com/tm1',
-      tienDo: 'Chưa bắt đầu',
-      vuongMac: 'Sếp chưa phê duyệt lại chỉ tiêu',
-      canLD: 'Không',
-      anhHuong: 3,
-    },
-  },
-  'tm-ke-toan': {
-    'tm-3': {
-      stt: 1,
-      kyBaoCao: 'Quý',
-      congViec: 'Báo cáo doanh thu Q1',
-      nguoiGiao: 'Mrs Thao',
-      ngayGiao: '01/04/2026',
-      ycXong: '10/04/2026',
-      giaHan1: '12/04/2026',
-      giaHan2: '',
-      giaHan3: '',
-      ketQua: 'Tổng doanh thu đạt 98% KPI',
-      linkKQ: 'https://docs.google.com/tm3',
-      tienDo: 'Hoàn thành',
-      vuongMac: '',
-      canLD: 'Không',
-      anhHuong: 3,
-    },
-    'kt-1': {
-      stt: 2,
-      kyBaoCao: 'Tháng',
-      congViec: 'Báo cáo công nợ tháng 4',
-      nguoiGiao: 'Chị Lan',
-      ngayGiao: '01/04/2026',
-      ycXong: '05/04/2026',
-      giaHan1: '06/04/2026',
-      giaHan2: '07/04/2026',
-      giaHan3: '08/04/2026',
-      ketQua: 'Tổng công nợ 4.2 tỷ',
-      linkKQ: 'https://docs.google.com/kt1',
-      tienDo: 'Hoàn thành',
-      vuongMac: 'Kế toán viên nghỉ ốm 1 tuần',
-      canLD: 'Không',
-      anhHuong: 3,
-    },
-    'kt-3': {
-      stt: 3,
-      kyBaoCao: 'Quý',
-      congViec: 'Quyết toán thuế Q1',
-      nguoiGiao: 'Chị Lan',
-      ngayGiao: '01/04/2026',
-      ycXong: '30/04/2026',
-      giaHan1: '05/05/2026',
-      giaHan2: '',
-      giaHan3: '',
-      ketQua: 'Đang tổng hợp chứng từ',
-      linkKQ: 'https://docs.google.com/kt3',
-      tienDo: 'Đang làm',
-      vuongMac: 'Thiếu hóa đơn từ một số nhà cung cấp',
-      canLD: 'Không',
-      anhHuong: 3,
-    },
-  },
-  'tm-du-an': {
-    'da-2': {
-      stt: 1,
-      kyBaoCao: 'Tháng',
-      congViec: 'Lập dự toán ngân sách dự án',
-      nguoiGiao: 'Chị Lan',
-      ngayGiao: '01/04/2026',
-      ycXong: '30/04/2026',
-      giaHan1: '05/05/2026',
-      giaHan2: '',
-      giaHan3: '',
-      ketQua: 'Đang thu thập báo giá',
-      linkKQ: 'https://docs.google.com/da2',
-      tienDo: 'Đang làm',
-      vuongMac: 'Nhà thầu chậm gửi báo giá',
-      canLD: 'Có',
-      anhHuong: 4,
-    },
-  },
-};
+const MOCK_TASK_NAMES = [
+  'Lập kế hoạch tuần',
+  'Theo dõi KPI tháng',
+  'Rà soát công nợ',
+  'Kiểm kê vật tư',
+  'Cập nhật tiến độ dự án',
+  'Làm việc với nhà cung cấp',
+  'Chuẩn bị hồ sơ họp',
+  'Báo cáo kết quả thực hiện',
+  'Đánh giá rủi ro vận hành',
+  'Tối ưu quy trình nội bộ',
+];
+
+const MOCK_ASSIGNEES = ['Anh Tuyển', 'Chị Lan', 'Anh Hùng', 'Anh Hòa', 'Chị Mai', 'Mrs Thao', 'Mr Khánh'];
+const MOCK_STATUS = ['Hoàn thành', 'Đang làm', 'Quá hạn', 'Chưa bắt đầu'] as const;
+const MOCK_PERIOD = ['Tuần', 'Tháng', 'Quý'] as const;
+
+function buildInitialTasksByDept(): Record<string, Record<string, TaskRecord>> {
+  const data: Record<string, Record<string, TaskRecord>> = {};
+
+  ORG_BLOCKS.forEach((block, bi) => {
+    block.depts.forEach((dept, di) => {
+      const deptBucket: Record<string, TaskRecord> = {};
+      // Mỗi phòng ban có 8 task mẫu để list dày hơn.
+      for (let i = 1; i <= 8; i += 1) {
+        const mix = bi * 100 + di * 10 + i;
+        const period = MOCK_PERIOD[mix % MOCK_PERIOD.length];
+        const status = MOCK_STATUS[mix % MOCK_STATUS.length];
+        const assignee = MOCK_ASSIGNEES[mix % MOCK_ASSIGNEES.length];
+        const taskName = MOCK_TASK_NAMES[mix % MOCK_TASK_NAMES.length];
+
+        const startDate = dayjs('2026-01-05').add(mix * 2, 'day');
+        const dueDate = startDate.add(7 + (mix % 12), 'day');
+        const ext1 = status === 'Quá hạn' || mix % 4 === 0 ? dueDate.add(2, 'day') : null;
+        const ext2 = status === 'Quá hạn' && mix % 2 === 0 ? dueDate.add(4, 'day') : null;
+
+        const taskKey = `${dept.key}-task-${i}`;
+        deptBucket[taskKey] = {
+          stt: i,
+          kyBaoCao: period,
+          congViec: `${taskName} - ${dept.name.toLowerCase()}`,
+          nguoiGiao: assignee,
+          ngayGiao: startDate.format('DD/MM/YYYY'),
+          ycXong: dueDate.format('DD/MM/YYYY'),
+          giaHan1: ext1 ? ext1.format('DD/MM/YYYY') : '',
+          giaHan2: ext2 ? ext2.format('DD/MM/YYYY') : '',
+          giaHan3: '',
+          ketQua:
+            status === 'Hoàn thành'
+              ? 'Đã hoàn thành và nghiệm thu.'
+              : status === 'Chưa bắt đầu'
+                ? 'Đang chờ bắt đầu theo kế hoạch.'
+                : 'Đang cập nhật theo tiến độ thực hiện.',
+          linkKQ: `https://docs.google.com/mock/${dept.key}/${i}`,
+          tienDo: status,
+          vuongMac: status === 'Quá hạn' ? 'Thiếu nguồn lực tại thời điểm triển khai.' : '',
+          canLD: status === 'Quá hạn' || mix % 5 === 0 ? 'Có' : 'Không',
+          anhHuong: (mix % 4) + 1,
+        };
+      }
+      data[dept.key] = deptBucket;
+    });
+  });
+
+  return data;
+}
+
+const INITIAL_TASKS_BY_DEPT: Record<string, Record<string, TaskRecord>> = buildInitialTasksByDept();
 
 function cloneTasksMap(src: Record<string, Record<string, TaskRecord>>) {
   return structuredClone(src) as Record<string, Record<string, TaskRecord>>;
@@ -736,19 +622,47 @@ const TaskView: React.FC = () => {
                 <h2 className="m-0 text-base font-bold uppercase leading-snug">{listTitle}</h2>
               </div>
               <div className="flex-1 overflow-auto bg-white border border-t-0 border-gray-200 rounded-b-lg shadow-sm p-2 md:p-4">
-                <Table<TableRow>
-                  rowKey="key"
-                  columns={tableColumns}
-                  dataSource={tableRows}
-                  pagination={false}
-                  size="small"
-                  scroll={{ x: 720 }}
-                  locale={{ emptyText: 'Chưa có công việc' }}
-                  onRow={record => ({
-                    onClick: () => openDetail(record.key, record.deptKey),
-                    className: 'cursor-pointer hover:bg-blue-50/50',
-                  })}
-                />
+                <div className="hidden md:block">
+                  <Table<TableRow>
+                    rowKey="key"
+                    columns={tableColumns}
+                    dataSource={tableRows}
+                    pagination={false}
+                    size="small"
+                    scroll={{ x: 720 }}
+                    locale={{ emptyText: 'Chưa có công việc' }}
+                    onRow={record => ({
+                      onClick: () => openDetail(record.key, record.deptKey),
+                      className: 'cursor-pointer hover:bg-blue-50/50',
+                    })}
+                  />
+                </div>
+                <div className="block md:hidden space-y-2">
+                  {tableRows.length === 0 ? (
+                    <div className="text-center text-gray-400 py-6">Chưa có công việc</div>
+                  ) : (
+                    tableRows.map(row => (
+                      <button
+                        key={row.key}
+                        type="button"
+                        onClick={() => openDetail(row.key, row.deptKey)}
+                        className="w-full text-left bg-white border border-gray-200 rounded-lg p-3 shadow-sm active:scale-[0.99] transition"
+                      >
+                        <div className="flex items-start justify-between gap-2">
+                          <p className="font-semibold text-gray-800 text-sm leading-snug">{row.congViec}</p>
+                          <span className="text-[11px] text-gray-500">#{row.stt}</span>
+                        </div>
+                        <div className="mt-2 text-xs text-gray-600 space-y-1">
+                          <p>Phòng ban: <span className="font-medium">{row.phongBan}</span></p>
+                          <p>Phụ trách: <span className="font-medium">{row.nguoiPhuTrach}</span></p>
+                          <p className={dayjs(row.deadline, 'DD/MM/YYYY').isValid() && dayjs(row.deadline, 'DD/MM/YYYY').isBefore(dayjs(), 'day') ? 'text-red-500 font-medium' : ''}>
+                            Deadline: {row.deadline}
+                          </p>
+                        </div>
+                      </button>
+                    ))
+                  )}
+                </div>
               </div>
             </div>
           ) : selected ? (

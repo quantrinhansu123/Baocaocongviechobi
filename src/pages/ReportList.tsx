@@ -111,12 +111,33 @@ const ReportList: React.FC = () => {
           />
           <Text type="secondary">Hiển thị 4 báo cáo</Text>
         </div>
-        <Table
-          dataSource={REPORT_LIST}
-          columns={columns}
-          pagination={false}
-          className="rounded-lg overflow-hidden"
-        />
+        <div className="hidden md:block">
+          <Table
+            dataSource={REPORT_LIST}
+            columns={columns}
+            pagination={false}
+            className="rounded-lg overflow-hidden"
+          />
+        </div>
+        <div className="block md:hidden space-y-2">
+          {REPORT_LIST.map((item: any) => (
+            <div key={item.key} className="rounded-lg border border-gray-200 p-3 bg-white shadow-sm">
+              <Text
+                strong
+                className="text-[#1677ff] cursor-pointer hover:underline font-medium"
+                onClick={() => navigate(`/reports/${item.key}`)}
+              >
+                {item.name}
+              </Text>
+              <div className="mt-2 text-xs text-gray-600 space-y-1">
+                <p>Chu kỳ: {item.cycle}</p>
+                <p className={item.status === 'Trễ' ? 'text-red-500 font-medium' : ''}>Hạn nộp: {item.deadline}</p>
+                <p>Trạng thái: {item.status}</p>
+                <p>Phụ trách: {item.owner}</p>
+              </div>
+            </div>
+          ))}
+        </div>
       </Card>
     </div>
   );

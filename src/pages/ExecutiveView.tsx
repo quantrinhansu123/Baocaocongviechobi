@@ -98,14 +98,25 @@ const ExecutiveView: React.FC = () => {
             className="shadow-sm border-t-4 border-t-red-500 rounded-lg"
             styles={{ body: { padding: 0 } }}
           >
-            <Table
-              dataSource={OVERDUE_TASKS}
-              columns={overdueColumns}
-              pagination={false}
-              size="small"
-              rowKey="id"
-              className="px-2 pb-2"
-            />
+            <div className="hidden md:block">
+              <Table
+                dataSource={OVERDUE_TASKS}
+                columns={overdueColumns}
+                pagination={false}
+                size="small"
+                rowKey="id"
+                className="px-2 pb-2"
+              />
+            </div>
+            <div className="block md:hidden p-3 space-y-2">
+              {OVERDUE_TASKS.map(task => (
+                <div key={task.id} className="rounded-lg border border-red-100 p-3 bg-white">
+                  <p className="font-semibold text-red-600 text-sm">{task.title}</p>
+                  <p className="text-xs text-gray-600 mt-1">Phòng ban: {task.department}</p>
+                  <p className="text-xs text-red-500 font-medium mt-1">Ảnh hưởng: Mức {task.priority}</p>
+                </div>
+              ))}
+            </div>
           </Card>
 
           {/* SECTION 2: VIỆC QUAN TRỌNG */}
@@ -114,14 +125,25 @@ const ExecutiveView: React.FC = () => {
             className="shadow-sm border-t-4 border-t-orange-400 rounded-lg"
             styles={{ body: { padding: 0 } }}
           >
-            <Table
-              dataSource={IMPORTANT_TASKS}
-              columns={importantColumns}
-              pagination={false}
-              size="small"
-              rowKey="id"
-              className="px-2 pb-2"
-            />
+            <div className="hidden md:block">
+              <Table
+                dataSource={IMPORTANT_TASKS}
+                columns={importantColumns}
+                pagination={false}
+                size="small"
+                rowKey="id"
+                className="px-2 pb-2"
+              />
+            </div>
+            <div className="block md:hidden p-3 space-y-2">
+              {IMPORTANT_TASKS.map(task => (
+                <div key={task.id} className="rounded-lg border border-orange-100 p-3 bg-white">
+                  <p className="font-semibold text-orange-600 text-sm">{task.title}</p>
+                  <p className="text-xs text-gray-600 mt-1">Phòng ban: {task.department}</p>
+                  <p className="text-xs text-orange-500 font-medium mt-1">Ảnh hưởng: Mức {task.priority}</p>
+                </div>
+              ))}
+            </div>
           </Card>
 
         </div>
