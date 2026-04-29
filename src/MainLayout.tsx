@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import { Layout, Badge, Avatar, Dropdown, Space, Drawer, Menu } from 'antd';
 import type { MenuProps } from 'antd';
 import {
@@ -13,7 +13,6 @@ import {
 } from '@ant-design/icons';
 import { Routes, Route, useNavigate, useLocation } from 'react-router-dom';
 import './MainLayout.css';
-import { ALL_REPORTS, buildReportMenuItems, openKeysForReportId } from './data/reportNavigation';
 
 // Pages
 import Dashboard from './pages/Dashboard';
@@ -101,9 +100,7 @@ const MainLayout: React.FC = () => {
   const location = useLocation();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false); // Mobile Menu State
   const [collapsed, setCollapsed] = useState(false); // Desktop Sider State
-  const [controlledOpenKeys, setControlledOpenKeys] = useState<string[]>(['sub-bao-cao']);
-
-  const reportMenuChildren = useMemo(() => buildReportMenuItems(), []);
+  const [taskOpenKeys, setTaskOpenKeys] = useState<string[]>(['/tasks']);
 
   const menuItems: MenuProps['items'] = useMemo(
     () => [
@@ -122,43 +119,16 @@ const MainLayout: React.FC = () => {
         })),
       },
       {
-        key: 'sub-bao-cao',
+        key: '/navigation',
         icon: <ClusterOutlined className="sidebar-nav-icon" />,
         label: 'BÁO CÁO ĐỊNH KỲ',
-        children: reportMenuChildren,
       },
     ],
-    [reportMenuChildren]
+    []
   );
 
-  /** Chiều rộng khi sidebar đang mở (Ant Design tự dùng collapsedWidth khi thu gọn). */
-  const expandedSiderWidth = useMemo(() => {
-    const open = controlledOpenKeys;
-    const hasBaoCao = open.includes('sub-bao-cao');
-    const deptOpen = open.filter(k => k.startsWith('dept-')).length;
-    const periodOpen = open.filter(k => k.startsWith('period-')).length;
-    let w = 260;
-    if (hasBaoCao) w = 300;
-    if (deptOpen >= 1) w = 336;
-    if (deptOpen >= 2 || periodOpen >= 1) w = 380;
-    if (deptOpen >= 3) w = 412;
-    return Math.min(w, 440);
-  }, [controlledOpenKeys]);
-
-  useEffect(() => {
-    if (location.pathname !== '/navigation') return;
-    const r = new URLSearchParams(location.search).get('r');
-    const required = openKeysForReportId(r);
-    if (required.length <= 1) return;
-    setControlledOpenKeys(prev => Array.from(new Set([...prev, ...required])));
-  }, [location.pathname, location.search]);
-
   const selectedMenuKeys = useMemo(() => {
-    if (location.pathname === '/navigation') {
-      const r = new URLSearchParams(location.search).get('r');
-      if (r && ALL_REPORTS[r]) return [`report-${r}`];
-      return [];
-    }
+    if (location.pathname === '/navigation') return ['/navigation'];
     if (location.pathname.startsWith('/tasks')) {
       const k = sidebarSelectedKey(location.pathname);
       return k ? [k] : [];
@@ -168,18 +138,9 @@ const MainLayout: React.FC = () => {
   }, [location.pathname, location.search]);
 
   const syncTaskOpenKeys = useMemo(() => sidebarOpenKeys(location.pathname), [location.pathname]);
-  const mergedOpenKeys = useMemo(
-    () => Array.from(new Set([...controlledOpenKeys, ...syncTaskOpenKeys])),
-    [controlledOpenKeys, syncTaskOpenKeys]
-  );
+  const mergedOpenKeys = useMemo(() => Array.from(new Set([...taskOpenKeys, ...syncTaskOpenKeys])), [taskOpenKeys, syncTaskOpenKeys]);
 
   const handleMenuClick: MenuProps['onClick'] = ({ key }) => {
-    if (key.startsWith('report-')) {
-      const id = key.slice('report-'.length);
-      navigate(`/navigation?r=${encodeURIComponent(id)}`);
-      setMobileMenuOpen(false);
-      return;
-    }
     if (key === '/') {
       navigate('/');
       setMobileMenuOpen(false);
@@ -190,7 +151,7 @@ const MainLayout: React.FC = () => {
       setMobileMenuOpen(false);
       return;
     }
-    if (key === 'sub-bao-cao') {
+    if (key === '/navigation') {
       navigate('/navigation');
       setMobileMenuOpen(false);
     }
@@ -210,9 +171,9 @@ const MainLayout: React.FC = () => {
         collapsible
         collapsed={collapsed}
         theme="dark"
-        width={expandedSiderWidth}
+        width={240}
         collapsedWidth={80}
-        className="shadow-lg hidden md:block sidebar-sider-auto"
+        className="shadow-lg hidden md:block"
       >
         <div className={`h-16 flex items-center px-6 bg-[#002140] transition-all duration-300 ${collapsed ? 'justify-center px-0' : ''}`}>
           <div className="flex-shrink-0 h-10 w-10 flex items-center justify-center overflow-hidden mr-2 bg-white p-1 rounded-lg shadow-sm cursor-pointer" onClick={() => navigate('/')}>
@@ -229,7 +190,7 @@ const MainLayout: React.FC = () => {
           mode="inline"
           selectedKeys={selectedMenuKeys}
           openKeys={mergedOpenKeys}
-          onOpenChange={keys => setControlledOpenKeys(keys as string[])}
+          onOpenChange={keys => setTaskOpenKeys((keys as string[]).filter(k => k.startsWith('/tasks')))}
           items={menuItems}
           onClick={handleMenuClick}
           inlineIndent={14}
@@ -297,7 +258,7 @@ const MainLayout: React.FC = () => {
           placement="left"
           onClose={() => setMobileMenuOpen(false)}
           open={mobileMenuOpen}
-          width={Math.max(300, Math.min(360, 280 + mergedOpenKeys.filter(k => k.startsWith('dept-') || k.startsWith('period-')).length * 28))}
+          width={280}
           styles={{
             body: { padding: '16px 0', backgroundColor: '#001529' },
             header: { backgroundColor: '#002140', borderBottom: 'none', padding: '16px 24px' }
@@ -309,7 +270,7 @@ const MainLayout: React.FC = () => {
             mode="inline"
             selectedKeys={selectedMenuKeys}
             openKeys={mergedOpenKeys}
-            onOpenChange={keys => setControlledOpenKeys(keys as string[])}
+            onOpenChange={keys => setTaskOpenKeys((keys as string[]).filter(k => k.startsWith('/tasks')))}
             items={menuItems}
             onClick={handleMenuClick}
             inlineIndent={14}
