@@ -88,3 +88,70 @@
 .custom-nav-item.active::after {
     width: 100%;
 }
+
+/* Sidebar co giãn theo chiều rộng nội dung khi mở submenu */
+.sidebar-sider-auto.ant-layout-sider {
+    transition: width 0.22s ease, min-width 0.22s ease, flex 0.22s ease !important;
+}
+
+/* Chữ sáng hơn (dark menu mặc định hơi tối) */
+.sidebar-report-menu.ant-menu-dark .ant-menu-item,
+.sidebar-report-menu.ant-menu-dark .ant-menu-submenu-title {
+    color: rgba(255, 255, 255, 0.9) !important;
+}
+
+.sidebar-report-menu.ant-menu-dark .ant-menu-sub .ant-menu-item {
+    color: rgba(255, 255, 255, 0.88) !important;
+}
+
+.sidebar-report-menu.ant-menu-dark .ant-menu-item-disabled,
+.sidebar-report-menu.ant-menu-dark .ant-menu-submenu-disabled > .ant-menu-submenu-title {
+    color: rgba(255, 255, 255, 0.38) !important;
+}
+
+.sidebar-report-menu.ant-menu-dark .ant-menu-item:hover,
+.sidebar-report-menu.ant-menu-dark .ant-menu-submenu-title:hover {
+    color: #ffffff !important;
+    background: rgba(255, 255, 255, 0.08) !important;
+}
+
+.sidebar-report-menu.ant-menu-dark .ant-menu-item-selected {
+    background: rgba(243, 131, 32, 0.28) !important;
+    color: #ffffff !important;
+}
+
+.sidebar-report-menu.ant-menu-dark .ant-menu-submenu-selected > .ant-menu-submenu-title {
+    color: #ffffff !important;
+}
+
+/* Icon đơn sắc (một tông trắng/xám sáng) */
+.sidebar-report-menu .sidebar-nav-icon {
+    color: rgba(255, 255, 255, 0.82);
+    font-size: 16px;
+}
+
+.sidebar-report-menu .ant-menu-item-selected .sidebar-nav-icon,
+.sidebar-report-menu .ant-menu-submenu-selected > .ant-menu-submenu-title .sidebar-nav-icon {
+    color: #ffffff;
+}
+
+.sidebar-report-menu .ant-menu-item:hover .sidebar-nav-icon,
+.sidebar-report-menu .ant-menu-submenu-title:hover .sidebar-nav-icon {
+    color: #ffffff;
+}
+
+.sidebar-report-menu.ant-menu-dark .ant-menu-submenu-arrow {
+    color: rgba(255, 255, 255, 0.65) !important;
+}
+
+/* Báo cáo định kỳ: menu lồng nhau, nhãn dài xuống dòng */
+.sidebar-report-menu .ant-menu-submenu .ant-menu-submenu-title {
+    padding-inline-end: 28px !important;
+}
+
+.sidebar-report-menu .ant-menu-sub .ant-menu-item {
+    height: auto;
+    line-height: 1.35;
+    white-space: normal;
+    padding-block: 6px;
+}

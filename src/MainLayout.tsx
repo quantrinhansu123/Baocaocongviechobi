@@ -1,19 +1,18 @@
-import React, { useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { Layout, Badge, Avatar, Dropdown, Space, Drawer, Menu } from 'antd';
+import type { MenuProps } from 'antd';
 import {
   DashboardOutlined,
   ClusterOutlined,
-  CheckSquareOutlined,
   BellOutlined,
   UserOutlined,
-  PhoneOutlined,
-  MailOutlined,
   MenuOutlined,
   MenuUnfoldOutlined,
   MenuFoldOutlined,
 } from '@ant-design/icons';
 import { Routes, Route, useNavigate, useLocation } from 'react-router-dom';
 import './MainLayout.css';
+import { ALL_REPORTS, buildReportMenuItems, openKeysForReportId } from './data/reportNavigation';
 
 // Pages
 import Dashboard from './pages/Dashboard';
@@ -25,7 +24,6 @@ import CalendarView from './pages/CalendarView';
 import SmartView from './pages/SmartView';
 import AdminView from './pages/AdminView';
 import WorkReportDetail from './pages/WorkReportDetail';
-import TaskView from './pages/TaskView';
 import logo from './img/logo.png';
 
 const { Content, Header, Sider } = Layout;
@@ -35,12 +33,72 @@ const MainLayout: React.FC = () => {
   const location = useLocation();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false); // Mobile Menu State
   const [collapsed, setCollapsed] = useState(false); // Desktop Sider State
+  const [menuOpenKeys, setMenuOpenKeys] = useState<string[]>(['sub-bao-cao']);
 
-  const menuItems = [
-    { key: '/', icon: <DashboardOutlined />, label: 'ĐIỀU HÀNH CÔNG VIỆC' },
-    { key: '/navigation', icon: <ClusterOutlined />, label: 'BÁO CÁO ĐỊNH KỲ' },
-    { key: '/tasks', icon: <CheckSquareOutlined />, label: 'CÔNG VIỆC CHI TIẾT' },
-  ];
+  const reportMenuChildren = useMemo(() => buildReportMenuItems(), []);
+
+  const menuItems: MenuProps['items'] = useMemo(
+    () => [
+      { key: '/', icon: <DashboardOutlined className="sidebar-nav-icon" />, label: 'ĐIỀU HÀNH CÔNG VIỆC' },
+      {
+        key: 'sub-bao-cao',
+        icon: <ClusterOutlined className="sidebar-nav-icon" />,
+        label: 'BÁO CÁO ĐỊNH KỲ',
+        children: reportMenuChildren,
+      },
+    ],
+    [reportMenuChildren]
+  );
+
+  /** Chiều rộng khi sidebar đang mở (Ant Design tự dùng collapsedWidth khi thu gọn). */
+  const expandedSiderWidth = useMemo(() => {
+    const open = menuOpenKeys;
+    const hasBaoCao = open.includes('sub-bao-cao');
+    const deptOpen = open.filter(k => k.startsWith('dept-')).length;
+    const periodOpen = open.filter(k => k.startsWith('period-')).length;
+    let w = 260;
+    if (hasBaoCao) w = 300;
+    if (deptOpen >= 1) w = 336;
+    if (deptOpen >= 2 || periodOpen >= 1) w = 380;
+    if (deptOpen >= 3) w = 412;
+    return Math.min(w, 440);
+  }, [menuOpenKeys]);
+
+  useEffect(() => {
+    if (location.pathname !== '/navigation') return;
+    const r = new URLSearchParams(location.search).get('r');
+    const required = openKeysForReportId(r);
+    if (required.length <= 1) return;
+    setMenuOpenKeys(prev => Array.from(new Set([...prev, ...required])));
+  }, [location.pathname, location.search]);
+
+  const selectedMenuKeys = useMemo(() => {
+    if (location.pathname === '/navigation') {
+      const r = new URLSearchParams(location.search).get('r');
+      if (r && ALL_REPORTS[r]) return [`report-${r}`];
+      return [];
+    }
+    if (location.pathname === '/') return ['/'];
+    return [];
+  }, [location.pathname, location.search]);
+
+  const handleMenuClick: MenuProps['onClick'] = ({ key }) => {
+    if (key.startsWith('report-')) {
+      const id = key.slice('report-'.length);
+      navigate(`/navigation?r=${encodeURIComponent(id)}`);
+      setMobileMenuOpen(false);
+      return;
+    }
+    if (key === '/') {
+      navigate('/');
+      setMobileMenuOpen(false);
+      return;
+    }
+    if (key === 'sub-bao-cao') {
+      navigate('/navigation');
+      setMobileMenuOpen(false);
+    }
+  };
 
   const userMenuItems = [
     { key: 'profile', label: 'Hồ sơ cá nhân', icon: <UserOutlined /> },
@@ -56,9 +114,9 @@ const MainLayout: React.FC = () => {
         collapsible
         collapsed={collapsed}
         theme="dark"
-        width={240}
+        width={expandedSiderWidth}
         collapsedWidth={80}
-        className="shadow-lg hidden md:block"
+        className="shadow-lg hidden md:block sidebar-sider-auto"
       >
         <div className={`h-16 flex items-center px-6 bg-[#002140] transition-all duration-300 ${collapsed ? 'justify-center px-0' : ''}`}>
           <div className="flex-shrink-0 h-10 w-10 flex items-center justify-center overflow-hidden mr-2 bg-white p-1 rounded-lg shadow-sm cursor-pointer" onClick={() => navigate('/')}>
@@ -73,10 +131,13 @@ const MainLayout: React.FC = () => {
         <Menu
           theme="dark"
           mode="inline"
-          selectedKeys={[location.pathname]}
+          selectedKeys={selectedMenuKeys}
+          openKeys={menuOpenKeys}
+          onOpenChange={keys => setMenuOpenKeys(keys as string[])}
           items={menuItems}
-          onClick={({ key }) => navigate(key)}
-          className="border-none mt-4"
+          onClick={handleMenuClick}
+          inlineIndent={14}
+          className="border-none mt-4 sidebar-report-menu"
         />
       </Sider>
 
@@ -140,7 +201,7 @@ const MainLayout: React.FC = () => {
           placement="left"
           onClose={() => setMobileMenuOpen(false)}
           open={mobileMenuOpen}
-          width={280}
+          width={Math.max(300, Math.min(360, 280 + menuOpenKeys.filter(k => k.startsWith('dept-') || k.startsWith('period-')).length * 28))}
           styles={{
             body: { padding: '16px 0', backgroundColor: '#001529' },
             header: { backgroundColor: '#002140', borderBottom: 'none', padding: '16px 24px' }
@@ -150,13 +211,13 @@ const MainLayout: React.FC = () => {
           <Menu
             theme="dark"
             mode="inline"
-            selectedKeys={[location.pathname]}
+            selectedKeys={selectedMenuKeys}
+            openKeys={menuOpenKeys}
+            onOpenChange={keys => setMenuOpenKeys(keys as string[])}
             items={menuItems}
-            onClick={({ key }) => {
-              navigate(key);
-              setMobileMenuOpen(false);
-            }}
-            className="border-none"
+            onClick={handleMenuClick}
+            inlineIndent={14}
+            className="border-none sidebar-report-menu"
             style={{ backgroundColor: 'transparent' }}
           />
         </Drawer>
@@ -172,7 +233,6 @@ const MainLayout: React.FC = () => {
             <Route path="/calendar" element={<CalendarView />} />
             <Route path="/smart-view" element={<SmartView />} />
             <Route path="/admin" element={<AdminView />} />
-            <Route path="/tasks" element={<TaskView />} />
             <Route path="/work-report-detail" element={<WorkReportDetail />} />
           </Routes>
         </Content>
