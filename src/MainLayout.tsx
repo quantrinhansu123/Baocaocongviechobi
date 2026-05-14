@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { Layout, Badge, Avatar, Dropdown, Space, Drawer, Menu } from 'antd';
 import type { MenuProps } from 'antd';
 import {
@@ -26,6 +26,9 @@ import AdminView from './pages/AdminView';
 import WorkReportDetail from './pages/WorkReportDetail';
 import TaskView from './pages/TaskView';
 import logo from './img/logo.png';
+import { buildReportMenuItems, openKeysForReportId } from './data/reportNavigation';
+import { loadReportCatalog } from './services/reportCatalog';
+import type { ReportCatalog } from './types/report';
 
 const { Content, Header, Sider } = Layout;
 
@@ -95,12 +98,47 @@ function sidebarOpenKeys(pathname: string): string[] {
   return ['/tasks'];
 }
 
+function reportIdFromLocation(pathname: string, search: string): string | null {
+  if (pathname !== '/navigation') {
+    return null;
+  }
+
+  const reportId = new URLSearchParams(search).get('r');
+  return reportId?.trim() || null;
+}
+
 const MainLayout: React.FC = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false); // Mobile Menu State
   const [collapsed, setCollapsed] = useState(false); // Desktop Sider State
-  const [taskOpenKeys, setTaskOpenKeys] = useState<string[]>(['/tasks']);
+  const [menuOpenKeys, setMenuOpenKeys] = useState<string[]>(['/navigation']);
+  const [reportCatalog, setReportCatalog] = useState<ReportCatalog>({ reports: {}, blocks: [], groups: [] });
+
+  useEffect(() => {
+    let cancelled = false;
+
+    void loadReportCatalog()
+      .then(catalog => {
+        if (!cancelled) {
+          setReportCatalog(catalog);
+        }
+      })
+      .catch(() => {
+        if (!cancelled) {
+          setReportCatalog({ reports: {}, blocks: [], groups: [] });
+        }
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  const selectedReportId = useMemo(
+    () => reportIdFromLocation(location.pathname, location.search),
+    [location.pathname, location.search]
+  );
 
   const menuItems: MenuProps['items'] = useMemo(
     () => [
@@ -122,23 +160,48 @@ const MainLayout: React.FC = () => {
         key: '/navigation',
         icon: <ClusterOutlined className="sidebar-nav-icon" />,
         label: 'BÁO CÁO ĐỊNH KỲ',
+        children: buildReportMenuItems(reportCatalog),
       },
     ],
-    []
+    [reportCatalog]
   );
 
   const selectedMenuKeys = useMemo(() => {
-    if (location.pathname === '/navigation') return ['/navigation'];
+    if (location.pathname === '/navigation') {
+      if (selectedReportId && reportCatalog.reports[selectedReportId]) {
+        return [`report-${selectedReportId}`];
+      }
+      return ['/navigation'];
+    }
     if (location.pathname.startsWith('/tasks')) {
       const k = sidebarSelectedKey(location.pathname);
       return k ? [k] : [];
     }
     if (location.pathname === '/') return ['/'];
     return [];
-  }, [location.pathname, location.search]);
+  }, [location.pathname, selectedReportId, reportCatalog.reports]);
 
-  const syncTaskOpenKeys = useMemo(() => sidebarOpenKeys(location.pathname), [location.pathname]);
-  const mergedOpenKeys = useMemo(() => Array.from(new Set([...taskOpenKeys, ...syncTaskOpenKeys])), [taskOpenKeys, syncTaskOpenKeys]);
+  useEffect(() => {
+    const keysToEnsure: string[] = [];
+
+    if (location.pathname.startsWith('/tasks')) {
+      keysToEnsure.push(...sidebarOpenKeys(location.pathname));
+    }
+
+    if (location.pathname === '/navigation') {
+      keysToEnsure.push(...openKeysForReportId(selectedReportId, reportCatalog.reports));
+    }
+
+    if (keysToEnsure.length === 0) {
+      return;
+    }
+
+    setMenuOpenKeys(previousKeys => Array.from(new Set([...previousKeys, ...keysToEnsure])));
+  }, [location.pathname, location.search, selectedReportId, reportCatalog.reports]);
+
+  const handleMenuOpenChange: MenuProps['onOpenChange'] = keys => {
+    setMenuOpenKeys(keys as string[]);
+  };
 
   const handleMenuClick: MenuProps['onClick'] = ({ key }) => {
     if (key === '/') {
@@ -148,6 +211,12 @@ const MainLayout: React.FC = () => {
     }
     if (key === '/tasks' || key.startsWith('/tasks/')) {
       navigate(key);
+      setMobileMenuOpen(false);
+      return;
+    }
+    if (key.startsWith('report-')) {
+      const reportId = key.slice('report-'.length);
+      navigate(`/navigation?r=${encodeURIComponent(reportId)}`);
       setMobileMenuOpen(false);
       return;
     }
@@ -189,8 +258,8 @@ const MainLayout: React.FC = () => {
           theme="dark"
           mode="inline"
           selectedKeys={selectedMenuKeys}
-          openKeys={mergedOpenKeys}
-          onOpenChange={keys => setTaskOpenKeys((keys as string[]).filter(k => k.startsWith('/tasks')))}
+          openKeys={menuOpenKeys}
+          onOpenChange={handleMenuOpenChange}
           items={menuItems}
           onClick={handleMenuClick}
           inlineIndent={14}
@@ -269,8 +338,8 @@ const MainLayout: React.FC = () => {
             theme="dark"
             mode="inline"
             selectedKeys={selectedMenuKeys}
-            openKeys={mergedOpenKeys}
-            onOpenChange={keys => setTaskOpenKeys((keys as string[]).filter(k => k.startsWith('/tasks')))}
+            openKeys={menuOpenKeys}
+            onOpenChange={handleMenuOpenChange}
             items={menuItems}
             onClick={handleMenuClick}
             inlineIndent={14}

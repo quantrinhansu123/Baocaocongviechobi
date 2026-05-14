@@ -1,12 +1,13 @@
 import React, { useState, useEffect } from 'react';
-import { Typography, Tag, Select } from 'antd';
+import { Typography, Tag, Select, Spin, message } from 'antd';
 import dayjs from 'dayjs';
 import {
   FileTextOutlined,
   LinkOutlined,
 } from '@ant-design/icons';
 import { useSearchParams } from 'react-router-dom';
-import { ALL_REPORTS } from '../data/reportNavigation';
+import { loadReportCatalog } from '../services/reportCatalog';
+import type { ReportRecord } from '../types/report';
 
 const { Text } = Typography;
 
@@ -56,17 +57,52 @@ const calcDaysLeft = (dateStr: string): { days: number; overdue: boolean } => {
 
 const NavigationHub: React.FC = () => {
   const [searchParams] = useSearchParams();
-  const [selectedReport, setSelectedReport] = useState<any>(null);
+  const [reports, setReports] = useState<Record<string, ReportRecord>>({});
+  const [reportsLoading, setReportsLoading] = useState(true);
+  const [appsheetConnected, setAppsheetConnected] = useState<boolean | null>(null);
+  const [selectedReport, setSelectedReport] = useState<ReportRecord | null>(null);
   const [selectedWeek, setSelectedWeek] = useState('week_16');
 
   useEffect(() => {
-    const r = searchParams.get('r');
-    if (r && ALL_REPORTS[r]) {
-      setSelectedReport({ ...ALL_REPORTS[r], key: r });
-    } else {
-      setSelectedReport(null);
+    let cancelled = false;
+
+    async function loadReports() {
+      setReportsLoading(true);
+      try {
+        const catalog = await loadReportCatalog();
+        if (!cancelled) {
+          setReports(catalog.reports);
+          setAppsheetConnected(true);
+        }
+      } catch (error) {
+        if (!cancelled) {
+          setReports({});
+          setAppsheetConnected(false);
+          message.error(error instanceof Error ? error.message : 'Không thể tải bảng BC định kỳ từ AppSheet.');
+        }
+      } finally {
+        if (!cancelled) {
+          setReportsLoading(false);
+        }
+      }
     }
-  }, [searchParams]);
+
+    void loadReports();
+
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  useEffect(() => {
+    const reportId = searchParams.get('r');
+    if (reportId && reports[reportId]) {
+      setSelectedReport(reports[reportId]);
+      return;
+    }
+
+    setSelectedReport(null);
+  }, [searchParams, reports]);
 
   const handleWeekChange = (weekValue: string) => {
     setSelectedWeek(weekValue);
@@ -88,10 +124,16 @@ const NavigationHub: React.FC = () => {
             size="middle"
             className="w-full md:w-64"
           />
+          {appsheetConnected === true ? (
+            <Tag color="success">AppSheet</Tag>
+          ) : appsheetConnected === false ? (
+            <Tag color="error">Không kết nối AppSheet</Tag>
+          ) : null}
         </div>
       </div>
 
       <div className="flex-1 flex flex-col overflow-hidden relative">
+        <Spin spinning={reportsLoading} tip="Đang tải BC định kỳ từ AppSheet...">
         {selectedReport ? (
           <>
             <div className="bg-[#1E386B] px-4 md:px-6 py-3 md:py-4 flex-shrink-0">
@@ -132,10 +174,14 @@ const NavigationHub: React.FC = () => {
                           <Tag color="orange" className="m-0">{selectedReport.luong}</Tag>
                         </td>
                         <td className="px-3 py-3 border border-gray-200">
-                          <a href={selectedReport.link} target="_blank" rel="noreferrer"
-                            className="flex items-center gap-1 text-[#1677ff] hover:underline text-xs whitespace-nowrap bg-blue-50 px-2 py-1 rounded">
-                            <LinkOutlined /> Xem
-                          </a>
+                          {selectedReport.link ? (
+                            <a href={selectedReport.link} target="_blank" rel="noreferrer"
+                              className="flex items-center gap-1 text-[#1677ff] hover:underline text-xs whitespace-nowrap bg-blue-50 px-2 py-1 rounded">
+                              <LinkOutlined /> Xem
+                            </a>
+                          ) : (
+                            <Text type="secondary" className="text-xs">—</Text>
+                          )}
                         </td>
                       </tr>
                     </tbody>
@@ -164,15 +210,17 @@ const NavigationHub: React.FC = () => {
                           <span className="font-bold text-[#1E386B] text-[13px] truncate leading-tight flex-1">
                             {selectedReport.name}
                           </span>
-                          <a
-                            href={selectedReport.link}
-                            target="_blank"
-                            rel="noreferrer"
-                            className="shrink-0 flex items-center gap-0.5 text-[#1677ff] bg-blue-50 text-[10px] px-1.5 py-0.5 rounded font-semibold hover:bg-blue-100 active:scale-95 transition-transform"
-                            onClick={e => e.stopPropagation()}
-                          >
-                            <LinkOutlined style={{ fontSize: 10 }} /> Link
-                          </a>
+                          {selectedReport.link ? (
+                            <a
+                              href={selectedReport.link}
+                              target="_blank"
+                              rel="noreferrer"
+                              className="shrink-0 flex items-center gap-0.5 text-[#1677ff] bg-blue-50 text-[10px] px-1.5 py-0.5 rounded font-semibold hover:bg-blue-100 active:scale-95 transition-transform"
+                              onClick={e => e.stopPropagation()}
+                            >
+                              <LinkOutlined style={{ fontSize: 10 }} /> Link
+                            </a>
+                          ) : null}
                         </div>
 
                         <div className="flex items-center gap-1.5">
@@ -220,6 +268,7 @@ const NavigationHub: React.FC = () => {
             </Text>
           </div>
         )}
+        </Spin>
       </div>
     </div>
   );

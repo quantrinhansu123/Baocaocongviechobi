@@ -31,96 +31,62 @@ import {
 } from '@ant-design/icons';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, Legend, ResponsiveContainer, LabelList } from 'recharts';
 import { X, User, Calendar, MessageSquare, Star } from 'lucide-react';
+import { ORG_BLOCKS } from '../data/orgBlocks';
+import { loadDashboardTasksFromAppsheet, type DashboardTask } from '../services/dashboardAppsheet';
 
 const { Title, Text } = Typography;
 
-// --- DỮ LIỆU TÊN CÔNG VIỆC THỰC TẾ ---
-const TASK_NAMES = [
-  'Sản xuất đơn Hobi-01', 'Báo cáo công nợ Tháng 9', 'Fix lỗi máy ép viền', 'Nhập nguyên liệu keo',
-  'Lên mẫu thiết kế OEM', 'Thanh toán tiền điện', 'Ký hợp đồng OEM-Đại Phát', 'Duyệt KPI kinh doanh Q4',
-  'Tuyển dụng thợ mộc NM', 'Lập kế hoạch sản xuất T5', 'Kiểm kê kho TP', 'Đàm phán giá phôi',
-  'Bảo trì máy cắt CNC', 'Sản xuất ván ép lô B', 'Đóng gói hàng xuất khẩu', 'Thanh toán lương T4',
-  'Báo cáo dòng tiền', 'Mua vật tư phụ đóng thùng', 'Chốt mẫu bàn ghế mới', 'Làm việc cục thuế',
-  'Setup xưởng phụ', 'Kiểm định PCCC năm', 'Ký HĐ nhà phân phối', 'Huấn luyện An toàn LĐ',
-  'Kiểm tra chất lượng gỗ', 'Nhập lô bản lề giảm chấn', 'Duyệt bảng giá đại lý', 'Tìm xưởng gia công phụ',
-  'Bảo trì hệ thống hút bụi', 'Sản xuất đơn TMĐT', 'Báo cáo thuế quý 1', 'Kiểm tra công nợ KH',
-  'Lên phương án QC', 'Tối ưu dây chuyền 1', 'Đánh giá NCC ván MDF', 'Họp giao ban tuần',
-  'Chạy quảng cáo Tháng 4', 'Đăng ký nhãn hiệu', 'Khảo sát kho chứa mới', 'Lắp đặt máy CNC mới',
-  'Phỏng vấn kế toán trưởng', 'Lập ngân sách 2026', 'Tuyển thêm 5 LĐPT', 'Xử lý khiếu nại chất lượng', 'Mở rộng kênh TMĐT'
-];
-const DEPARTMENTS = [
-  'Công việc cá nhân',
-  'Công việc của BLĐ',
-  'Phòng HCNS',
-  'Phòng KD Hobi Gỗ',
-  'Phòng KD Hobi Nhựa',
-  'Phòng Xuất khẩu',
-  'Phòng Dự án',
-  'Chi nhánh HCM',
-  'Phòng Marketing',
-  'Phòng Kế toán TM',
-  'Phòng Kho',
-  'Phòng KD OEM',
-  'Phòng Kế toán sản xuất',
-  'Nhà máy Wilson HB',
-  'Mua Thương mại',
-  'Mua sản xuất',
-];
-const STATUSES = ['Hoàn thành', 'Đang làm', 'Quá hạn', 'Hoàn thành gia hạn 1', 'Hoàn thành gia hạn 2', 'Hoàn thành gia hạn 3'];
-const OWNERS = ['Anh Tài', 'Chị Lan', 'Anh Tuấn', 'Anh Hùng', 'Chị Mai', 'Sếp Tuyển'];
+const ROMAN = ['I', 'II', 'III', 'IV'] as const;
+
+const DEPARTMENTS = ORG_BLOCKS.flatMap(block => block.depts.map(dept => dept.name));
+
 const DEPARTMENT_FILTER_OPTIONS = [
   { value: 'all', label: 'Tất cả phòng ban' },
-  { value: 'Công việc cá nhân', label: 'I. BAN LÃNH ĐẠO — 1. CÔNG VIỆC CÁ NHÂN' },
-  { value: 'Công việc của BLĐ', label: 'I. BAN LÃNH ĐẠO — 2. CÔNG VIỆC CỦA BLĐ' },
-  { value: 'Phòng HCNS', label: 'II. KHỐI THƯƠNG MẠI — 1. PHÒNG HCNS' },
-  { value: 'Phòng KD Hobi Gỗ', label: 'II. KHỐI THƯƠNG MẠI — 2. PHÒNG KD HOBI GỖ' },
-  { value: 'Phòng KD Hobi Nhựa', label: 'II. KHỐI THƯƠNG MẠI — 3. PHÒNG KD HOBI NHỰA' },
-  { value: 'Phòng Xuất khẩu', label: 'II. KHỐI THƯƠNG MẠI — 4. PHÒNG XUẤT KHẨU' },
-  { value: 'Phòng Dự án', label: 'II. KHỐI THƯƠNG MẠI — 5. PHÒNG DỰ ÁN' },
-  { value: 'Chi nhánh HCM', label: 'II. KHỐI THƯƠNG MẠI — 6. CHI NHÁNH HCM' },
-  { value: 'Phòng Marketing', label: 'II. KHỐI THƯƠNG MẠI — 7. PHÒNG MARKETING' },
-  { value: 'Phòng Kế toán TM', label: 'II. KHỐI THƯƠNG MẠI — 8. PHÒNG KẾ TOÁN TM' },
-  { value: 'Phòng Kho', label: 'II. KHỐI THƯƠNG MẠI — 9. PHÒNG KHO' },
-  { value: 'Phòng KD OEM', label: 'III. KHỐI SẢN XUẤT — 1. PHÒNG KD OEM' },
-  { value: 'Phòng Kế toán sản xuất', label: 'III. KHỐI SẢN XUẤT — 2. PHÒNG KẾ TOÁN SẢN XUẤT' },
-  { value: 'Nhà máy Wilson HB', label: 'III. KHỐI SẢN XUẤT — 3. NHÀ MÁY WILSON HB' },
-  { value: 'Mua Thương mại', label: 'IV. PHÒNG MUA NỘI ĐỊA, QUỐC TẾ — 1. MUA THƯƠNG MẠI' },
-  { value: 'Mua sản xuất', label: 'IV. PHÒNG MUA NỘI ĐỊA, QUỐC TẾ — 2. MUA SẢN XUẤT' },
+  ...ORG_BLOCKS.flatMap((block, blockIndex) =>
+    block.depts.map((dept, deptIndex) => ({
+      value: dept.key,
+      label: `${ROMAN[blockIndex]}. ${block.label} — ${deptIndex + 1}. ${dept.name}`,
+    }))
+  ),
 ];
 
-// Sinh ra 1500 dữ liệu mẫu khổng lồ, rải đều ngẫu nhiên
-const ALL_TASKS = Array.from({ length: 1500 }).map((_, i) => {
-  const nameBase = TASK_NAMES[i % TASK_NAMES.length];
-
-  const dept = DEPARTMENTS[Math.floor(Math.random() * DEPARTMENTS.length)];
-  const status = STATUSES[Math.floor(Math.random() * STATUSES.length)];
-  const owner = OWNERS[Math.floor(Math.random() * OWNERS.length)];
-  const weekNum = Math.floor(Math.random() * 52) + 1; // Từ tuần 1 đến tuần 52
-  const priority = Math.floor(Math.random() * 4) + 1; // 1 sao đến 4 sao
-  const isOverdue = status === 'Quá hạn';
-
-  return {
-    id: `task-${i + 1}`,
-    name: nameBase,
-    department: dept,
-    status: status,
-    impact: priority,
-    isIssue: isOverdue || Math.random() > 0.8, // 20% khả năng bị vướng mắc
-    assignee: owner,
-    deadline: dayjs('2026-01-01').add(weekNum * 7 - Math.floor(Math.random() * 7), 'day').format('DD/MM/2026'),
-    week: `week_${weekNum}`,
-    desc: `Chi tiết công việc: ${nameBase}. Cần phối hợp với bộ phận ${dept} để xử lý dứt điểm.`,
-    history: isOverdue ? 'Cảnh báo: Khách hàng / Lãnh đạo đang hối thúc!' : 'Đang theo sát tiến độ, không có vấn đề.',
-  };
-});
-
 const Dashboard: React.FC = () => {
-  const [selectedTask, setSelectedTask] = useState<any>(null);
+  const [allTasks, setAllTasks] = useState<DashboardTask[]>([]);
+  const [tasksLoading, setTasksLoading] = useState(true);
+  const [selectedTask, setSelectedTask] = useState<DashboardTask | null>(null);
   const [resolvedIssues, setResolvedIssues] = useState<Set<string>>(new Set());
 
-  const handleRowClick = (record: any) => {
+  const handleRowClick = (record: DashboardTask) => {
     setSelectedTask(record);
   };
+
+  useEffect(() => {
+    let cancelled = false;
+
+    async function loadTasks() {
+      setTasksLoading(true);
+      try {
+        const tasks = await loadDashboardTasksFromAppsheet();
+        if (!cancelled) {
+          setAllTasks(tasks);
+        }
+      } catch {
+        if (!cancelled) {
+          setAllTasks([]);
+        }
+      } finally {
+        if (!cancelled) {
+          setTasksLoading(false);
+        }
+      }
+    }
+
+    void loadTasks();
+
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   const handleResolveIssue = (issueId: string) => {
     setResolvedIssues(prev => {
@@ -144,9 +110,9 @@ const Dashboard: React.FC = () => {
 
   // --- LOGIC LỌC DỮ LIỆU ---
   const filteredTasks = useMemo(() => {
-    return ALL_TASKS.filter(task => {
+    return allTasks.filter(task => {
       const matchWeek = filterWeek === 'all' || task.week === filterWeek;
-      const matchDept = filterDept === 'all' || task.department === filterDept;
+      const matchDept = filterDept === 'all' || task.deptKey === filterDept;
 
       let matchPriority = true;
       if (filterPriority === 'high') matchPriority = task.impact >= 3;
@@ -162,7 +128,7 @@ const Dashboard: React.FC = () => {
 
       return matchWeek && matchDept && matchPriority && matchStatus;
     });
-  }, [filterWeek, filterDept, filterPriority, filterStatus]);
+  }, [allTasks, filterWeek, filterDept, filterPriority, filterStatus]);
 
   // --- TÁCH MẢNG CON TỪ DANH SÁCH ĐÃ LỌC ---
   const displayStats = useMemo(() => {
@@ -805,7 +771,8 @@ const Dashboard: React.FC = () => {
   );
 
   return (
-    <div className="dashboard-container space-y-4 md:space-y-6 bg-gray-50 min-h-screen p-3 md:p-6 relative">
+    <Spin spinning={tasksLoading} tip="Đang tải dữ liệu AppSheet...">
+      <div className="dashboard-container space-y-4 md:space-y-6 bg-gray-50 min-h-screen p-3 md:p-6 relative">
       
       {/* ─── HIỂN THỊ DESKTOP ─── */}
       {!isMobile && (
@@ -992,7 +959,8 @@ const Dashboard: React.FC = () => {
           </div>
         </div>
       )}
-    </div>
+      </div>
+    </Spin>
   );
 };
 

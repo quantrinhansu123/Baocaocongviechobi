@@ -11,11 +11,14 @@ import {
   Input,
   DatePicker,
   message,
+  Popconfirm,
 } from 'antd';
 import type { ColumnsType } from 'antd/es/table';
 import {
   CheckSquareOutlined,
   PlusOutlined,
+  EditOutlined,
+  DeleteOutlined,
   LinkOutlined,
   UserOutlined,
   CalendarOutlined,
@@ -25,6 +28,18 @@ import {
 } from '@ant-design/icons';
 import { Star } from 'lucide-react';
 import dayjs from 'dayjs';
+import { ORG_BLOCKS } from '../data/orgBlocks';
+import type { TaskRecord } from '../types/task';
+import { formatTaskDate, parseTaskDate } from '../utils/taskDate';
+import { addAppsheetTask, deleteAppsheetTask, editAppsheetTask, findAppsheetTasks } from '../services/appsheetApi';
+import {
+  buildAppsheetDeleteRow,
+  buildAppsheetEditRow,
+  buildAppsheetTaskRow,
+  buildAppsheetTienDoEditRow,
+  mapAppsheetRowsToTasksByDept,
+  resolveAppsheetTableName,
+} from '../services/taskAppsheet';
 
 const { Text } = Typography;
 
@@ -43,70 +58,6 @@ const generateWeeks = () => {
   return weeks;
 };
 const WEEK_OPTIONS = generateWeeks();
-
-// ─── CẤU TRÚC TỔ CHỨC 22/04/2026 (4 khối → phòng ban) ─────────────────────────
-type DeptSpec = { key: string; name: string };
-
-type BlockSpec = {
-  key: string;
-  label: string;
-  /** Màu chữ tiêu đề khối (cấp 1) */
-  titleClass: string;
-  /** Màu phụ cho cấp phòng (cấp 2) */
-  deptTitleClass: string;
-  depts: DeptSpec[];
-};
-
-const ORG_BLOCKS: BlockSpec[] = [
-  {
-    key: 'bld',
-    label: 'BAN LÃNH ĐẠO',
-    titleClass: 'text-[#1E386B]',
-    deptTitleClass: 'text-[#1e40af]',
-    depts: [
-      { key: 'bld-ca-nhan', name: 'CÔNG VIỆC CÁ NHÂN' },
-      { key: 'bld-cong-viec-bld', name: 'CÔNG VIỆC CỦA BLĐ' },
-    ],
-  },
-  {
-    key: 'tm',
-    label: 'KHỐI THƯƠNG MẠI',
-    titleClass: 'text-[#0f766e]',
-    deptTitleClass: 'text-[#0d9488]',
-    depts: [
-      { key: 'tm-hcns', name: 'PHÒNG HCNS' },
-      { key: 'tm-kd-go', name: 'PHÒNG KD HOBI GỖ' },
-      { key: 'tm-kd-nhua', name: 'PHÒNG KD HOBI NHỰA' },
-      { key: 'tm-xuat-khau', name: 'PHÒNG XUẤT KHẨU' },
-      { key: 'tm-du-an', name: 'PHÒNG DỰ ÁN' },
-      { key: 'tm-cn-hcm', name: 'CHI NHÁNH HCM' },
-      { key: 'tm-marketing', name: 'PHÒNG MARKETING' },
-      { key: 'tm-ke-toan', name: 'PHÒNG KẾ TOÁN TM' },
-      { key: 'tm-kho', name: 'PHÒNG KHO' },
-    ],
-  },
-  {
-    key: 'sx',
-    label: 'KHỐI SẢN XUẤT',
-    titleClass: 'text-[#c2410c]',
-    deptTitleClass: 'text-[#ea580c]',
-    depts: [
-      { key: 'sx-kd-oem', name: 'PHÒNG KD OEM' },
-      { key: 'sx-ke-toan', name: 'PHÒNG KẾ TOÁN SẢN XUẤT' },
-      { key: 'sx-nm-wilson', name: 'NHÀ MÁY WILSON HB' },
-    ],
-  },
-  {
-    key: 'mua',
-    label: 'PHÒNG MUA NỘI ĐỊA, QUỐC TẾ',
-    titleClass: 'text-[#475569]',
-    deptTitleClass: 'text-[#64748b]',
-    depts: [
-      { key: 'mua-thuong-mai', name: 'MUA THƯƠNG MẠI' },
-      { key: 'mua-san-xuat', name: 'MUA SẢN XUẤT' },
-    ],
-  },
-];
 
 const ROMAN = ['I', 'II', 'III', 'IV'] as const;
 
@@ -148,93 +99,11 @@ function flattenDeptOptions() {
   return opts;
 }
 
-// ─── TASK TYPE & DỮ LIỆU MẪU (theo deptKey) ───────────────────────────────────
-type TaskRecord = {
-  stt: number;
-  kyBaoCao: string;
-  congViec: string;
-  nguoiGiao: string;
-  ngayGiao: string;
-  ycXong: string;
-  giaHan1: string;
-  giaHan2: string;
-  giaHan3: string;
-  ketQua: string;
-  linkKQ: string;
-  tienDo: string;
-  vuongMac: string;
-  canLD: string;
-  anhHuong: number;
-};
+const DEPT_OPTIONS = flattenDeptOptions();
 
-const MOCK_TASK_NAMES = [
-  'Lập kế hoạch tuần',
-  'Theo dõi KPI tháng',
-  'Rà soát công nợ',
-  'Kiểm kê vật tư',
-  'Cập nhật tiến độ dự án',
-  'Làm việc với nhà cung cấp',
-  'Chuẩn bị hồ sơ họp',
-  'Báo cáo kết quả thực hiện',
-  'Đánh giá rủi ro vận hành',
-  'Tối ưu quy trình nội bộ',
-];
-
-const MOCK_ASSIGNEES = ['Anh Tuyển', 'Chị Lan', 'Anh Hùng', 'Anh Hòa', 'Chị Mai', 'Mrs Thao', 'Mr Khánh'];
-const MOCK_STATUS = ['Hoàn thành', 'Đang làm', 'Quá hạn', 'Chưa bắt đầu'] as const;
-const MOCK_PERIOD = ['Tuần', 'Tháng', 'Quý'] as const;
-
-function buildInitialTasksByDept(): Record<string, Record<string, TaskRecord>> {
-  const data: Record<string, Record<string, TaskRecord>> = {};
-
-  ORG_BLOCKS.forEach((block, bi) => {
-    block.depts.forEach((dept, di) => {
-      const deptBucket: Record<string, TaskRecord> = {};
-      // Mỗi phòng ban có 8 task mẫu để list dày hơn.
-      for (let i = 1; i <= 8; i += 1) {
-        const mix = bi * 100 + di * 10 + i;
-        const period = MOCK_PERIOD[mix % MOCK_PERIOD.length];
-        const status = MOCK_STATUS[mix % MOCK_STATUS.length];
-        const assignee = MOCK_ASSIGNEES[mix % MOCK_ASSIGNEES.length];
-        const taskName = MOCK_TASK_NAMES[mix % MOCK_TASK_NAMES.length];
-
-        const startDate = dayjs('2026-01-05').add(mix * 2, 'day');
-        const dueDate = startDate.add(7 + (mix % 12), 'day');
-        const ext1 = status === 'Quá hạn' || mix % 4 === 0 ? dueDate.add(2, 'day') : null;
-        const ext2 = status === 'Quá hạn' && mix % 2 === 0 ? dueDate.add(4, 'day') : null;
-
-        const taskKey = `${dept.key}-task-${i}`;
-        deptBucket[taskKey] = {
-          stt: i,
-          kyBaoCao: period,
-          congViec: `${taskName} - ${dept.name.toLowerCase()}`,
-          nguoiGiao: assignee,
-          ngayGiao: startDate.format('DD/MM/YYYY'),
-          ycXong: dueDate.format('DD/MM/YYYY'),
-          giaHan1: ext1 ? ext1.format('DD/MM/YYYY') : '',
-          giaHan2: ext2 ? ext2.format('DD/MM/YYYY') : '',
-          giaHan3: '',
-          ketQua:
-            status === 'Hoàn thành'
-              ? 'Đã hoàn thành và nghiệm thu.'
-              : status === 'Chưa bắt đầu'
-                ? 'Đang chờ bắt đầu theo kế hoạch.'
-                : 'Đang cập nhật theo tiến độ thực hiện.',
-          linkKQ: `https://docs.google.com/mock/${dept.key}/${i}`,
-          tienDo: status,
-          vuongMac: status === 'Quá hạn' ? 'Thiếu nguồn lực tại thời điểm triển khai.' : '',
-          canLD: status === 'Quá hạn' || mix % 5 === 0 ? 'Có' : 'Không',
-          anhHuong: (mix % 4) + 1,
-        };
-      }
-      data[dept.key] = deptBucket;
-    });
-  });
-
-  return data;
+function createEmptyTasksByDept(): Record<string, Record<string, TaskRecord>> {
+  return {};
 }
-
-const INITIAL_TASKS_BY_DEPT: Record<string, Record<string, TaskRecord>> = buildInitialTasksByDept();
 
 function cloneTasksMap(src: Record<string, Record<string, TaskRecord>>) {
   return structuredClone(src) as Record<string, Record<string, TaskRecord>>;
@@ -297,6 +166,8 @@ const STATUS_CFG: Record<string, { color: string }> = {
   'Chưa bắt đầu': { color: 'default' },
 };
 
+const TIEN_DO_OPTIONS = Object.keys(STATUS_CFG).map(status => ({ value: status, label: status }));
+
 const renderStars = (level: number) => (
   <div className="flex gap-0.5">
     {[...Array(4)].map((_, i) => (
@@ -330,22 +201,81 @@ type TableRow = {
   congViec: string;
   nguoiPhuTrach: string;
   deadline: string;
+  giaHan1: string;
+  giaHan2: string;
+  giaHan3: string;
   deptKey: string;
 };
 
-const DEPT_OPTIONS = flattenDeptOptions();
+function renderDateCell(value: string) {
+  const isOverdue =
+    Boolean(value) && dayjs(value, 'DD/MM/YYYY').isValid() && dayjs(value, 'DD/MM/YYYY').isBefore(dayjs(), 'day');
+
+  return <span className={isOverdue ? 'text-red-500 font-medium' : ''}>{value || '—'}</span>;
+}
 
 const TaskView: React.FC = () => {
   const { blockKey: blockKeyParam, deptKey: deptKeyParam } = useParams<{ blockKey?: string; deptKey?: string }>();
 
   const [tasksByDept, setTasksByDept] = useState<Record<string, Record<string, TaskRecord>>>(() =>
-    cloneTasksMap(INITIAL_TASKS_BY_DEPT)
+    createEmptyTasksByDept()
   );
   const [detailTask, setDetailTask] = useState<(TaskRecord & { key: string; deptKey: string }) | null>(null);
   const [listScope, setListScope] = useState<ListScope | null>(null);
   const [selectedWeek, setSelectedWeek] = useState('week_16');
   const [createOpen, setCreateOpen] = useState(false);
+  const [creatingTask, setCreatingTask] = useState(false);
+  const [taskLoading, setTaskLoading] = useState(false);
+  const [savingDetail, setSavingDetail] = useState(false);
+  const [tienDoModalOpen, setTienDoModalOpen] = useState(false);
+  const [savingTienDo, setSavingTienDo] = useState(false);
+  const [deletingTaskKey, setDeletingTaskKey] = useState<string | null>(null);
+  const [tienDoDraft, setTienDoDraft] = useState('Chưa bắt đầu');
+  const [appsheetConnected, setAppsheetConnected] = useState<boolean | null>(null);
   const [form] = Form.useForm();
+  const [detailForm] = Form.useForm();
+
+  const appsheetTable = useMemo(
+    () => resolveAppsheetTableName(blockKeyParam, deptKeyParam),
+    [blockKeyParam, deptKeyParam]
+  );
+
+  useEffect(() => {
+    let cancelled = false;
+
+    async function loadAppsheetTasks() {
+      if (!appsheetTable) {
+        setAppsheetConnected(null);
+        setTasksByDept(createEmptyTasksByDept());
+        return;
+      }
+
+      setTaskLoading(true);
+      try {
+        const result = await findAppsheetTasks({ table: appsheetTable });
+        if (cancelled) return;
+
+        setAppsheetConnected(true);
+        setTasksByDept(cloneTasksMap(mapAppsheetRowsToTasksByDept(result.rows, result.table)));
+      } catch (error) {
+        if (!cancelled) {
+          setAppsheetConnected(false);
+          setTasksByDept(createEmptyTasksByDept());
+          message.error(error instanceof Error ? error.message : 'Không thể tải dữ liệu AppSheet.');
+        }
+      } finally {
+        if (!cancelled) {
+          setTaskLoading(false);
+        }
+      }
+    }
+
+    void loadAppsheetTasks();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [appsheetTable]);
 
   useEffect(() => {
     if (!blockKeyParam) {
@@ -372,6 +302,38 @@ const TaskView: React.FC = () => {
     setDetailTask(null);
   }, [blockKeyParam, deptKeyParam]);
 
+  useEffect(() => {
+    if (!detailTask) {
+      detailForm.resetFields();
+      return;
+    }
+
+    detailForm.setFieldsValue({
+      congViec: detailTask.congViec,
+      nguoiGiao: detailTask.nguoiGiao,
+      ngayGiao: parseTaskDate(detailTask.ngayGiao) ?? formatTaskDate(detailTask.ngayGiao) ?? undefined,
+      ycXong: parseTaskDate(detailTask.ycXong) ?? undefined,
+      giaHan1: parseTaskDate(detailTask.giaHan1) ?? undefined,
+      giaHan2: parseTaskDate(detailTask.giaHan2) ?? undefined,
+      giaHan3: parseTaskDate(detailTask.giaHan3) ?? undefined,
+      ketQua: detailTask.ketQua,
+      linkKQ: detailTask.linkKQ,
+      tienDo: detailTask.tienDo,
+      vuongMac: detailTask.vuongMac,
+      canLD: detailTask.canLD,
+      anhHuong: detailTask.anhHuong,
+    });
+  }, [detailTask, detailForm]);
+
+  const reloadAppsheetTasks = useCallback(async () => {
+    if (!appsheetTable) {
+      return;
+    }
+
+    const result = await findAppsheetTasks({ table: appsheetTable });
+    setTasksByDept(cloneTasksMap(mapAppsheetRowsToTasksByDept(result.rows, result.table)));
+  }, [appsheetTable]);
+
   const collectRowsForScope = useCallback(
     (scope: ListScope): TableRow[] => {
       const rows: TableRow[] = [];
@@ -387,6 +349,9 @@ const TaskView: React.FC = () => {
             congViec: t.congViec,
             nguoiPhuTrach: t.nguoiGiao,
             deadline: t.ycXong,
+            giaHan1: t.giaHan1,
+            giaHan2: t.giaHan2,
+            giaHan3: t.giaHan3,
             deptKey: scope.deptKey,
           });
         });
@@ -407,6 +372,9 @@ const TaskView: React.FC = () => {
             congViec: t.congViec,
             nguoiPhuTrach: t.nguoiGiao,
             deadline: t.ycXong,
+            giaHan1: t.giaHan1,
+            giaHan2: t.giaHan2,
+            giaHan3: t.giaHan3,
             deptKey: dept.key,
           });
         });
@@ -438,47 +406,171 @@ const TaskView: React.FC = () => {
 
   const openCreateModal = (deptKey?: string) => {
     form.resetFields();
-    if (deptKey) form.setFieldsValue({ deptKey });
+    const targetDeptKey = deptKey ?? deptKeyParam;
+    if (targetDeptKey) {
+      form.setFieldsValue({ deptKey: targetDeptKey });
+    }
     setCreateOpen(true);
   };
 
   const handleCreateSubmit = () => {
     form
       .validateFields()
-      .then(values => {
-        const dk = values.deptKey as string;
-        const deadline = (values.deadline as dayjs.Dayjs).format('DD/MM/YYYY');
-        const today = dayjs().format('DD/MM/YYYY');
-        setTasksByDept(prev => {
-          const next = cloneTasksMap(prev);
-          if (!next[dk]) next[dk] = {};
-          const existing = Object.values(next[dk]);
-          const nextStt = existing.length ? Math.max(...existing.map(t => t.stt)) + 1 : 1;
-          const taskKey = `custom-${Date.now()}`;
-          next[dk][taskKey] = {
-            stt: nextStt,
-            kyBaoCao: 'Tháng',
-            congViec: values.congViec as string,
-            nguoiGiao: values.nguoiPhuTrach as string,
-            ngayGiao: today,
-            ycXong: deadline,
-            giaHan1: '',
-            giaHan2: '',
-            giaHan3: '',
-            ketQua: '',
-            linkKQ: '#',
-            tienDo: 'Chưa bắt đầu',
-            vuongMac: '',
-            canLD: 'Không',
-            anhHuong: Number(values.anhHuong),
-          };
-          return next;
-        });
-        message.success('Đã tạo công việc mới');
-        setCreateOpen(false);
-        form.resetFields();
+      .then(async values => {
+        const dk = (deptKeyParam ?? values.deptKey) as string;
+        const deadline = formatTaskDate(values.deadline);
+        const giaHan1 = formatTaskDate(values.giaHan1);
+        const giaHan2 = formatTaskDate(values.giaHan2);
+        const giaHan3 = formatTaskDate(values.giaHan3);
+
+        if (!deadline) {
+          message.error('Chọn deadline.');
+          return;
+        }
+
+        if (!appsheetTable) {
+          message.error('Chọn phòng ban trên URL để thêm dòng AppSheet.');
+          return;
+        }
+
+        if (!appsheetConnected) {
+          message.error('Chưa kết nối AppSheet API.');
+          return;
+        }
+
+        const existing = Object.values(tasksByDept[dk] ?? {});
+        const nextStt = existing.length ? Math.max(...existing.map(t => t.stt)) + 1 : 1;
+
+        setCreatingTask(true);
+        try {
+          await addAppsheetTask(
+            buildAppsheetTaskRow({
+              deptKey: dk,
+              congViec: values.congViec as string,
+              nguoiPhuTrach: values.nguoiPhuTrach as string,
+              deadline,
+              giaHan1,
+              giaHan2,
+              giaHan3,
+              anhHuong: Number(values.anhHuong),
+              stt: nextStt,
+            }),
+            appsheetTable
+          );
+          await reloadAppsheetTasks();
+          message.success('Đã thêm công việc mới vào AppSheet.');
+          setCreateOpen(false);
+          form.resetFields();
+        } catch (error) {
+          message.error(error instanceof Error ? error.message : 'Không thể thêm dòng trên AppSheet.');
+        } finally {
+          setCreatingTask(false);
+        }
       })
       .catch(() => {});
+  };
+
+  const handleDetailSave = () => {
+    detailForm
+      .validateFields()
+      .then(async values => {
+        if (!detailTask || !appsheetTable || !appsheetConnected) {
+          message.error('Chưa kết nối AppSheet API.');
+          return;
+        }
+
+        if (!detailTask.sourceRow) {
+          message.error('Không tìm thấy khóa bản ghi AppSheet để cập nhật.');
+          return;
+        }
+
+        const updatedTask: TaskRecord = {
+          ...detailTask,
+          congViec: values.congViec as string,
+          nguoiGiao: values.nguoiGiao as string,
+          ngayGiao: formatTaskDate(values.ngayGiao),
+          ycXong: formatTaskDate(values.ycXong),
+          giaHan1: formatTaskDate(values.giaHan1),
+          giaHan2: formatTaskDate(values.giaHan2),
+          giaHan3: formatTaskDate(values.giaHan3),
+          ketQua: values.ketQua as string,
+          linkKQ: values.linkKQ as string,
+          tienDo: detailTask.tienDo,
+          vuongMac: values.vuongMac as string,
+          canLD: values.canLD as string,
+          anhHuong: Number(values.anhHuong),
+        };
+
+        setSavingDetail(true);
+        try {
+          const editRow = buildAppsheetEditRow(updatedTask, detailTask.sourceRow);
+          if (!editRow.TT) {
+            message.error('Không tìm thấy khóa bản ghi AppSheet để cập nhật.');
+            return;
+          }
+
+          await editAppsheetTask(editRow, appsheetTable);
+          const result = await findAppsheetTasks({ table: appsheetTable });
+          const mapped = mapAppsheetRowsToTasksByDept(result.rows, result.table);
+          setTasksByDept(cloneTasksMap(mapped));
+          const refreshed = mapped[detailTask.deptKey]?.[detailTask.key];
+          if (refreshed) {
+            setDetailTask({ ...refreshed, key: detailTask.key, deptKey: detailTask.deptKey });
+          }
+          message.success('Đã cập nhật AppSheet.');
+        } catch (error) {
+          message.error(error instanceof Error ? error.message : 'Không thể cập nhật AppSheet.');
+        } finally {
+          setSavingDetail(false);
+        }
+      })
+      .catch(() => {});
+  };
+
+  const openTienDoModal = () => {
+    if (!detailTask) {
+      return;
+    }
+
+    setTienDoDraft(detailTask.tienDo || 'Chưa bắt đầu');
+    setTienDoModalOpen(true);
+  };
+
+  const handleSaveTienDo = async () => {
+    if (!detailTask || !appsheetTable || !appsheetConnected) {
+      message.error('Chưa kết nối AppSheet API.');
+      return;
+    }
+
+    if (!detailTask.sourceRow) {
+      message.error('Không tìm thấy khóa bản ghi AppSheet để cập nhật.');
+      return;
+    }
+
+    const editRow = buildAppsheetTienDoEditRow(tienDoDraft, detailTask.sourceRow);
+    if (!editRow['TIẾN ĐỘ']) {
+      message.error('Tiến độ này không được AppSheet chấp nhận. Chọn Đang làm, Hoàn thành hoặc Quá hạn.');
+      return;
+    }
+
+    setSavingTienDo(true);
+    try {
+      await editAppsheetTask(editRow, appsheetTable);
+      const result = await findAppsheetTasks({ table: appsheetTable });
+      const mapped = mapAppsheetRowsToTasksByDept(result.rows, result.table);
+      setTasksByDept(cloneTasksMap(mapped));
+      const refreshed = mapped[detailTask.deptKey]?.[detailTask.key];
+      if (refreshed) {
+        setDetailTask({ ...refreshed, key: detailTask.key, deptKey: detailTask.deptKey });
+        detailForm.setFieldsValue({ tienDo: refreshed.tienDo });
+      }
+      setTienDoModalOpen(false);
+      message.success('Đã cập nhật TIẾN ĐỘ trên AppSheet.');
+    } catch (error) {
+      message.error(error instanceof Error ? error.message : 'Không thể cập nhật TIẾN ĐỘ trên AppSheet.');
+    } finally {
+      setSavingTienDo(false);
+    }
   };
 
   const openDetail = (taskKey: string, deptKey: string) => {
@@ -486,6 +578,33 @@ const TaskView: React.FC = () => {
     if (!t) return;
     setDetailTask({ ...t, key: taskKey, deptKey });
     setListScope(null);
+  };
+
+  const handleDeleteTask = async (taskKey: string, deptKey: string) => {
+    const task = tasksByDept[deptKey]?.[taskKey];
+    if (!task?.sourceRow) {
+      message.error('Không tìm thấy khóa bản ghi AppSheet để xoá.');
+      return;
+    }
+
+    if (!appsheetTable || !appsheetConnected) {
+      message.error('Chưa kết nối AppSheet API.');
+      return;
+    }
+
+    setDeletingTaskKey(taskKey);
+    try {
+      await deleteAppsheetTask(buildAppsheetDeleteRow(task.sourceRow), appsheetTable);
+      await reloadAppsheetTasks();
+      if (detailTask?.key === taskKey) {
+        setDetailTask(null);
+      }
+      message.success('Đã xoá công việc trên AppSheet.');
+    } catch (error) {
+      message.error(error instanceof Error ? error.message : 'Không thể xoá dòng trên AppSheet.');
+    } finally {
+      setDeletingTaskKey(null);
+    }
   };
 
   const handleWeekChange = (weekValue: string) => {
@@ -524,16 +643,59 @@ const TaskView: React.FC = () => {
       dataIndex: 'deadline',
       key: 'deadline',
       width: 110,
-      render: (d: string) => (
-        <span
-          className={
-            dayjs(d, 'DD/MM/YYYY').isValid() && dayjs(d, 'DD/MM/YYYY').isBefore(dayjs(), 'day')
-              ? 'text-red-500 font-medium'
-              : ''
-          }
-        >
-          {d}
-        </span>
+      render: (d: string) => renderDateCell(d),
+    },
+    {
+      title: <span className="uppercase tracking-wide text-[11px]">GIA HẠN 1</span>,
+      dataIndex: 'giaHan1',
+      key: 'giaHan1',
+      width: 110,
+      render: (d: string) => renderDateCell(d),
+    },
+    {
+      title: <span className="uppercase tracking-wide text-[11px]">GIA HẠN 2</span>,
+      dataIndex: 'giaHan2',
+      key: 'giaHan2',
+      width: 110,
+      render: (d: string) => renderDateCell(d),
+    },
+    {
+      title: <span className="uppercase tracking-wide text-[11px]">GIA HẠN 3</span>,
+      dataIndex: 'giaHan3',
+      key: 'giaHan3',
+      width: 110,
+      render: (d: string) => renderDateCell(d),
+    },
+    {
+      title: <span className="uppercase tracking-wide text-[11px]">Thao tác</span>,
+      key: 'actions',
+      width: 120,
+      fixed: 'right',
+      render: (_, record) => (
+        <div className="flex items-center gap-1" data-task-action onClick={event => event.stopPropagation()}>
+          <Button type="link" size="small" icon={<EditOutlined />} onClick={() => openDetail(record.key, record.deptKey)}>
+            Sửa
+          </Button>
+          <Popconfirm
+            title="Xoá công việc này trên AppSheet?"
+            okText="Xoá"
+            cancelText="Huỷ"
+            okButtonProps={{ danger: true, loading: deletingTaskKey === record.key }}
+            onConfirm={() => void handleDeleteTask(record.key, record.deptKey)}
+            disabled={!appsheetConnected}
+          >
+            <Button
+              type="link"
+              size="small"
+              danger
+              icon={<DeleteOutlined />}
+              loading={deletingTaskKey === record.key}
+              disabled={!appsheetConnected}
+            >
+              Xoá
+            </Button>
+          </Popconfirm>
+        </div>
       ),
     },
   ];
@@ -545,7 +707,13 @@ const TaskView: React.FC = () => {
       {/* ── TOP BAR ── */}
       <div className="bg-white px-4 md:px-5 py-3 border-b border-gray-200 flex flex-col md:flex-row md:items-center justify-between shadow-sm z-10 flex-shrink-0 gap-3">
         <div className="flex flex-wrap items-center gap-2 w-full md:w-auto">
-          <Button type="primary" icon={<PlusOutlined />} className="bg-[#1E386B]" onClick={() => openCreateModal()}>
+          <Button
+            type="primary"
+            icon={<PlusOutlined />}
+            className="bg-[#1E386B]"
+            disabled={!appsheetTable || !appsheetConnected}
+            onClick={() => openCreateModal()}
+          >
             Tạo công việc mới
           </Button>
         </div>
@@ -562,6 +730,11 @@ const TaskView: React.FC = () => {
             size="middle"
             className="w-full md:w-64"
           />
+          {appsheetConnected === true ? (
+            <Tag color="success">AppSheet</Tag>
+          ) : appsheetConnected === false ? (
+            <Tag color="error">Không kết nối AppSheet</Tag>
+          ) : null}
         </div>
       </div>
 
@@ -575,11 +748,18 @@ const TaskView: React.FC = () => {
         }}
         okText="Lưu"
         cancelText="Huỷ"
+        confirmLoading={creatingTask}
         destroyOnClose
       >
         <Form form={form} layout="vertical" className="mt-2">
           <Form.Item name="deptKey" label="Phòng ban" rules={[{ required: true, message: 'Chọn phòng ban' }]}>
-            <Select showSearch optionFilterProp="label" options={DEPT_OPTIONS} placeholder="Chọn phòng ban" />
+            <Select
+              showSearch
+              optionFilterProp="label"
+              options={DEPT_OPTIONS}
+              placeholder="Chọn phòng ban"
+              disabled={Boolean(deptKeyParam)}
+            />
           </Form.Item>
           <Form.Item name="congViec" label="Công việc" rules={[{ required: true, message: 'Nhập tên công việc' }]}>
             <Input placeholder="Nội dung công việc" />
@@ -607,10 +787,47 @@ const TaskView: React.FC = () => {
               placeholder="Chọn mức độ ảnh hưởng"
             />
           </Form.Item>
-          <Form.Item name="deadline" label="Deadline" rules={[{ required: true, message: 'Chọn deadline' }]}>
+          <Form.Item name="deadline" label="Y/C xong" rules={[{ required: true, message: 'Chọn deadline' }]}>
             <DatePicker className="w-full" format="DD/MM/YYYY" />
           </Form.Item>
+          <div className="md:col-span-2">
+            <p className="text-[11px] font-semibold uppercase tracking-wide text-gray-400 mb-2">Gia hạn</p>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <Form.Item name="giaHan1" label="GIA HẠN 1">
+                <DatePicker className="w-full" format="DD/MM/YYYY" />
+              </Form.Item>
+              <Form.Item name="giaHan2" label="GIA HẠN 2">
+                <DatePicker className="w-full" format="DD/MM/YYYY" />
+              </Form.Item>
+              <Form.Item name="giaHan3" label="GIA HẠN 3">
+                <DatePicker className="w-full" format="DD/MM/YYYY" />
+              </Form.Item>
+            </div>
+          </div>
         </Form>
+      </Modal>
+
+      <Modal
+        title="Sửa tiến độ"
+        open={tienDoModalOpen}
+        onOk={() => void handleSaveTienDo()}
+        onCancel={() => setTienDoModalOpen(false)}
+        okText="Lưu"
+        cancelText="Huỷ"
+        confirmLoading={savingTienDo}
+        destroyOnClose
+      >
+        <div className="mt-2">
+          <Text type="secondary" className="block mb-2">
+            Giá trị sẽ ghi vào cột TIẾN ĐỘ trên AppSheet.
+          </Text>
+          <Select
+            className="w-full"
+            value={tienDoDraft}
+            onChange={setTienDoDraft}
+            options={TIEN_DO_OPTIONS}
+          />
+        </div>
       </Modal>
 
       <div className="flex flex-1 overflow-hidden">
@@ -627,12 +844,18 @@ const TaskView: React.FC = () => {
                     rowKey="key"
                     columns={tableColumns}
                     dataSource={tableRows}
+                    loading={taskLoading}
                     pagination={false}
                     size="small"
-                    scroll={{ x: 720 }}
+                    scroll={{ x: 1180 }}
                     locale={{ emptyText: 'Chưa có công việc' }}
                     onRow={record => ({
-                      onClick: () => openDetail(record.key, record.deptKey),
+                      onClick: event => {
+                        if ((event.target as HTMLElement).closest('[data-task-action]')) {
+                          return;
+                        }
+                        openDetail(record.key, record.deptKey);
+                      },
                       className: 'cursor-pointer hover:bg-blue-50/50',
                     })}
                   />
@@ -642,24 +865,54 @@ const TaskView: React.FC = () => {
                     <div className="text-center text-gray-400 py-6">Chưa có công việc</div>
                   ) : (
                     tableRows.map(row => (
-                      <button
+                      <div
                         key={row.key}
-                        type="button"
-                        onClick={() => openDetail(row.key, row.deptKey)}
-                        className="w-full text-left bg-white border border-gray-200 rounded-lg p-3 shadow-sm active:scale-[0.99] transition"
+                        className="w-full text-left bg-white border border-gray-200 rounded-lg p-3 shadow-sm"
                       >
-                        <div className="flex items-start justify-between gap-2">
-                          <p className="font-semibold text-gray-800 text-sm leading-snug">{row.congViec}</p>
-                          <span className="text-[11px] text-gray-500">#{row.stt}</span>
+                        <button
+                          type="button"
+                          onClick={() => openDetail(row.key, row.deptKey)}
+                          className="w-full text-left active:scale-[0.99] transition"
+                        >
+                          <div className="flex items-start justify-between gap-2">
+                            <p className="font-semibold text-gray-800 text-sm leading-snug">{row.congViec}</p>
+                            <span className="text-[11px] text-gray-500">#{row.stt}</span>
+                          </div>
+                          <div className="mt-2 text-xs text-gray-600 space-y-1">
+                            <p>Phòng ban: <span className="font-medium">{row.phongBan}</span></p>
+                            <p>Phụ trách: <span className="font-medium">{row.nguoiPhuTrach}</span></p>
+                            <p className={dayjs(row.deadline, 'DD/MM/YYYY').isValid() && dayjs(row.deadline, 'DD/MM/YYYY').isBefore(dayjs(), 'day') ? 'text-red-500 font-medium' : ''}>
+                              Deadline: {row.deadline}
+                            </p>
+                            <p>Gia hạn 1: <span className="font-medium">{row.giaHan1 || '—'}</span></p>
+                            <p>Gia hạn 2: <span className="font-medium">{row.giaHan2 || '—'}</span></p>
+                            <p>Gia hạn 3: <span className="font-medium">{row.giaHan3 || '—'}</span></p>
+                          </div>
+                        </button>
+                        <div className="mt-3 flex items-center gap-2 border-t border-gray-100 pt-3" data-task-action>
+                          <Button size="small" icon={<EditOutlined />} onClick={() => openDetail(row.key, row.deptKey)}>
+                            Sửa
+                          </Button>
+                          <Popconfirm
+                            title="Xoá công việc này trên AppSheet?"
+                            okText="Xoá"
+                            cancelText="Huỷ"
+                            okButtonProps={{ danger: true, loading: deletingTaskKey === row.key }}
+                            onConfirm={() => void handleDeleteTask(row.key, row.deptKey)}
+                            disabled={!appsheetConnected}
+                          >
+                            <Button
+                              size="small"
+                              danger
+                              icon={<DeleteOutlined />}
+                              loading={deletingTaskKey === row.key}
+                              disabled={!appsheetConnected}
+                            >
+                              Xoá
+                            </Button>
+                          </Popconfirm>
                         </div>
-                        <div className="mt-2 text-xs text-gray-600 space-y-1">
-                          <p>Phòng ban: <span className="font-medium">{row.phongBan}</span></p>
-                          <p>Phụ trách: <span className="font-medium">{row.nguoiPhuTrach}</span></p>
-                          <p className={dayjs(row.deadline, 'DD/MM/YYYY').isValid() && dayjs(row.deadline, 'DD/MM/YYYY').isBefore(dayjs(), 'day') ? 'text-red-500 font-medium' : ''}>
-                            Deadline: {row.deadline}
-                          </p>
-                        </div>
-                      </button>
+                      </div>
                     ))
                   )}
                 </div>
@@ -667,11 +920,21 @@ const TaskView: React.FC = () => {
             </div>
           ) : selected ? (
             <>
-              <div className="bg-[#1E386B] px-4 md:px-6 py-3 md:py-4 flex-shrink-0 shadow">
-                <p className="text-white/60 text-[10px] md:text-xs m-0 mb-0.5 tracking-wide uppercase">Chi tiết công việc</p>
-                <h2 className="text-white font-bold text-base md:text-lg m-0 leading-snug line-clamp-2 md:line-clamp-none">
-                  {selected.congViec}
-                </h2>
+              <div className="bg-[#1E386B] px-4 md:px-6 py-3 md:py-4 flex-shrink-0 shadow flex items-start justify-between gap-3">
+                <div className="min-w-0">
+                  <p className="text-white/60 text-[10px] md:text-xs m-0 mb-0.5 tracking-wide uppercase">Chi tiết công việc</p>
+                  <h2 className="text-white font-bold text-base md:text-lg m-0 leading-snug line-clamp-2 md:line-clamp-none">
+                    {selected.congViec}
+                  </h2>
+                </div>
+                <Button
+                  type="primary"
+                  className="bg-[#F38320] border-[#F38320] flex-shrink-0"
+                  loading={savingDetail}
+                  onClick={handleDetailSave}
+                >
+                  Lưu AppSheet
+                </Button>
               </div>
 
               <div className="flex-1 overflow-auto p-5">
@@ -680,171 +943,66 @@ const TaskView: React.FC = () => {
                     Thông tin công việc
                   </div>
 
-                  <div className="hidden md:block px-5 divide-y divide-gray-100">
-                    <div className="py-3">
-                      <p className="text-[11px] font-semibold uppercase tracking-wide text-gray-400 mb-2">Thông tin giao việc</p>
-                      <InfoRow icon={<span className="text-xs font-bold text-gray-400">#</span>} label="STT">
-                        <span className="font-semibold text-[#1E386B]">{selected.stt}</span>
-                      </InfoRow>
-                      <InfoRow icon={<CheckSquareOutlined />} label="Công việc">
-                        <span className="font-medium text-gray-800">{selected.congViec}</span>
-                      </InfoRow>
-                      <InfoRow icon={<UserOutlined />} label="Người phụ trách">
-                        <span className="font-medium text-gray-800">{selected.nguoiGiao}</span>
-                      </InfoRow>
-                      <InfoRow icon={<CalendarOutlined />} label="Ngày giao">
-                        <span className="text-gray-700">{selected.ngayGiao}</span>
-                      </InfoRow>
-                      <InfoRow icon={<ClockCircleOutlined />} label="Y/C xong">
-                        <span
-                          className={
-                            dayjs(selected.ycXong, 'DD/MM/YYYY').isBefore(dayjs(), 'day')
-                              ? 'text-red-500 font-medium'
-                              : 'text-gray-700 font-medium'
-                          }
-                        >
-                          {selected.ycXong}
-                        </span>
-                      </InfoRow>
-                    </div>
-
-                    <div className="py-3">
-                      <p className="text-[11px] font-semibold uppercase tracking-wide text-gray-400 mb-2">Gia hạn</p>
-                      <div className="flex items-center gap-2 flex-wrap py-1">
-                        {selected.giaHan1 && <Tag color="orange">Lần 1 · {selected.giaHan1}</Tag>}
-                        {selected.giaHan2 && (
-                          <Tag color="red" style={{ opacity: 0.75 }}>
-                            Lần 2 · {selected.giaHan2}
-                          </Tag>
-                        )}
-                        {selected.giaHan3 && (
-                          <Tag color="red" style={{ fontWeight: 600 }}>
-                            Lần 3 · {selected.giaHan3}
-                          </Tag>
-                        )}
-                        {!selected.giaHan1 && <span className="text-gray-400 text-sm">Chưa gia hạn</span>}
-                      </div>
-                    </div>
-
-                    <div className="py-3">
-                      <p className="text-[11px] font-semibold uppercase tracking-wide text-gray-400 mb-2">Kết quả & tiến độ</p>
-                      <InfoRow icon={<CheckSquareOutlined />} label="Kết quả">
-                        <span className="text-gray-700 font-medium">{selected.ketQua}</span>
-                      </InfoRow>
-                      <InfoRow icon={<ThunderboltOutlined />} label="Tiến độ">
-                        <Tag color={(STATUS_CFG[selected.tienDo] ?? { color: 'default' }).color}>{selected.tienDo}</Tag>
-                      </InfoRow>
-                      <InfoRow icon={<LinkOutlined />} label="Link KQ">
-                        <a
-                          href={selected.linkKQ}
-                          target="_blank"
-                          rel="noreferrer"
-                          className="text-blue-500 hover:underline flex items-center gap-1 text-sm"
-                        >
-                          <LinkOutlined /> Mở link
-                        </a>
-                      </InfoRow>
-                      <InfoRow icon={<span className="text-amber-400">★</span>} label="Mức ảnh hưởng">
-                        {renderStars(selected.anhHuong)}
-                      </InfoRow>
-                    </div>
-
-                    <div className="py-3">
-                      <p className="text-[11px] font-semibold uppercase tracking-wide text-gray-400 mb-2">Vấn đề</p>
-                      <InfoRow icon={<WarningOutlined />} label="Vướng mắc">
-                        <span className="text-gray-700 font-medium">{selected.vuongMac || '—'}</span>
-                      </InfoRow>
-                      <InfoRow icon={<ThunderboltOutlined />} label="Cần LĐ tác động">
-                        {selected.canLD === 'Không' ? (
-                          <span className="text-gray-400">Không</span>
-                        ) : (
-                          <Tag color="error">Có</Tag>
-                        )}
-                      </InfoRow>
-                    </div>
-                  </div>
-
-                  <div className="block md:hidden p-3 bg-gray-50 rounded-b-xl border-t border-gray-200 min-h-[300px]">
-                    {(() => {
-                      const borderColorMap: Record<string, string> = {
-                        'Hoàn thành': 'bg-green-500',
-                        'Đang làm': 'bg-blue-500',
-                        'Quá hạn': 'bg-red-500',
-                        'Chưa bắt đầu': 'bg-gray-400',
-                      };
-                      const leftColorClass = borderColorMap[selected.tienDo] || 'bg-gray-400';
-                      const finalDateStr = selected.giaHan3 || selected.giaHan2 || selected.giaHan1 || selected.ycXong;
-                      const isTaskOverdue =
-                        dayjs(finalDateStr, 'DD/MM/YYYY').isValid() &&
-                        dayjs().isAfter(dayjs(finalDateStr, 'DD/MM/YYYY'), 'day') &&
-                        selected.tienDo !== 'Hoàn thành';
-
-                      const timelineArr: { type: string; text: string }[] = [];
-                      if (selected.ycXong) timelineArr.push({ type: 'goc', text: selected.ycXong.slice(0, 5) });
-                      if (selected.giaHan1) timelineArr.push({ type: 'l1', text: selected.giaHan1.slice(0, 5) });
-                      if (selected.giaHan2) timelineArr.push({ type: 'l2', text: selected.giaHan2.slice(0, 5) });
-                      if (selected.giaHan3) timelineArr.push({ type: 'l3', text: selected.giaHan3.slice(0, 5) });
-
-                      return (
-                        <div className="relative bg-white border border-gray-200 rounded-lg p-2 shadow-sm mb-2 overflow-hidden flex flex-col transition-all">
-                          <div className={`absolute left-0 top-0 bottom-0 w-[4px] ${leftColorClass}`} />
-
-                          <div className="pl-3">
-                            <div className="flex flex-row justify-between items-center mb-2">
-                              <Tag
-                                color={(STATUS_CFG[selected.tienDo] ?? { color: 'default' }).color}
-                                className="m-0 text-[11px] font-bold border-none uppercase tracking-tight"
-                              >
-                                {selected.tienDo}
-                              </Tag>
-                              <div className="flex items-center bg-orange-50/50 px-1.5 py-0.5 rounded-full border border-orange-100">
-                                {renderStars(selected.anhHuong)}
-                              </div>
-                            </div>
-
-                            <div className="bg-gray-100/80 border border-gray-100 rounded flex flex-wrap items-center gap-1.5 py-1.5 px-2 mt-1 -mx-1">
-                              <CalendarOutlined className="text-gray-400 text-[11px]" />
-                              {timelineArr.map((item, idx) => {
-                                const isLast = idx === timelineArr.length - 1;
-                                let textClass = 'text-gray-600';
-                                if (item.type === 'l1' || item.type === 'l2') textClass = 'text-orange-500 font-medium';
-                                if (item.type === 'l3') textClass = 'text-red-600 font-bold';
-                                if (isLast && isTaskOverdue) textClass = 'text-red-600 font-bold';
-                                return (
-                                  <React.Fragment key={idx}>
-                                    {idx > 0 && <span className="text-gray-300 text-[10px]">&rarr;</span>}
-                                    <span className={`text-[12px] tracking-tight ${textClass}`}>{item.text}</span>
-                                    {isLast && isTaskOverdue && (
-                                      <span className="text-[11px] ml-0.5 leading-none" title="Quá hạn">
-                                        ⚠️
-                                      </span>
-                                    )}
-                                  </React.Fragment>
-                                );
-                              })}
-                            </div>
-                          </div>
-
-                          {(selected.ketQua || selected.vuongMac) && (
-                            <div className="mt-2 pl-3 pt-2 border-t border-dashed border-gray-200 space-y-1">
-                              {selected.ketQua && (
-                                <div className="text-[12px] text-gray-700 leading-tight">
-                                  <span className="font-bold text-gray-500">Kết Quả: </span>
-                                  {selected.ketQua}
-                                </div>
-                              )}
-                              {selected.vuongMac && (
-                                <div className="text-[12px] text-red-600 leading-tight">
-                                  <span className="font-bold text-red-400">Vướng Mắc: </span>
-                                  {selected.vuongMac}
-                                </div>
-                              )}
-                            </div>
-                          )}
+                  <Form form={detailForm} layout="vertical" className="px-5 py-4">
+                    <div className="grid grid-cols-1 xl:grid-cols-2 gap-x-6">
+                      <Form.Item name="congViec" label="Công việc" rules={[{ required: true, message: 'Nhập công việc' }]}>
+                        <Input.TextArea rows={2} />
+                      </Form.Item>
+                      <Form.Item name="nguoiGiao" label="Người phụ trách" rules={[{ required: true, message: 'Nhập người phụ trách' }]}>
+                        <Input />
+                      </Form.Item>
+                      <Form.Item name="ngayGiao" label="Ngày giao">
+                        <Input placeholder="DD/MM/YYYY" />
+                      </Form.Item>
+                      <Form.Item name="ycXong" label="Y/C xong">
+                        <DatePicker className="w-full" format="DD/MM/YYYY" />
+                      </Form.Item>
+                      <div className="xl:col-span-2">
+                        <p className="text-[11px] font-semibold uppercase tracking-wide text-gray-400 mb-2">Gia hạn</p>
+                        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                          <Form.Item name="giaHan1" label="GIA HẠN 1">
+                            <DatePicker className="w-full" format="DD/MM/YYYY" />
+                          </Form.Item>
+                          <Form.Item name="giaHan2" label="GIA HẠN 2">
+                            <DatePicker className="w-full" format="DD/MM/YYYY" />
+                          </Form.Item>
+                          <Form.Item name="giaHan3" label="GIA HẠN 3">
+                            <DatePicker className="w-full" format="DD/MM/YYYY" />
+                          </Form.Item>
                         </div>
-                      );
-                    })()}
-                  </div>
+                      </div>
+                      <Form.Item label="Tiến độ">
+                        <div className="flex flex-wrap items-center gap-2">
+                          <Tag color={(STATUS_CFG[selected.tienDo] ?? { color: 'default' }).color}>
+                            {selected.tienDo || 'Chưa bắt đầu'}
+                          </Tag>
+                          <Button size="small" onClick={openTienDoModal}>
+                            Sửa tiến độ
+                          </Button>
+                        </div>
+                      </Form.Item>
+                      <Form.Item name="canLD" label="Cần LĐ tác động">
+                        <Select
+                          options={[
+                            { value: 'Không', label: 'Không' },
+                            { value: 'Có', label: 'Có' },
+                          ]}
+                        />
+                      </Form.Item>
+                      <Form.Item name="anhHuong" label="Mức ảnh hưởng" rules={[{ required: true, message: 'Chọn mức độ' }]}>
+                        <Select options={[1, 2, 3, 4].map(level => ({ value: level, label: `${level} sao` }))} />
+                      </Form.Item>
+                      <Form.Item name="linkKQ" label="Link KQ" className="xl:col-span-2">
+                        <Input />
+                      </Form.Item>
+                      <Form.Item name="ketQua" label="Kết quả" className="xl:col-span-2">
+                        <Input.TextArea rows={2} />
+                      </Form.Item>
+                      <Form.Item name="vuongMac" label="Vướng mắc" className="xl:col-span-2">
+                        <Input.TextArea rows={2} />
+                      </Form.Item>
+                    </div>
+                  </Form>
                 </div>
               </div>
             </>
