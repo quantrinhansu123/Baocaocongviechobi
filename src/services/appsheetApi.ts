@@ -40,7 +40,9 @@ export async function findAppsheetTasks(options?: {
     params.set('selector', options.selector);
   }
 
-  const response = await fetch(`/api/appsheet/find${params.size ? `?${params}` : ''}`);
+  const response = await fetch(`/api/appsheet/find${params.size ? `?${params}` : ''}`, {
+    cache: 'no-store',
+  });
 
   if (!response.ok) {
     const payload = await parseJson<{ message?: string }>(response);
