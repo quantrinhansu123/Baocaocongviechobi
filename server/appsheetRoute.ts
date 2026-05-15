@@ -70,6 +70,7 @@ export async function handleAppsheetRoute(req: IncomingMessage, res: ServerRespo
         configured: true,
         connected: true,
         appId: config.appId,
+        appName: config.appName ?? null,
         table: config.defaultTable,
         rowCount: result.rows.length,
         deploymentId: config.deploymentId ?? null,

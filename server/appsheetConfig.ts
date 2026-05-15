@@ -4,6 +4,7 @@ export type AppsheetAction = 'Find' | 'Add' | 'Edit' | 'Delete';
 
 export type AppsheetConfig = {
   appId: string;
+  appName?: string;
   accessKey: string;
   regionHost: string;
   locale: string;
@@ -43,6 +44,7 @@ export function loadAppsheetConfig(env: NodeJS.ProcessEnv = readAppsheetEnv()): 
 
   return {
     appId,
+    appName: cleanEnvValue(env.APPSHEET_APP_NAME),
     accessKey,
     regionHost: cleanEnvValue(env.APPSHEET_REGION_HOST) || 'www.appsheet.com',
     locale: cleanEnvValue(env.APPSHEET_LOCALE) || 'vi-VN',
