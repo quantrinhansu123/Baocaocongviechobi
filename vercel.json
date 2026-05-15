@@ -1,0 +1,12 @@
+{
+  "rewrites": [
+    {
+      "source": "/api/appsheet/:path*",
+      "destination": "/api/appsheet?path=:path*"
+    },
+    {
+      "source": "/(.*)",
+      "destination": "/index.html"
+    }
+  ]
+}
