@@ -21,6 +21,7 @@ import {
 } from '@ant-design/icons';
 
 const { Title, Text } = Typography;
+const AntCard = Card as React.ComponentType<React.ComponentProps<typeof Card>>;
 
 // --- DỮ LIỆU GIẢ LẬP LỊCH BÁO CÁO (Sát đặc tả) ---
 const REPORT_SCHEDULE = [
@@ -115,7 +116,7 @@ const ReportCalendar: React.FC = () => {
       <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
 
         {/* CỘT TRÁI (Chiếm 2 phần): BỘ LỊCH CHÍNH */}
-        <Card className="xl:col-span-2 shadow-sm rounded-xl overflow-hidden" styles={{ body: { padding: '12px' } }}>
+        <AntCard className="xl:col-span-2 shadow-sm rounded-xl overflow-hidden" styles={{ body: { padding: '12px' } }}>
           <Calendar
             fullscreen={true}
             cellRender={dateCellRender}
@@ -133,11 +134,11 @@ const ReportCalendar: React.FC = () => {
               );
             }}
           />
-        </Card>
+        </AntCard>
 
         {/* CỘT PHẢI (Chiếm 1 phần): CHI TIẾT NHẮC NHỞ */}
         <div className="space-y-6">
-          <Card
+          <AntCard
             title={
               <div className="flex justify-between items-center w-full">
                 <span>🔔 Nhắc hẹn: Ngày {selectedValue.date()}</span>
@@ -191,7 +192,7 @@ const ReportCalendar: React.FC = () => {
                 <Text type="secondary">Không có lịch báo cáo nào trong ngày này.</Text>
               </div>
             )}
-          </Card>
+          </AntCard>
 
           {/* <Alert
             message="Ghi chú hệ thống"

@@ -5,6 +5,7 @@ import {
   Typography,
   Button,
   Space,
+  Badge,
   Tag,
   Input,
   Switch,
@@ -25,6 +26,7 @@ import {
 } from '@ant-design/icons';
 
 const { Title, Text } = Typography;
+const AntCard = Card as React.ComponentType<React.ComponentProps<typeof Card>>;
 
 // --- MOCK DATA ĐỘC LẬP (Không phụ thuộc file ngoài) ---
 const MOCK_USERS = [
@@ -221,7 +223,7 @@ const AdminView: React.FC = () => {
         </div>
       </div>
 
-      <Card className="shadow-sm rounded-xl overflow-hidden border-gray-200" styles={{ body: { padding: 0 } }}>
+      <AntCard className="shadow-sm rounded-xl overflow-hidden border-gray-200" styles={{ body: { padding: 0 } }}>
         <Tabs
           tabPosition="left"
           defaultActiveKey="folders"
@@ -230,7 +232,7 @@ const AdminView: React.FC = () => {
           // Custom CSS nhẹ để tab bên trái trông rộng rãi và chuyên nghiệp hơn
           tabBarStyle={{ width: 250, backgroundColor: '#fff', paddingTop: 16 }}
         />
-      </Card>
+      </AntCard>
     </div>
   );
 };

@@ -339,7 +339,7 @@ const TaskView: React.FC = () => {
       const rows: TableRow[] = [];
       if (scope.kind === 'dept') {
         const meta = findDeptMeta(scope.deptKey);
-        const bucket = tasksByDept[scope.deptKey] ?? {};
+        const bucket: Record<string, TaskRecord> = tasksByDept[scope.deptKey] ?? {};
         const label = meta?.deptName ?? scope.deptKey;
         Object.entries(bucket).forEach(([taskKey, t]) => {
           rows.push({
@@ -363,7 +363,7 @@ const TaskView: React.FC = () => {
       block.depts.forEach(dept => {
         const meta = findDeptMeta(dept.key);
         const label = meta?.deptName ?? dept.name;
-        const bucket = tasksByDept[dept.key] ?? {};
+        const bucket: Record<string, TaskRecord> = tasksByDept[dept.key] ?? {};
         Object.entries(bucket).forEach(([taskKey, t]) => {
           rows.push({
             key: taskKey,
@@ -438,7 +438,7 @@ const TaskView: React.FC = () => {
           return;
         }
 
-        const existing = Object.values(tasksByDept[dk] ?? {});
+        const existing = Object.values((tasksByDept[dk] ?? {}) as Record<string, TaskRecord>);
         const nextStt = existing.length ? Math.max(...existing.map(t => t.stt)) + 1 : 1;
 
         setCreatingTask(true);

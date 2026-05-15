@@ -3,6 +3,7 @@ import { Typography, Alert, Space, Tag, Table, Card } from 'antd';
 import { WarningOutlined, ClockCircleOutlined, FireOutlined } from '@ant-design/icons';
 
 const { Title, Text } = Typography;
+const AntCard = Card as React.ComponentType<React.ComponentProps<typeof Card>>;
 
 // --- MOCK DATA CHUẨN ĐẶC TẢ ---
 const OVERDUE_TASKS = [
@@ -93,7 +94,7 @@ const ExecutiveView: React.FC = () => {
         <div className="lg:col-span-2 space-y-6">
 
           {/* SECTION 1: VIỆC QUÁ HẠN */}
-          <Card
+          <AntCard
             title={<span className="text-red-600 text-lg"><ClockCircleOutlined className="mr-2" />🔴 VIỆC QUÁ HẠN CẦN XỬ LÝ</span>}
             className="shadow-sm border-t-4 border-t-red-500 rounded-lg"
             styles={{ body: { padding: 0 } }}
@@ -117,10 +118,10 @@ const ExecutiveView: React.FC = () => {
                 </div>
               ))}
             </div>
-          </Card>
+          </AntCard>
 
           {/* SECTION 2: VIỆC QUAN TRỌNG */}
-          <Card
+          <AntCard
             title={<span className="text-orange-600 text-lg"><FireOutlined className="mr-2" />⭐ VIỆC QUAN TRỌNG (MỨC 3-4)</span>}
             className="shadow-sm border-t-4 border-t-orange-400 rounded-lg"
             styles={{ body: { padding: 0 } }}
@@ -144,7 +145,7 @@ const ExecutiveView: React.FC = () => {
                 </div>
               ))}
             </div>
-          </Card>
+          </AntCard>
 
         </div>
 
@@ -152,7 +153,7 @@ const ExecutiveView: React.FC = () => {
         <div className="lg:col-span-1">
 
           {/* SECTION 3: CẢNH BÁO */}
-          <Card
+          <AntCard
             title={<span className="text-yellow-600 text-lg"><WarningOutlined className="mr-2" />⚠️ CẢNH BÁO HỆ THỐNG</span>}
             className="shadow-sm border border-yellow-200 bg-yellow-50 h-full rounded-lg"
             styles={{ body: { padding: '16px' } }}
@@ -168,7 +169,7 @@ const ExecutiveView: React.FC = () => {
                 />
               ))}
             </Space>
-          </Card>
+          </AntCard>
 
         </div>
       </div>
