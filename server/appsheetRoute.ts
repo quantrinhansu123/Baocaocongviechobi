@@ -10,6 +10,16 @@ function sendJson(res: ServerResponse, status: number, payload: unknown) {
   res.end(JSON.stringify(payload));
 }
 
+function sendNoContent(res: ServerResponse) {
+  res.statusCode = 204;
+  res.end();
+}
+
+function getQueryValue(req: IncomingMessage, key: string): string | undefined {
+  const value = new URL(req.url ?? '/', 'http://localhost').searchParams.get(key)?.trim();
+  return value || undefined;
+}
+
 async function readJsonBody(req: IncomingMessage): Promise<JsonRecord> {
   const chunks: Buffer[] = [];
   for await (const chunk of req) {
@@ -38,6 +48,11 @@ export async function handleAppsheetRoute(req: IncomingMessage, res: ServerRespo
     return false;
   }
 
+  if (req.method === 'OPTIONS') {
+    sendNoContent(res);
+    return true;
+  }
+
   if (req.method === 'GET' && pathname === '/api/appsheet/status') {
     if (!isAppsheetConfigured()) {
       sendJson(res, 503, {
@@ -64,6 +79,26 @@ export async function handleAppsheetRoute(req: IncomingMessage, res: ServerRespo
         configured: true,
         connected: false,
         message: error instanceof Error ? error.message : 'Không thể kết nối AppSheet API.',
+      });
+    }
+    return true;
+  }
+
+  if (req.method === 'GET' && pathname === '/api/appsheet/find') {
+    if (!isAppsheetConfigured()) {
+      sendJson(res, 503, { message: 'ChÆ°a cáº¥u hÃ¬nh AppSheet API.' });
+      return true;
+    }
+
+    const config = loadAppsheetConfig();
+    try {
+      const tableName = getQueryValue(req, 'table') ?? config.defaultTable;
+      const selector = getQueryValue(req, 'selector');
+      const result = await findAppsheetRows(config, tableName, { selector });
+      sendJson(res, 200, { table: tableName, rows: result.rows, raw: result.raw });
+    } catch (error) {
+      sendJson(res, 502, {
+        message: error instanceof Error ? error.message : 'Gá»i AppSheet API tháº¥t báº¡i.',
       });
     }
     return true;

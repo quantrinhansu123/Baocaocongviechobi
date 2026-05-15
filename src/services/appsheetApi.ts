@@ -32,11 +32,15 @@ export async function findAppsheetTasks(options?: {
   selector?: string;
   rows?: Record<string, unknown>[];
 }): Promise<AppsheetFindResponse> {
-  const response = await fetch('/api/appsheet/find', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(options ?? {}),
-  });
+  const params = new URLSearchParams();
+  if (options?.table) {
+    params.set('table', options.table);
+  }
+  if (options?.selector) {
+    params.set('selector', options.selector);
+  }
+
+  const response = await fetch(`/api/appsheet/find${params.size ? `?${params}` : ''}`);
 
   if (!response.ok) {
     const payload = await parseJson<{ message?: string }>(response);
