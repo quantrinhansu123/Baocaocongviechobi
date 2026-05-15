@@ -21,9 +21,30 @@ function parseRows(payload: unknown): Record<string, unknown>[] {
   return [];
 }
 
+async function fetchAppsheet(
+  appRef: string,
+  accessKey: string,
+  regionHost: string,
+  table: string,
+  locale: string,
+  timezone: string
+) {
+  const endpoint = `https://${regionHost}/api/v2/apps/${encodeURIComponent(appRef)}/tables/${encodeURIComponent(table)}/Action`;
+  const response = await fetch(endpoint, {
+    method: 'POST',
+    headers: {
+      ApplicationAccessKey: accessKey,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({ Action: 'Find', Properties: { Locale: locale, Timezone: timezone }, Rows: [] }),
+  });
+  return { response, text: await response.text(), appRef };
+}
+
 export default async function handler(_req: any, res: any) {
   try {
     const appId = clean(process.env.APPSHEET_APP_ID);
+    const appName = clean(process.env.APPSHEET_APP_NAME);
     const accessKey = clean(process.env.APPSHEET_ACCESS_KEY);
     if (!appId || !accessKey) {
       sendJson(res, 503, { configured: false, connected: false, message: 'Missing APPSHEET_APP_ID or APPSHEET_ACCESS_KEY.' });
@@ -34,21 +55,22 @@ export default async function handler(_req: any, res: any) {
     const regionHost = clean(process.env.APPSHEET_REGION_HOST) || 'www.appsheet.com';
     const locale = clean(process.env.APPSHEET_LOCALE) || 'vi-VN';
     const timezone = clean(process.env.APPSHEET_TIMEZONE) || 'SE Asia Standard Time';
-    const endpoint = `https://${regionHost}/api/v2/apps/${encodeURIComponent(appId)}/tables/${encodeURIComponent(table)}/Action`;
-    const response = await fetch(endpoint, {
-      method: 'POST',
-      headers: {
-        ApplicationAccessKey: accessKey,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({ Action: 'Find', Properties: { Locale: locale, Timezone: timezone }, Rows: [] }),
-    });
-    const text = await response.text();
+    let { response, text, appRef } = await fetchAppsheet(appId, accessKey, regionHost, table, locale, timezone);
+    if (!response.ok && appName && appName !== appId) {
+      const fallback = await fetchAppsheet(appName, accessKey, regionHost, table, locale, timezone);
+      if (fallback.response.ok || !text) {
+        response = fallback.response;
+        text = fallback.text;
+        appRef = fallback.appRef;
+      }
+    }
+
     if (!response.ok) {
       sendJson(res, 502, {
         configured: true,
         connected: false,
         message: text || `AppSheet returned HTTP ${response.status}.`,
+        appRef,
       });
       return;
     }
@@ -58,7 +80,8 @@ export default async function handler(_req: any, res: any) {
       configured: true,
       connected: true,
       appId,
-      appName: clean(process.env.APPSHEET_APP_NAME) ?? null,
+      appName: appName ?? null,
+      appRef,
       table,
       rowCount: parseRows(raw).length,
       deploymentId: clean(process.env.APPSHEET_DEPLOYMENT_ID) ?? null,
