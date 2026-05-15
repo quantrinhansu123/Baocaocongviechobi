@@ -3,7 +3,7 @@ import { handleAppsheetRoute, sendEndpointError } from './_shared';
 
 export default async function handler(req: IncomingMessage, res: ServerResponse) {
   try {
-    req.url = '/api/appsheet/edit';
+    req.url = '/api/appsheet/debug';
     await handleAppsheetRoute(req, res);
   } catch (error) {
     sendEndpointError(res, error);
