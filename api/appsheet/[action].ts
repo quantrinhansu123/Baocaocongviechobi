@@ -1,18 +1,17 @@
 import type { IncomingMessage, ServerResponse } from 'node:http';
-import { handleAppsheetRoute } from '../server/appsheetRoute';
+import { handleAppsheetRoute } from '../../server/appsheetRoute';
 
-function normalizeRewrittenUrl(req: IncomingMessage) {
+function normalizeDynamicActionUrl(req: IncomingMessage) {
   const url = new URL(req.url ?? '/api/appsheet', 'http://localhost');
-  const path = url.searchParams.get('path');
+  const action = url.searchParams.get('action');
 
-  if (!path) {
+  if (!action || url.pathname.startsWith('/api/appsheet/')) {
     return;
   }
 
-  url.searchParams.delete('path');
-  const suffix = path.startsWith('/') ? path : `/${path}`;
+  url.searchParams.delete('action');
   const query = url.searchParams.toString();
-  req.url = `/api/appsheet${suffix}${query ? `?${query}` : ''}`;
+  req.url = `/api/appsheet/${action}${query ? `?${query}` : ''}`;
 }
 
 function sendJson(res: ServerResponse, status: number, payload: unknown) {
@@ -23,7 +22,7 @@ function sendJson(res: ServerResponse, status: number, payload: unknown) {
 
 export default async function handler(req: IncomingMessage, res: ServerResponse) {
   try {
-    normalizeRewrittenUrl(req);
+    normalizeDynamicActionUrl(req);
 
     const handled = await handleAppsheetRoute(req, res);
     if (!handled) {
