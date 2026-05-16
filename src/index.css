@@ -68,3 +68,28 @@ body {
 ::-webkit-scrollbar-thumb:hover {
   background: #9ca3af;
 }
+
+.report-period-tabs .ant-tabs-tab-btn {
+  color: rgba(0, 0, 0, 0.55);
+}
+
+.report-period-tabs .ant-tabs-tab-active .ant-tabs-tab-btn {
+  color: #1e386b !important;
+}
+
+.report-period-tabs .ant-tabs-ink-bar {
+  background: #fa8c16 !important;
+  height: 3px !important;
+}
+
+.report-period-tabs--mobile .ant-tabs-nav {
+  margin-bottom: 0 !important;
+}
+
+.report-period-tabs--mobile .ant-tabs-tab {
+  padding: 12px 16px !important;
+}
+
+.safe-area-pb {
+  padding-bottom: env(safe-area-inset-bottom, 0);
+}

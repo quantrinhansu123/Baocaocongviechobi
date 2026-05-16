@@ -205,6 +205,7 @@ const ReportDetail: React.FC = () => {
         okText="Tạo công việc"
         cancelText="Hủy"
         okButtonProps={{ className: 'bg-ant-primary' }}
+        forceRender
       >
         <AntForm
           form={form}

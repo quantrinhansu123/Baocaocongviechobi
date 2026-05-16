@@ -72,6 +72,28 @@ export function getReportAppsheetTableName(): string {
   return REPORT_TABLE_NAME;
 }
 
+function ensureReportGroup(
+  groups: ReportGroupRecord[],
+  groupKeys: Set<string>,
+  blockKey: string,
+  label: string
+): string {
+  const existing = groups.find(group => group.blockKey === blockKey && group.label === label);
+  if (existing) {
+    return existing.groupKey;
+  }
+
+  const groupKey = `group-${blockKey}-${groups.length + 1}`;
+  groupKeys.add(groupKey);
+  groups.push({
+    groupKey,
+    blockKey,
+    label,
+    order: groups.filter(group => group.blockKey === blockKey).length + 1,
+  });
+  return groupKey;
+}
+
 export function mapAppsheetRowsToReportCatalog(rows: Record<string, unknown>[]): ReportCatalog {
   const reports: Record<string, ReportRecord> = {};
   const blocks: ReportBlockRecord[] = [];
@@ -87,7 +109,6 @@ export function mapAppsheetRowsToReportCatalog(rows: Record<string, unknown>[]):
     const rowMa = pickField(row, ['Mã', 'Ma', 'huybitvvt@gmail.com']);
     const loai = pickField(row, ['Loại báo cáo', 'Loai bao cao']);
     const name = pickField(row, ['Tên báo cáo', 'Ten bao cao']);
-    const blockKey = currentMa ? `bc-${currentMa}` : '';
 
     if (rowMa) {
       blockIndex += 1;
@@ -109,17 +130,10 @@ export function mapAppsheetRowsToReportCatalog(rows: Record<string, unknown>[]):
       }
     }
 
+    const reportBlockKey = `bc-${currentMa || blockIndex}`;
+
     if (!name && loai && currentMa) {
-      const nextGroupKey = `group-${blockKey}-${groups.length + 1}`;
-      if (!groupKeys.has(nextGroupKey)) {
-        groupKeys.add(nextGroupKey);
-        groups.push({
-          groupKey: nextGroupKey,
-          blockKey,
-          label: loai,
-          order: groups.filter(group => group.blockKey === blockKey).length + 1,
-        });
-      }
+      ensureReportGroup(groups, groupKeys, reportBlockKey, loai);
       return;
     }
 
@@ -133,13 +147,12 @@ export function mapAppsheetRowsToReportCatalog(rows: Record<string, unknown>[]):
     const ky = pickField(row, ['Kỳ báo cáo', 'Ky bao cao']);
     const ngay = pickField(row, ['Ngày báo cáo', 'Ngay bao cao']);
     const periodLabel = periodForKy(ky, ngay);
-    const reportBlockKey = `bc-${currentMa || blockIndex}`;
     const periodKey = `period-${reportBlockKey}-${periodLabel}`;
     const counterKey = `${reportBlockKey}-${periodLabel}`;
     const nextStt = (periodCounters.get(counterKey) ?? 0) + 1;
     periodCounters.set(counterKey, nextStt);
     const menuLabel = buildReportMenuLabel(rowMa, name) || name;
-    const matchedGroup = groups.find(group => group.blockKey === reportBlockKey && group.label === loai);
+    const groupKey = loai ? ensureReportGroup(groups, groupKeys, reportBlockKey, loai) : undefined;
 
     reports[key] = {
       key,
@@ -159,7 +172,7 @@ export function mapAppsheetRowsToReportCatalog(rows: Record<string, unknown>[]):
       blockLabel: currentBlockLabel || menuLabel || loai,
       periodKey,
       periodLabel,
-      groupKey: matchedGroup?.groupKey,
+      groupKey,
       sourceRow: { ...row },
     };
   });

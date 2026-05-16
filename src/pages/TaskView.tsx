@@ -1,6 +1,7 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useParams } from 'react-router-dom';
 import {
+  App as AntdApp,
   Typography,
   Tag,
   Select,
@@ -10,7 +11,6 @@ import {
   Form,
   Input,
   DatePicker,
-  message,
   Popconfirm,
 } from 'antd';
 import type { ColumnsType } from 'antd/es/table';
@@ -215,6 +215,7 @@ function renderDateCell(value: string) {
 }
 
 const TaskView: React.FC = () => {
+  const { message } = AntdApp.useApp();
   const { blockKey: blockKeyParam, deptKey: deptKeyParam } = useParams<{ blockKey?: string; deptKey?: string }>();
 
   const [tasksByDept, setTasksByDept] = useState<Record<string, Record<string, TaskRecord>>>(() =>
@@ -749,7 +750,8 @@ const TaskView: React.FC = () => {
         okText="Lưu"
         cancelText="Huỷ"
         confirmLoading={creatingTask}
-        destroyOnClose
+        destroyOnHidden
+        forceRender
       >
         <Form form={form} layout="vertical" className="mt-2">
           <Form.Item name="deptKey" label="Phòng ban" rules={[{ required: true, message: 'Chọn phòng ban' }]}>
@@ -815,7 +817,7 @@ const TaskView: React.FC = () => {
         okText="Lưu"
         cancelText="Huỷ"
         confirmLoading={savingTienDo}
-        destroyOnClose
+        destroyOnHidden
       >
         <div className="mt-2">
           <Text type="secondary" className="block mb-2">

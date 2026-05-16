@@ -26,9 +26,11 @@ import AdminView from './pages/AdminView';
 import WorkReportDetail from './pages/WorkReportDetail';
 import TaskView from './pages/TaskView';
 import logo from './img/logo.png';
-import { buildReportMenuItems, openKeysForReportId } from './data/reportNavigation';
+import { buildReportMenuItems, openKeysForBlockId, openKeysForGroupId, openKeysForReportId } from './data/reportNavigation';
 import { loadReportCatalog } from './services/reportCatalog';
 import type { ReportCatalog } from './types/report';
+import MobileBottomNav from './components/MobileBottomNav';
+import { MobileShellProvider } from './contexts/MobileShellContext';
 
 const { Content, Header, Sider } = Layout;
 
@@ -107,6 +109,24 @@ function reportIdFromLocation(pathname: string, search: string): string | null {
   return reportId?.trim() || null;
 }
 
+function groupKeyFromLocation(pathname: string, search: string): string | null {
+  if (pathname !== '/navigation') {
+    return null;
+  }
+
+  const groupKey = new URLSearchParams(search).get('g');
+  return groupKey?.trim() || null;
+}
+
+function blockKeyFromLocation(pathname: string, search: string): string | null {
+  if (pathname !== '/navigation') {
+    return null;
+  }
+
+  const blockKey = new URLSearchParams(search).get('b');
+  return blockKey?.trim() || null;
+}
+
 const MainLayout: React.FC = () => {
   const navigate = useNavigate();
   const location = useLocation();
@@ -140,6 +160,16 @@ const MainLayout: React.FC = () => {
     [location.pathname, location.search]
   );
 
+  const selectedGroupKey = useMemo(
+    () => groupKeyFromLocation(location.pathname, location.search),
+    [location.pathname, location.search]
+  );
+
+  const selectedBlockKey = useMemo(
+    () => blockKeyFromLocation(location.pathname, location.search),
+    [location.pathname, location.search]
+  );
+
   const menuItems: MenuProps['items'] = useMemo(
     () => [
       { key: '/', icon: <DashboardOutlined className="sidebar-nav-icon" />, label: 'ĐIỀU HÀNH CÔNG VIỆC' },
@@ -168,8 +198,15 @@ const MainLayout: React.FC = () => {
 
   const selectedMenuKeys = useMemo(() => {
     if (location.pathname === '/navigation') {
-      if (selectedReportId && reportCatalog.reports[selectedReportId]) {
-        return [`report-${selectedReportId}`];
+      const report = selectedReportId ? reportCatalog.reports[selectedReportId] : null;
+      if (report?.groupKey) {
+        return [report.groupKey];
+      }
+      if (selectedGroupKey && reportCatalog.groups.some(group => group.groupKey === selectedGroupKey)) {
+        return [selectedGroupKey];
+      }
+      if (selectedBlockKey && reportCatalog.blocks.some(block => block.blockKey === selectedBlockKey)) {
+        return [`block-reports-${selectedBlockKey}`];
       }
       return ['/navigation'];
     }
@@ -179,7 +216,7 @@ const MainLayout: React.FC = () => {
     }
     if (location.pathname === '/') return ['/'];
     return [];
-  }, [location.pathname, selectedReportId, reportCatalog.reports]);
+  }, [location.pathname, selectedReportId, selectedGroupKey, selectedBlockKey, reportCatalog]);
 
   useEffect(() => {
     const keysToEnsure: string[] = [];
@@ -189,7 +226,13 @@ const MainLayout: React.FC = () => {
     }
 
     if (location.pathname === '/navigation') {
-      keysToEnsure.push(...openKeysForReportId(selectedReportId, reportCatalog.reports));
+      if (selectedReportId) {
+        keysToEnsure.push(...openKeysForReportId(selectedReportId, reportCatalog.reports));
+      } else if (selectedGroupKey) {
+        keysToEnsure.push(...openKeysForGroupId(selectedGroupKey, reportCatalog));
+      } else if (selectedBlockKey) {
+        keysToEnsure.push(...openKeysForBlockId(selectedBlockKey, reportCatalog));
+      }
     }
 
     if (keysToEnsure.length === 0) {
@@ -197,7 +240,7 @@ const MainLayout: React.FC = () => {
     }
 
     setMenuOpenKeys(previousKeys => Array.from(new Set([...previousKeys, ...keysToEnsure])));
-  }, [location.pathname, location.search, selectedReportId, reportCatalog.reports]);
+  }, [location.pathname, location.search, selectedReportId, selectedGroupKey, selectedBlockKey, reportCatalog]);
 
   const handleMenuOpenChange: MenuProps['onOpenChange'] = keys => {
     setMenuOpenKeys(keys as string[]);
@@ -214,9 +257,14 @@ const MainLayout: React.FC = () => {
       setMobileMenuOpen(false);
       return;
     }
-    if (key.startsWith('report-')) {
-      const reportId = key.slice('report-'.length);
-      navigate(`/navigation?r=${encodeURIComponent(reportId)}`);
+    if (key.startsWith('block-reports-')) {
+      const blockKey = key.slice('block-reports-'.length);
+      navigate(`/navigation?b=${encodeURIComponent(blockKey)}`);
+      setMobileMenuOpen(false);
+      return;
+    }
+    if (key.startsWith('group-')) {
+      navigate(`/navigation?g=${encodeURIComponent(key)}`);
       setMobileMenuOpen(false);
       return;
     }
@@ -231,7 +279,10 @@ const MainLayout: React.FC = () => {
     { key: 'logout', label: 'Đăng xuất', danger: true },
   ];
 
+  const isReportRoute = location.pathname === '/navigation';
+
   return (
+    <MobileShellProvider openMenu={() => setMobileMenuOpen(true)}>
     <Layout style={{ minHeight: '100vh', display: 'flex', flexDirection: 'row' }}>
 
       {/* --- DESKTOP SIDER (Ẩn trên màn hình mobile) --- */}
@@ -269,7 +320,13 @@ const MainLayout: React.FC = () => {
 
       <Layout className="main flex flex-col min-w-0" style={{ flex: 1 }}>
         {/* --- COMMON HEADER --- */}
-        <Header className="bg-white p-0 flex items-center justify-between shadow-sm px-4 md:px-6 z-10 h-16 border-b border-gray-200">
+        <Header
+          className={`p-0 flex items-center justify-between shadow-sm px-4 md:px-6 z-10 h-16 border-b ${
+            isReportRoute
+              ? 'md:bg-white md:border-gray-200 bg-[#1E386B] border-transparent'
+              : 'bg-white border-gray-200'
+          }`}
+        >
 
           <div className="flex items-center">
             {/* Desktop: Nút gập Sider */}
@@ -283,15 +340,30 @@ const MainLayout: React.FC = () => {
             {/* Mobile: Nút Hamburger + Logo gốc */}
             <div className="flex md:hidden items-center">
               <button
-                className="mr-3 text-xl text-[#1E386B] p-1.5 hover:bg-gray-100 rounded-md transition-colors flex items-center"
+                type="button"
+                aria-label="Mở menu"
+                className={`mr-3 flex items-center justify-center w-10 h-10 rounded-lg transition-all shrink-0 ${
+                  isReportRoute
+                    ? 'bg-white text-[#1677ff] shadow-md hover:bg-blue-50 ring-2 ring-[#69b1ff]/60'
+                    : 'bg-[#e6f4ff] text-[#1677ff] border-2 border-[#91caff] hover:bg-[#bae0ff] shadow-sm'
+                }`}
                 onClick={() => setMobileMenuOpen(true)}
               >
-                <MenuOutlined />
+                <MenuOutlined className="text-[22px] font-bold" />
               </button>
-              <div className="custom-navbar-brand cursor-pointer flex items-center" onClick={() => navigate('/')}>
+              <div
+                className="custom-navbar-brand cursor-pointer flex items-center"
+                onClick={() => navigate(isReportRoute ? '/navigation' : '/')}
+              >
                 <img src={logo} alt="Hobiwood Logo" className="h-8 w-auto object-contain mr-2" />
                 <div className="leading-tight">
-                  <p className="font-bold text-[#1E386B] text-base m-0 tracking-wide">HOBI WOOD</p>
+                  <p
+                    className={`font-bold text-base m-0 tracking-wide ${
+                      isReportRoute ? 'text-white' : 'text-[#1E386B]'
+                    }`}
+                  >
+                    HoBi Wood
+                  </p>
                 </div>
               </div>
             </div>
@@ -299,12 +371,20 @@ const MainLayout: React.FC = () => {
 
           <Space size="middle" className="md:size-large">
             <Badge count={3} dot offset={[-2, 2]} color="#F38320">
-              <div className="h-9 w-9 flex items-center justify-center rounded-full hover:bg-gray-100 cursor-pointer transition-colors text-gray-700">
-                <BellOutlined className="text-xl text-[#1677ff]" />
+              <div
+                className={`h-9 w-9 flex items-center justify-center rounded-full cursor-pointer transition-colors ${
+                  isReportRoute ? 'hover:bg-white/10 text-white' : 'hover:bg-gray-100 text-gray-700'
+                }`}
+              >
+                <BellOutlined className={`text-xl ${isReportRoute ? 'text-white' : 'text-[#1677ff]'}`} />
               </div>
             </Badge>
             <Dropdown menu={{ items: userMenuItems }} placement="bottomRight" trigger={['click']}>
-              <Space className="cursor-pointer hover:bg-gray-100 p-1 md:px-2 rounded-lg transition-colors">
+              <Space
+                className={`cursor-pointer p-1 md:px-2 rounded-lg transition-colors ${
+                  isReportRoute ? 'hover:bg-white/10' : 'hover:bg-gray-100'
+                }`}
+              >
                 <Avatar icon={<UserOutlined />} className="bg-[#1E386B]" />
                 <div className="hidden md:block">
                   <div className="text-sm font-bold leading-none text-[rgba(0,0,0,0.88)]">Anh Tuyển</div>
@@ -349,7 +429,12 @@ const MainLayout: React.FC = () => {
         </Drawer>
 
         {/* --- CONTENT AREA --- */}
-        <Content className="p-4 md:p-6 bg-gray-50 overflow-auto flex-1 flex flex-col relative" style={{ minHeight: 280 }}>
+        <Content
+          className={`overflow-auto flex-1 flex flex-col relative pb-16 md:pb-0 ${
+            isReportRoute ? 'p-0 md:p-6 bg-[#eef1f6] md:bg-gray-50' : 'p-4 md:p-6 bg-gray-50'
+          }`}
+          style={{ minHeight: 280 }}
+        >
           <Routes>
             <Route path="/" element={<Dashboard />} />
             <Route path="/navigation" element={<NavigationHub />} />
@@ -365,8 +450,10 @@ const MainLayout: React.FC = () => {
             <Route path="/work-report-detail" element={<WorkReportDetail />} />
           </Routes>
         </Content>
+        <MobileBottomNav />
       </Layout>
     </Layout>
+    </MobileShellProvider>
   );
 };
 

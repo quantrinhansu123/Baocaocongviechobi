@@ -1,6 +1,6 @@
 import type { IncomingMessage, ServerResponse } from 'node:http';
 import { addAppsheetRows, deleteAppsheetRows, editAppsheetRows, findAppsheetRows } from './appsheetClient';
-import { isAppsheetConfigured, loadAppsheetConfig } from './appsheetConfig';
+import { describeAppsheetConfiguration, isAppsheetConfigured, loadAppsheetConfig } from './appsheetConfig';
 
 type JsonRecord = Record<string, unknown>;
 
@@ -54,11 +54,12 @@ export async function handleAppsheetRoute(req: IncomingMessage, res: ServerRespo
   }
 
   if (req.method === 'GET' && pathname === '/api/appsheet/status') {
-    if (!isAppsheetConfigured()) {
+    const configError = describeAppsheetConfiguration();
+    if (configError) {
       sendJson(res, 503, {
         configured: false,
         connected: false,
-        message: 'Chưa cấu hình AppSheet API.',
+        message: configError,
       });
       return true;
     }
@@ -86,20 +87,22 @@ export async function handleAppsheetRoute(req: IncomingMessage, res: ServerRespo
   }
 
   if (req.method === 'GET' && pathname === '/api/appsheet/find') {
-    if (!isAppsheetConfigured()) {
-      sendJson(res, 503, { message: 'ChÆ°a cáº¥u hÃ¬nh AppSheet API.' });
+    const configError = describeAppsheetConfiguration();
+    if (configError) {
+      sendJson(res, 503, { message: configError });
       return true;
     }
 
     const config = loadAppsheetConfig();
+    const tableName = getQueryValue(req, 'table') ?? config.defaultTable;
     try {
-      const tableName = getQueryValue(req, 'table') ?? config.defaultTable;
       const selector = getQueryValue(req, 'selector');
       const result = await findAppsheetRows(config, tableName, { selector });
       sendJson(res, 200, { table: tableName, rows: result.rows, raw: result.raw });
     } catch (error) {
       sendJson(res, 502, {
-        message: error instanceof Error ? error.message : 'Gá»i AppSheet API tháº¥t báº¡i.',
+        table: tableName,
+        message: error instanceof Error ? error.message : 'Gọi AppSheet API thất bại.',
       });
     }
     return true;
@@ -111,7 +114,9 @@ export async function handleAppsheetRoute(req: IncomingMessage, res: ServerRespo
   }
 
   if (!isAppsheetConfigured()) {
-    sendJson(res, 503, { message: 'Chưa cấu hình AppSheet API.' });
+    sendJson(res, 503, {
+      message: describeAppsheetConfiguration() ?? 'Chưa cấu hình AppSheet API.',
+    });
     return true;
   }
 

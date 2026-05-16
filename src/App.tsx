@@ -1,5 +1,5 @@
 import React from 'react';
-import { ConfigProvider } from 'antd';
+import { App as AntdApp, ConfigProvider } from 'antd';
 import { BrowserRouter } from 'react-router-dom';
 import MainLayout from './MainLayout';
 
@@ -31,9 +31,11 @@ export default function App() {
         },
       }}
     >
-      <BrowserRouter>
-        <MainLayout />
-      </BrowserRouter>
+      <AntdApp>
+        <BrowserRouter>
+          <MainLayout />
+        </BrowserRouter>
+      </AntdApp>
     </ConfigProvider>
   );
 }

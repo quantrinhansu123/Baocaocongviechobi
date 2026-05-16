@@ -14,8 +14,7 @@ export type AppsheetConfig = {
 };
 
 function readAppsheetEnv(): NodeJS.ProcessEnv {
-  dotenv.config({ path: '.env.local', override: true });
-  dotenv.config({ override: true });
+  dotenv.config({ path: '.env', override: true });
   return process.env;
 }
 
@@ -34,12 +33,34 @@ function cleanEnvValue(value: string | undefined): string | undefined {
   return trimmed;
 }
 
+function isPlaceholderAccessKey(accessKey: string | undefined): boolean {
+  if (!accessKey) {
+    return true;
+  }
+
+  const normalized = accessKey.trim().toUpperCase();
+  return (
+    normalized === 'MY_APPSHEET_ACCESS_KEY' ||
+    normalized === 'DAN_APPLICATION_ACCESS_KEY_THAT_DAY_TU_APPSHEET' ||
+    normalized.startsWith('YOUR_') ||
+    normalized.includes('REPLACE') ||
+    normalized.includes('CHANGE_ME') ||
+    normalized.includes('THAT_DAY_TU_APPSHEET')
+  );
+}
+
 export function loadAppsheetConfig(env: NodeJS.ProcessEnv = readAppsheetEnv()): AppsheetConfig {
   const appId = cleanEnvValue(env.APPSHEET_APP_ID);
   const accessKey = cleanEnvValue(env.APPSHEET_ACCESS_KEY);
 
   if (!appId || !accessKey) {
     throw new Error('Thiếu APPSHEET_APP_ID hoặc APPSHEET_ACCESS_KEY trong biến môi trường.');
+  }
+
+  if (isPlaceholderAccessKey(accessKey)) {
+    throw new Error(
+      'APPSHEET_ACCESS_KEY đang là giá trị mẫu. Dán Application Access Key thật vào file .env (Account → My account → Application access).'
+    );
   }
 
   return {
@@ -54,6 +75,21 @@ export function loadAppsheetConfig(env: NodeJS.ProcessEnv = readAppsheetEnv()): 
   };
 }
 
+export function describeAppsheetConfiguration(env: NodeJS.ProcessEnv = readAppsheetEnv()): string | null {
+  const appId = cleanEnvValue(env.APPSHEET_APP_ID);
+  const accessKey = cleanEnvValue(env.APPSHEET_ACCESS_KEY);
+
+  if (!appId || !accessKey) {
+    return 'Thiếu APPSHEET_APP_ID hoặc APPSHEET_ACCESS_KEY. Thêm vào file .env ở thư mục gốc dự án (xem .env.example).';
+  }
+
+  if (isPlaceholderAccessKey(accessKey)) {
+    return 'APPSHEET_ACCESS_KEY đang là giá trị mẫu. Vào AppSheet → Account → Application access, tạo key và dán vào .env rồi khởi động lại npm run dev.';
+  }
+
+  return null;
+}
+
 export function isAppsheetConfigured(env: NodeJS.ProcessEnv = readAppsheetEnv()): boolean {
-  return Boolean(cleanEnvValue(env.APPSHEET_APP_ID) && cleanEnvValue(env.APPSHEET_ACCESS_KEY));
+  return describeAppsheetConfiguration(env) === null;
 }
