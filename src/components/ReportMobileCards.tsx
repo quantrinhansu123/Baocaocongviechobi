@@ -2,6 +2,7 @@ import React from 'react';
 import { Avatar, Button, Tag } from 'antd';
 import { ArrowRightOutlined, EyeOutlined, GoogleOutlined } from '@ant-design/icons';
 import type { ReportRecord } from '../types/report';
+import { formatAppsheetDate } from '../utils/taskDate';
 
 function initials(name: string): string {
   const trimmed = name.trim();
@@ -73,9 +74,19 @@ const ReportMobileCards: React.FC<ReportMobileCardsProps> = ({ rows, selectedKey
               </div>
             </div>
 
-            {report.noidung ? (
-              <p className="text-[13px] text-gray-600 leading-relaxed m-0 mb-4">{report.noidung}</p>
-            ) : null}
+            {(report.noidung || report.ngayTaoBaoCao) && (
+              <div className="mb-4">
+                {report.noidung ? (
+                  <p className="text-[13px] text-gray-600 leading-relaxed m-0 mb-2">{report.noidung}</p>
+                ) : null}
+                {report.ngayTaoBaoCao ? (
+                  <p className="text-[12px] text-gray-500 m-0">
+                    <span className="font-semibold text-gray-600">Ngày tạo báo cáo:</span>{' '}
+                    {formatAppsheetDate(report.ngayTaoBaoCao)}
+                  </p>
+                ) : null}
+              </div>
+            )}
 
             <div className="flex items-center justify-between gap-2 mb-4 px-1">
               <div className="flex flex-col items-center min-w-0 flex-1">

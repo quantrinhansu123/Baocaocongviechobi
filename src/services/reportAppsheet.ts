@@ -1,4 +1,5 @@
 import type { ReportBlockRecord, ReportCatalog, ReportGroupRecord, ReportRecord } from '../types/report';
+import { formatAppsheetDate } from '../utils/taskDate';
 
 const REPORT_TABLE_NAME = 'BC định kỳ';
 
@@ -13,6 +14,48 @@ function pickField(row: Record<string, unknown>, keys: string[]): string {
       return text;
     }
   }
+  return '';
+}
+
+function normalizeColumnKey(key: string): string {
+  return key
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase()
+    .trim();
+}
+
+function formatRowDateValue(value: unknown): string {
+  if (value === null || value === undefined) {
+    return '';
+  }
+  return formatAppsheetDate(
+    value instanceof Date ? value : typeof value === 'number' ? value : String(value)
+  );
+}
+
+function pickDateField(row: Record<string, unknown>, keys: string[]): string {
+  for (const key of keys) {
+    const formatted = formatRowDateValue(row[key]);
+    if (formatted) {
+      return formatted;
+    }
+  }
+
+  for (const [key, value] of Object.entries(row)) {
+    const normalized = normalizeColumnKey(key);
+    if (
+      normalized.includes('ngay update link') ||
+      normalized.includes('update link') ||
+      normalized === 'ngay cap nhat link'
+    ) {
+      const formatted = formatRowDateValue(value);
+      if (formatted) {
+        return formatted;
+      }
+    }
+  }
+
   return '';
 }
 
@@ -34,8 +77,38 @@ function parseAppsheetLink(value: string): string {
   return trimmed;
 }
 
+/** Chuẩn hóa "I BC ..." → "I. BC ..." (kể cả khi La Mã nằm trong một chuỗi duy nhất, không có cột Mã riêng). Idempotent. */
+export function formatBlockLabelRomanDot(label: string): string {
+  const t = label.trim();
+  if (!t) {
+    return label;
+  }
+  if (/^[IVXLCDM]+\.\s/i.test(t)) {
+    return t;
+  }
+  return t.replace(/^([IVXLCDM]+)(\s+)/i, '$1.$2');
+}
+
+/** Thêm dấu . sau mã La Mã (I, II, …) khi Mã là cột riêng */
+function formatMaWithRomanDot(ma: string): string {
+  const t = ma.trim();
+  if (!t) {
+    return '';
+  }
+  if (/^[IVXLCDM]+\.$/i.test(t)) {
+    return t;
+  }
+  if (/^[IVXLCDM]+$/i.test(t)) {
+    return `${t}.`;
+  }
+  return t;
+}
+
 function buildReportMenuLabel(ma: string, name: string): string {
-  return [ma, name].map(value => value.trim()).filter(Boolean).join(' ');
+  const maPart = formatMaWithRomanDot(ma);
+  const namePart = name.trim();
+  const raw = [maPart, namePart].filter(Boolean).join(' ');
+  return formatBlockLabelRomanDot(raw);
 }
 
 function periodForKy(ky: string, ngay: string): string {
@@ -124,7 +197,7 @@ export function mapAppsheetRowsToReportCatalog(rows: Record<string, unknown>[]):
         blocks.push({
           blockKey: nextBlockKey,
           ma: rowMa,
-          blockLabel: sectionLabel || rowMa,
+          blockLabel: formatBlockLabelRomanDot(sectionLabel || rowMa.trim()),
           order: blockIndex,
         });
       }
@@ -146,6 +219,15 @@ export function mapAppsheetRowsToReportCatalog(rows: Record<string, unknown>[]):
       `report-${pickField(row, ['_RowNumber']) || String(index + 1)}`;
     const ky = pickField(row, ['Kỳ báo cáo', 'Ky bao cao']);
     const ngay = pickField(row, ['Ngày báo cáo', 'Ngay bao cao']);
+    const ngayTaoBaoCao = pickDateField(row, [
+      'Ngày update link',
+      'Ngay update link',
+      'Ngày Update Link',
+      'Ngay Update Link',
+      'Ngày Update link',
+      'Ngày cập nhật link',
+      'Ngay cap nhat link',
+    ]);
     const periodLabel = periodForKy(ky, ngay);
     const periodKey = `period-${reportBlockKey}-${periodLabel}`;
     const counterKey = `${reportBlockKey}-${periodLabel}`;
@@ -161,6 +243,7 @@ export function mapAppsheetRowsToReportCatalog(rows: Record<string, unknown>[]):
       name,
       menuLabel,
       noidung: pickField(row, ['Nội dung', 'Noi dung']),
+      ngayTaoBaoCao,
       ngay: ngay || ky,
       ky: ky || ngay,
       nguoiGui: pickField(row, ['Người gửi báo cáo', 'Nguoi gui bao cao']),
@@ -169,7 +252,7 @@ export function mapAppsheetRowsToReportCatalog(rows: Record<string, unknown>[]):
       link: parseAppsheetLink(pickField(row, ['Link báo cáo', 'Link bao cao'])),
       loaiBaoCao: loai || currentBlockLabel,
       blockKey: reportBlockKey,
-      blockLabel: currentBlockLabel || menuLabel || loai,
+      blockLabel: formatBlockLabelRomanDot(currentBlockLabel || menuLabel || loai),
       periodKey,
       periodLabel,
       groupKey,

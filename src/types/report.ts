@@ -25,6 +25,8 @@ export type ReportRecord = {
   name: string;
   menuLabel: string;
   noidung: string;
+  /** Ngày tạo báo cáo — map từ cột AppSheet "Ngày update link" */
+  ngayTaoBaoCao: string;
   ngay: string;
   ky: string;
   nguoiGui: string;

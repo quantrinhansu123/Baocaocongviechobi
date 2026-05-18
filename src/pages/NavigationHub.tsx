@@ -15,6 +15,7 @@ import { listPeriodsForBlock, listPeriodsForGroup } from '../data/reportNavigati
 import type { ReportCatalog, ReportGroupRecord, ReportRecord } from '../types/report';
 import ReportMobileCards from '../components/ReportMobileCards';
 import { useMobileShell } from '../contexts/MobileShellContext';
+import { formatAppsheetDate } from '../utils/taskDate';
 
 const { Text } = Typography;
 
@@ -54,7 +55,7 @@ function senderInitials(name: string): string {
 }
 
 function breadcrumbBlockLabel(blockLabel: string): string {
-  return blockLabel.replace(/^\s*[IVXLCDM]+\s+/i, '').trim() || blockLabel;
+  return blockLabel.replace(/^\s*[IVXLCDM]+\.?\s+/i, '').trim() || blockLabel;
 }
 
 function stripLeadingIndex(label: string): string {
@@ -78,10 +79,10 @@ function ReportTable({ rows, selectedKey, onRowClick }: ReportTableProps) {
 
   return (
     <div className="overflow-x-auto">
-      <table className="w-full text-sm border-collapse min-w-[900px]">
+      <table className="w-full text-sm border-collapse min-w-[1000px]">
         <thead>
           <tr className="bg-gray-50 text-gray-600 border-b border-gray-200">
-            {['#', 'TÊN BÁO CÁO', 'NỘI DUNG', 'NGÀY GỬI', 'KỲ', 'NGƯỜI GỬI', 'NGƯỜI NHẬN', ''].map(
+            {['#', 'TÊN BÁO CÁO', 'NỘI DUNG', 'NGÀY TẠO BÁO CÁO', 'NGÀY GỬI', 'KỲ', 'NGƯỜI GỬI', 'NGƯỜI NHẬN', ''].map(
               header => (
                 <th
                   key={header || 'link'}
@@ -110,6 +111,15 @@ function ReportTable({ rows, selectedKey, onRowClick }: ReportTableProps) {
                 </td>
                 <td className="px-4 py-4 text-gray-600 align-top min-w-[220px] max-w-[360px]">
                   <span className="leading-relaxed break-words whitespace-normal">{report.noidung || '—'}</span>
+                </td>
+                <td className="px-4 py-4 align-top text-xs whitespace-nowrap min-w-[120px]">
+                  {report.ngayTaoBaoCao ? (
+                    <Tag className="m-0 rounded-md border-0 bg-emerald-50 text-emerald-800 px-2 py-0.5 text-xs font-medium">
+                      {formatAppsheetDate(report.ngayTaoBaoCao)}
+                    </Tag>
+                  ) : (
+                    <Text type="secondary">—</Text>
+                  )}
                 </td>
                 <td className="px-4 py-4 align-top">
                   {report.ngay ? (
@@ -271,7 +281,15 @@ const NavigationHub: React.FC = () => {
     }
 
     return periodReports.filter(report => {
-      const haystack = [report.name, report.noidung, report.nguoiGui, report.nguoiNhan, report.ky, report.ngay]
+      const haystack = [
+        report.name,
+        report.noidung,
+        report.ngayTaoBaoCao,
+        report.nguoiGui,
+        report.nguoiNhan,
+        report.ky,
+        report.ngay,
+      ]
         .join(' ')
         .toLowerCase();
       return haystack.includes(query);

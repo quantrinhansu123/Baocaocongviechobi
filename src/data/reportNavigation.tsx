@@ -1,5 +1,6 @@
 import type { MenuProps } from 'antd';
 import type { ReportCatalog, ReportRecord } from '../types/report';
+import { formatBlockLabelRomanDot } from '../services/reportAppsheet';
 
 export function openKeysForReportId(
   reportId: string | null | undefined,
@@ -78,14 +79,14 @@ export function buildReportMenuItems(catalog: ReportCatalog): NonNullable<MenuPr
       if (groupItems.length === 0) {
         return {
           key: block.blockKey,
-          label: block.blockLabel,
+          label: formatBlockLabelRomanDot(block.blockLabel),
           disabled: true,
         };
       }
 
       return {
         key: block.blockKey,
-        label: block.blockLabel,
+        label: formatBlockLabelRomanDot(block.blockLabel),
         children: groupItems,
       };
     });
