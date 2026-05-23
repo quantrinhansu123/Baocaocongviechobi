@@ -1,6 +1,6 @@
 import dayjs from 'dayjs';
 import React, { useEffect, useMemo, useState } from 'react';
-import { App as AntdApp, Typography, Tag, Select, Spin, Tabs, Input, Avatar, Button } from 'antd';
+import { App as AntdApp, Typography, Tag, Select, Spin, Tabs, Input, Avatar, Button, Modal, Form, DatePicker } from 'antd';
 import {
   FileTextOutlined,
   LinkOutlined,
@@ -8,14 +8,21 @@ import {
   LeftOutlined,
   RightOutlined,
   MenuOutlined,
+  PlusOutlined,
 } from '@ant-design/icons';
 import { useNavigate, useSearchParams } from 'react-router-dom';
+import { addAppsheetTask } from '../services/appsheetApi';
 import { loadReportCatalog } from '../services/reportCatalog';
 import { listPeriodsForBlock, listPeriodsForGroup } from '../data/reportNavigation';
+import {
+  buildAppsheetReportRow,
+  getReportAppsheetTableName,
+  kyLabelFromPeriodLabel,
+} from '../services/reportAppsheet';
 import type { ReportCatalog, ReportGroupRecord, ReportRecord } from '../types/report';
 import ReportMobileCards from '../components/ReportMobileCards';
 import { useMobileShell } from '../contexts/MobileShellContext';
-import { formatAppsheetDate } from '../utils/taskDate';
+import { formatAppsheetDate, formatTaskDate, normalizeDisplayDate } from '../utils/taskDate';
 
 const { Text } = Typography;
 
@@ -66,13 +73,15 @@ type ReportTableProps = {
   rows: ReportRecord[];
   selectedKey?: string;
   onRowClick: (report: ReportRecord) => void;
+  emptyExtra?: React.ReactNode;
 };
 
-function ReportTable({ rows, selectedKey, onRowClick }: ReportTableProps) {
+function ReportTable({ rows, selectedKey, onRowClick, emptyExtra }: ReportTableProps) {
   if (rows.length === 0) {
     return (
-      <div className="px-6 py-16 text-center text-gray-400 text-sm">
-        Chưa có báo cáo trong kỳ này.
+      <div className="px-6 py-16 text-center text-gray-400 text-sm space-y-4">
+        <p className="m-0">Chưa có báo cáo trong kỳ này.</p>
+        {emptyExtra}
       </div>
     );
   }
@@ -115,7 +124,7 @@ function ReportTable({ rows, selectedKey, onRowClick }: ReportTableProps) {
                 <td className="px-4 py-4 align-top text-xs whitespace-nowrap min-w-[120px]">
                   {report.ngayTaoBaoCao ? (
                     <Tag className="m-0 rounded-md border-0 bg-emerald-50 text-emerald-800 px-2 py-0.5 text-xs font-medium">
-                      {formatAppsheetDate(report.ngayTaoBaoCao)}
+                      {normalizeDisplayDate(report.ngayTaoBaoCao)}
                     </Tag>
                   ) : (
                     <Text type="secondary">—</Text>
@@ -124,7 +133,7 @@ function ReportTable({ rows, selectedKey, onRowClick }: ReportTableProps) {
                 <td className="px-4 py-4 align-top">
                   {report.ngay ? (
                     <Tag className="m-0 rounded-md border-0 bg-blue-50 text-blue-700 px-2 py-0.5 text-xs font-medium">
-                      {report.ngay}
+                      {normalizeDisplayDate(report.ngay)}
                     </Tag>
                   ) : (
                     <Text type="secondary">—</Text>
@@ -187,6 +196,9 @@ const NavigationHub: React.FC = () => {
   const [appsheetConnected, setAppsheetConnected] = useState<boolean | null>(null);
   const [selectedWeek, setSelectedWeek] = useState('week_16');
   const [searchText, setSearchText] = useState('');
+  const [createOpen, setCreateOpen] = useState(false);
+  const [creatingReport, setCreatingReport] = useState(false);
+  const [form] = Form.useForm();
 
   const reportId = searchParams.get('r')?.trim() || null;
   const groupKeyParam = searchParams.get('g')?.trim() || null;
@@ -249,6 +261,11 @@ const NavigationHub: React.FC = () => {
     return periodOptions[0]?.periodKey ?? null;
   }, [periodParam, periodOptions, selectedReport?.periodKey]);
 
+  const activePeriodLabel = useMemo(
+    () => periodOptions.find(period => period.periodKey === activePeriodKey)?.periodLabel ?? '',
+    [periodOptions, activePeriodKey]
+  );
+
   const periodReports = useMemo(() => {
     if (!activePeriodKey) {
       return [];
@@ -304,6 +321,12 @@ const NavigationHub: React.FC = () => {
     if (nextIndex >= 0 && nextIndex < WEEK_OPTIONS.length) {
       setSelectedWeek(WEEK_OPTIONS[nextIndex].value);
     }
+  };
+
+  const reloadReports = async () => {
+    const nextCatalog = await loadReportCatalog({ force: true });
+    setCatalog(nextCatalog);
+    setAppsheetConnected(true);
   };
 
   useEffect(() => {
@@ -388,6 +411,81 @@ const NavigationHub: React.FC = () => {
   const mobileTitle = stripLeadingIndex(pageTitle);
   const breadcrumbParent = activeBlock ? breadcrumbBlockLabel(activeBlock.blockLabel) : 'Báo cáo định kỳ';
 
+  const canCreateReport = Boolean(showContent && activeBlock?.ma && appsheetConnected);
+
+  const openCreateModal = () => {
+    form.resetFields();
+    form.setFieldsValue({
+      loaiBaoCao: activeGroup?.label ?? '',
+      kyBaoCao: kyLabelFromPeriodLabel(activePeriodLabel),
+    });
+    setCreateOpen(true);
+  };
+
+  const addReportButton = (options?: { size?: 'small' | 'middle' | 'large'; block?: boolean }) => (
+    <Button
+      type="primary"
+      size={options?.size ?? 'middle'}
+      block={options?.block}
+      icon={<PlusOutlined />}
+      className="bg-[#F38320] border-[#F38320] hover:!bg-[#e07518] hover:!border-[#e07518] shadow-sm font-semibold"
+      disabled={!canCreateReport}
+      onClick={openCreateModal}
+    >
+      Thêm
+    </Button>
+  );
+
+  const handleCreateSubmit = () => {
+    form
+      .validateFields()
+      .then(async values => {
+        if (!activeBlock?.ma) {
+          message.error('Chọn phòng ban trên menu để thêm báo cáo.');
+          return;
+        }
+
+        if (!appsheetConnected) {
+          message.error('Chưa kết nối AppSheet API.');
+          return;
+        }
+
+        const loaiBaoCao = (values.loaiBaoCao as string)?.trim() || activeGroup?.label || '';
+        if (!loaiBaoCao) {
+          message.error('Nhập loại báo cáo / phòng ban.');
+          return;
+        }
+
+        setCreatingReport(true);
+        try {
+          await addAppsheetTask(
+            buildAppsheetReportRow({
+              ma: activeBlock.ma,
+              loaiBaoCao,
+              tenBaoCao: values.tenBaoCao as string,
+              noidung: values.noidung as string | undefined,
+              kyBaoCao: values.kyBaoCao as string | undefined,
+              ngayBaoCao: normalizeDisplayDate(values.ngayBaoCao as string | undefined),
+              nguoiGui: values.nguoiGui as string | undefined,
+              nguoiNhan: values.nguoiNhan as string | undefined,
+              link: values.link as string | undefined,
+              ngayUpdateLink: formatTaskDate(values.ngayUpdateLink),
+            }),
+            getReportAppsheetTableName()
+          );
+          await reloadReports();
+          message.success('Đã thêm báo cáo vào AppSheet.');
+          setCreateOpen(false);
+          form.resetFields();
+        } catch (error) {
+          message.error(error instanceof Error ? error.message : 'Không thể thêm báo cáo trên AppSheet.');
+        } finally {
+          setCreatingReport(false);
+        }
+      })
+      .catch(() => {});
+  };
+
   const emptyState = (
     <div className="flex-1 flex flex-col items-center justify-center text-gray-400 gap-3 p-8 text-center pb-24 md:pb-8">
       <div className="bg-white p-8 rounded-full shadow-sm border border-gray-100 text-[#1E386B]/15">
@@ -438,6 +536,7 @@ const NavigationHub: React.FC = () => {
           )}
 
           <div className="flex flex-wrap items-center gap-3 shrink-0">
+            {addReportButton()}
             <div className="flex items-center gap-2">
               <Text className="text-gray-600 text-sm whitespace-nowrap mb-0">Chọn tuần:</Text>
               <Select
@@ -465,20 +564,28 @@ const NavigationHub: React.FC = () => {
         <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden max-w-[1600px] mx-auto">
           <div className="bg-[#1E386B] px-4 md:px-5 py-3 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
             <span className="text-white font-bold text-sm tracking-wide uppercase">Thông tin chi tiết</span>
-            <Input
-              allowClear
-              prefix={<SearchOutlined className="text-white/70" />}
-              placeholder="Tìm báo cáo..."
-              value={searchText}
-              onChange={event => setSearchText(event.target.value)}
-              className="max-w-full sm:max-w-xs [&_input]:bg-white/10 [&_input]:border-white/20 [&_input]:text-white [&_input::placeholder]:text-white/60"
-            />
+            <div className="flex flex-wrap items-center gap-2 w-full sm:w-auto sm:justify-end">
+              {addReportButton({ size: 'small' })}
+              <Input
+                allowClear
+                prefix={<SearchOutlined className="text-white/70" />}
+                placeholder="Tìm báo cáo..."
+                value={searchText}
+                onChange={event => setSearchText(event.target.value)}
+                className="max-w-full sm:max-w-xs flex-1 sm:flex-none [&_input]:bg-white/10 [&_input]:border-white/20 [&_input]:text-white [&_input::placeholder]:text-white/60"
+              />
+            </div>
           </div>
 
           <ReportTable
             rows={filteredReports}
             selectedKey={selectedReport?.key}
             onRowClick={handleReportSelect}
+            emptyExtra={
+              <div className="flex justify-center pt-2">
+                {addReportButton()}
+              </div>
+            }
           />
         </div>
       </div>
@@ -495,6 +602,9 @@ const NavigationHub: React.FC = () => {
         </p>
         <h1 className="text-[22px] font-bold m-0 mb-4 leading-tight">{mobileTitle}</h1>
 
+        <div className="flex items-center gap-2 mb-3">
+          {addReportButton({ size: 'small' })}
+        </div>
         <div className="flex items-center gap-2">
           <Button
             type="text"
@@ -547,6 +657,7 @@ const NavigationHub: React.FC = () => {
       </div>
 
       <div className="bg-[#eef1f6] flex-1 pb-24">
+        <div className="px-4 pt-3">{addReportButton({ block: true })}</div>
         <div className="px-4 py-3">
           <Input
             allowClear
@@ -570,6 +681,64 @@ const NavigationHub: React.FC = () => {
 
   return (
     <div className="flex flex-col min-h-full md:min-h-[calc(100vh-80px)] bg-[#eef1f6] md:bg-[#f0f2f5] -mx-0">
+      <Modal
+        title="Thêm báo cáo định kỳ"
+        open={createOpen}
+        onOk={handleCreateSubmit}
+        onCancel={() => {
+          setCreateOpen(false);
+          form.resetFields();
+        }}
+        okText="Lưu"
+        cancelText="Huỷ"
+        confirmLoading={creatingReport}
+        destroyOnHidden
+        width={560}
+      >
+        <Form form={form} layout="vertical" className="mt-2">
+          {activeBlock ? (
+            <Form.Item label="Khối (Mã)">
+              <Input disabled value={`${activeBlock.ma} — ${activeBlock.blockLabel}`} />
+            </Form.Item>
+          ) : null}
+          <Form.Item
+            name="loaiBaoCao"
+            label="Loại báo cáo / Phòng ban"
+            rules={[{ required: true, message: 'Nhập loại báo cáo' }]}
+          >
+            <Input placeholder="VD: 1. CÔNG VIỆC CÁ NHÂN" disabled={Boolean(activeGroup)} />
+          </Form.Item>
+          <Form.Item
+            name="tenBaoCao"
+            label="Tên báo cáo"
+            rules={[{ required: true, message: 'Nhập tên báo cáo' }]}
+          >
+            <Input placeholder="Tên báo cáo" />
+          </Form.Item>
+          <Form.Item name="noidung" label="Nội dung">
+            <Input.TextArea rows={3} placeholder="Mô tả báo cáo" />
+          </Form.Item>
+          <Form.Item name="kyBaoCao" label="Kỳ báo cáo" rules={[{ required: true, message: 'Nhập kỳ' }]}>
+            <Input placeholder="Tuần / Tháng / Quý" />
+          </Form.Item>
+          <Form.Item name="ngayBaoCao" label="Ngày báo cáo">
+            <Input placeholder="VD: Thứ 7" />
+          </Form.Item>
+          <Form.Item name="nguoiGui" label="Người gửi">
+            <Input />
+          </Form.Item>
+          <Form.Item name="nguoiNhan" label="Người nhận">
+            <Input />
+          </Form.Item>
+          <Form.Item name="link" label="Link báo cáo">
+            <Input placeholder="https://..." />
+          </Form.Item>
+          <Form.Item name="ngayUpdateLink" label="Ngày tạo báo cáo (Ngày update link)">
+            <DatePicker className="w-full" format="DD/MM/YYYY" placeholder="Chọn ngày" />
+          </Form.Item>
+        </Form>
+      </Modal>
+
       <Spin spinning={reportsLoading} tip="Đang tải BC định kỳ từ AppSheet...">
         <div className="hidden md:flex flex-col min-h-[calc(100vh-80px)]">{desktopContent}</div>
         <div className="md:hidden flex flex-col min-h-full">{mobileContent}</div>

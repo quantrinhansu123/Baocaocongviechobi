@@ -1,5 +1,5 @@
 import type { ReportBlockRecord, ReportCatalog, ReportGroupRecord, ReportRecord } from '../types/report';
-import { formatAppsheetDate } from '../utils/taskDate';
+import { formatUnknownAsDisplayDate, normalizeDisplayDate } from '../utils/taskDate';
 
 const REPORT_TABLE_NAME = 'BC định kỳ';
 
@@ -26,12 +26,7 @@ function normalizeColumnKey(key: string): string {
 }
 
 function formatRowDateValue(value: unknown): string {
-  if (value === null || value === undefined) {
-    return '';
-  }
-  return formatAppsheetDate(
-    value instanceof Date ? value : typeof value === 'number' ? value : String(value)
-  );
+  return formatUnknownAsDisplayDate(value);
 }
 
 function pickDateField(row: Record<string, unknown>, keys: string[]): string {
@@ -145,6 +140,63 @@ export function getReportAppsheetTableName(): string {
   return REPORT_TABLE_NAME;
 }
 
+export function kyLabelFromPeriodLabel(periodLabel: string): string {
+  const label = periodLabel.toLowerCase();
+  if (label.includes('tuần')) {
+    return 'Tuần';
+  }
+  if (label.includes('tháng') || label.includes('nửa tháng')) {
+    return 'Tháng';
+  }
+  if (label.includes('quý')) {
+    return 'Quý';
+  }
+  return periodLabel.replace(/^Báo cáo\s+/i, '').trim() || 'Tuần';
+}
+
+export function buildAppsheetReportRow(input: {
+  ma: string;
+  loaiBaoCao: string;
+  tenBaoCao: string;
+  noidung?: string;
+  kyBaoCao?: string;
+  ngayBaoCao?: string;
+  nguoiGui?: string;
+  nguoiNhan?: string;
+  link?: string;
+  ngayUpdateLink?: string;
+}): Record<string, unknown> {
+  const row: Record<string, unknown> = {
+    Mã: input.ma.trim(),
+    'Loại báo cáo': input.loaiBaoCao.trim(),
+    'Tên báo cáo': input.tenBaoCao.trim(),
+  };
+
+  if (input.noidung?.trim()) {
+    row['Nội dung'] = input.noidung.trim();
+  }
+  if (input.kyBaoCao?.trim()) {
+    row['Kỳ báo cáo'] = input.kyBaoCao.trim();
+  }
+  if (input.ngayBaoCao?.trim()) {
+    row['Ngày báo cáo'] = input.ngayBaoCao.trim();
+  }
+  if (input.nguoiGui?.trim()) {
+    row['Người gửi báo cáo'] = input.nguoiGui.trim();
+  }
+  if (input.nguoiNhan?.trim()) {
+    row['Người nhận báo cáo'] = input.nguoiNhan.trim();
+  }
+  if (input.link?.trim()) {
+    row['Link báo cáo'] = input.link.trim();
+  }
+  if (input.ngayUpdateLink?.trim()) {
+    row['Ngày update link'] = input.ngayUpdateLink.trim();
+  }
+
+  return row;
+}
+
 function ensureReportGroup(
   groups: ReportGroupRecord[],
   groupKeys: Set<string>,
@@ -218,7 +270,7 @@ export function mapAppsheetRowsToReportCatalog(rows: Record<string, unknown>[]):
       pickField(row, ['id', 'ID', 'Id']) ||
       `report-${pickField(row, ['_RowNumber']) || String(index + 1)}`;
     const ky = pickField(row, ['Kỳ báo cáo', 'Ky bao cao']);
-    const ngay = pickField(row, ['Ngày báo cáo', 'Ngay bao cao']);
+    const ngay = normalizeDisplayDate(pickField(row, ['Ngày báo cáo', 'Ngay bao cao']));
     const ngayTaoBaoCao = pickDateField(row, [
       'Ngày update link',
       'Ngay update link',

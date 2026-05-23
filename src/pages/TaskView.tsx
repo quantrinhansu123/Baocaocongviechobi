@@ -16,6 +16,7 @@ import {
 import type { ColumnsType } from 'antd/es/table';
 import {
   CheckSquareOutlined,
+  CheckCircleOutlined,
   PlusOutlined,
   EditOutlined,
   DeleteOutlined,
@@ -30,16 +31,27 @@ import { Star } from 'lucide-react';
 import dayjs from 'dayjs';
 import { ORG_BLOCKS } from '../data/orgBlocks';
 import type { TaskRecord } from '../types/task';
-import { formatTaskDate, parseTaskDate } from '../utils/taskDate';
+import {
+  formatTaskDate,
+  getEffectiveDueDate,
+  isTaskOverduePastExtensions,
+  normalizeDisplayDate,
+  parseTaskDate,
+  type TaskDueDatesInput,
+} from '../utils/taskDate';
 import { addAppsheetTask, deleteAppsheetTask, editAppsheetTask, findAppsheetTasks } from '../services/appsheetApi';
 import {
+  buildAppsheetCompleteTaskRow,
+  mergeTaskCompletion,
   buildAppsheetDeleteRow,
   buildAppsheetEditRow,
   buildAppsheetTaskRow,
   buildAppsheetTienDoEditRow,
+  isTaskRecordCompleted,
   mapAppsheetRowsToTasksByDept,
   resolveAppsheetTableName,
 } from '../services/taskAppsheet';
+import { TASK_COMPLETED_STATUS_LABEL } from '../utils/taskDate';
 
 const { Text } = Typography;
 
@@ -161,6 +173,7 @@ function buildTreeData(tasksByDept: Record<string, Record<string, TaskRecord>>):
 
 const STATUS_CFG: Record<string, { color: string }> = {
   'Hoàn thành': { color: 'success' },
+  [TASK_COMPLETED_STATUS_LABEL]: { color: 'success' },
   'Đang làm': { color: 'processing' },
   'Quá hạn': { color: 'error' },
   'Chưa bắt đầu': { color: 'default' },
@@ -204,14 +217,81 @@ type TableRow = {
   giaHan1: string;
   giaHan2: string;
   giaHan3: string;
+  tienDo: string;
+  trangThai: string;
+  ngayHoanThanh: string;
   deptKey: string;
 };
 
-function renderDateCell(value: string) {
-  const isOverdue =
-    Boolean(value) && dayjs(value, 'DD/MM/YYYY').isValid() && dayjs(value, 'DD/MM/YYYY').isBefore(dayjs(), 'day');
+function renderCompletionDateCell(value: string) {
+  const trimmed = (value ?? '').trim();
+  if (!trimmed || trimmed === '—') {
+    return <span className="text-gray-300">—</span>;
+  }
 
-  return <span className={isOverdue ? 'text-red-500 font-medium' : ''}>{value || '—'}</span>;
+  const displayDate = normalizeDisplayDate(trimmed) || trimmed.split(/\s+/)[0];
+  const full = trimmed.includes(':') ? trimmed : displayDate;
+
+  return (
+    <span className="whitespace-nowrap text-[11px] text-green-700 font-semibold" title={full}>
+      {displayDate}
+    </span>
+  );
+}
+
+function taskDueContext(
+  row: Pick<TableRow, 'deadline' | 'giaHan1' | 'giaHan2' | 'giaHan3' | 'tienDo' | 'trangThai'>
+): TaskDueDatesInput {
+  return {
+    deadline: row.deadline,
+    giaHan1: row.giaHan1,
+    giaHan2: row.giaHan2,
+    giaHan3: row.giaHan3,
+    tienDo: row.tienDo,
+    trangThai: row.trangThai,
+  };
+}
+
+function renderDateCell(value: string, row: TableRow) {
+  const display = normalizeDisplayDate(value) || '—';
+  const parsed = parseTaskDate(value);
+  const overdue = isTaskOverduePastExtensions(taskDueContext(row));
+  const effectiveDue = getEffectiveDueDate(taskDueContext(row));
+  const isEffectiveColumn =
+    overdue && parsed && effectiveDue ? effectiveDue.isSame(parsed, 'day') : false;
+  const isPast = parsed ? dayjs().startOf('day').isAfter(parsed.startOf('day')) : false;
+
+  let className = '';
+  if (isEffectiveColumn) {
+    className = 'task-overdue-blink font-bold';
+  } else if (isPast) {
+    className = 'text-red-500 font-medium';
+  }
+
+  return <span className={className}>{display}</span>;
+}
+
+function renderMobileDateLine(label: string, value: string, row: TableRow) {
+  const displayValue = normalizeDisplayDate(value) || value || '—';
+  const parsed = parseTaskDate(displayValue);
+  const overdue = isTaskOverduePastExtensions(taskDueContext(row));
+  const effectiveDue = getEffectiveDueDate(taskDueContext(row));
+  const isEffectiveColumn =
+    overdue && parsed && effectiveDue ? effectiveDue.isSame(parsed, 'day') : false;
+  const isPast = parsed ? dayjs().startOf('day').isAfter(parsed.startOf('day')) : false;
+
+  let valueClass = 'font-medium';
+  if (isEffectiveColumn) {
+    valueClass = 'font-bold task-overdue-blink';
+  } else if (isPast) {
+    valueClass = 'font-medium text-red-500';
+  }
+
+  return (
+    <p className={isEffectiveColumn ? 'task-overdue-blink' : ''}>
+      {label}: <span className={valueClass}>{displayValue}</span>
+    </p>
+  );
 }
 
 const TaskView: React.FC = () => {
@@ -231,6 +311,7 @@ const TaskView: React.FC = () => {
   const [tienDoModalOpen, setTienDoModalOpen] = useState(false);
   const [savingTienDo, setSavingTienDo] = useState(false);
   const [deletingTaskKey, setDeletingTaskKey] = useState<string | null>(null);
+  const [completingTaskKey, setCompletingTaskKey] = useState<string | null>(null);
   const [tienDoDraft, setTienDoDraft] = useState('Chưa bắt đầu');
   const [appsheetConnected, setAppsheetConnected] = useState<boolean | null>(null);
   const [form] = Form.useForm();
@@ -328,11 +409,13 @@ const TaskView: React.FC = () => {
 
   const reloadAppsheetTasks = useCallback(async () => {
     if (!appsheetTable) {
-      return;
+      return null;
     }
 
     const result = await findAppsheetTasks({ table: appsheetTable });
-    setTasksByDept(cloneTasksMap(mapAppsheetRowsToTasksByDept(result.rows, result.table)));
+    const mapped = mapAppsheetRowsToTasksByDept(result.rows, result.table);
+    setTasksByDept(cloneTasksMap(mapped));
+    return mapped;
   }, [appsheetTable]);
 
   const collectRowsForScope = useCallback(
@@ -353,6 +436,9 @@ const TaskView: React.FC = () => {
             giaHan1: t.giaHan1,
             giaHan2: t.giaHan2,
             giaHan3: t.giaHan3,
+            tienDo: t.tienDo,
+            trangThai: t.trangThai,
+            ngayHoanThanh: t.ngayGioHoanThanh,
             deptKey: scope.deptKey,
           });
         });
@@ -376,6 +462,9 @@ const TaskView: React.FC = () => {
             giaHan1: t.giaHan1,
             giaHan2: t.giaHan2,
             giaHan3: t.giaHan3,
+            tienDo: t.tienDo,
+            trangThai: t.trangThai,
+            ngayHoanThanh: t.ngayGioHoanThanh,
             deptKey: dept.key,
           });
         });
@@ -413,6 +502,22 @@ const TaskView: React.FC = () => {
     }
     setCreateOpen(true);
   };
+
+  const canCreateTask = Boolean(appsheetTable && appsheetConnected);
+
+  const addTaskButton = (options?: { size?: 'small' | 'middle' | 'large'; block?: boolean }) => (
+    <Button
+      type="primary"
+      size={options?.size ?? 'middle'}
+      block={options?.block}
+      icon={<PlusOutlined />}
+      className="bg-[#F38320] border-[#F38320] hover:!bg-[#e07518] hover:!border-[#e07518] shadow-sm font-semibold"
+      disabled={!canCreateTask}
+      onClick={() => openCreateModal()}
+    >
+      Thêm
+    </Button>
+  );
 
   const handleCreateSubmit = () => {
     form
@@ -581,6 +686,55 @@ const TaskView: React.FC = () => {
     setListScope(null);
   };
 
+  const handleMarkComplete = async (taskKey: string, deptKey: string) => {
+    if (!appsheetTable || !appsheetConnected) {
+      message.error('Chưa kết nối AppSheet API.');
+      return;
+    }
+
+    const task = tasksByDept[deptKey]?.[taskKey];
+    if (!task?.sourceRow) {
+      message.error('Không tìm thấy bản ghi AppSheet để cập nhật.');
+      return;
+    }
+
+    if (isTaskRecordCompleted(task)) {
+      message.info('Công việc đã được đánh dấu hoàn thành.');
+      return;
+    }
+
+    const completedAt = new Date();
+    const editRow = buildAppsheetCompleteTaskRow(task.sourceRow, completedAt);
+    if (!editRow.TT) {
+      message.error('Không tìm thấy khóa bản ghi AppSheet để cập nhật.');
+      return;
+    }
+
+    setCompletingTaskKey(taskKey);
+    try {
+      setTasksByDept(prev => {
+        const next = cloneTasksMap(prev);
+        const current = next[deptKey]?.[taskKey];
+        if (current) {
+          next[deptKey][taskKey] = mergeTaskCompletion(current, completedAt, editRow);
+        }
+        return next;
+      });
+
+      await editAppsheetTask(editRow, appsheetTable);
+      const mapped = await reloadAppsheetTasks();
+      const refreshed = mapped?.[deptKey]?.[taskKey];
+      if (refreshed && detailTask?.key === taskKey && detailTask.deptKey === deptKey) {
+        setDetailTask({ ...refreshed, key: taskKey, deptKey });
+      }
+      message.success('Đã đánh dấu hoàn thành trên AppSheet.');
+    } catch (error) {
+      message.error(error instanceof Error ? error.message : 'Không thể đánh dấu hoàn thành trên AppSheet.');
+    } finally {
+      setCompletingTaskKey(null);
+    }
+  };
+
   const handleDeleteTask = async (taskKey: string, deptKey: string) => {
     const task = tasksByDept[deptKey]?.[taskKey];
     if (!task?.sourceRow) {
@@ -612,113 +766,204 @@ const TaskView: React.FC = () => {
     setSelectedWeek(weekValue);
   };
 
-  const tableColumns: ColumnsType<TableRow> = [
-    {
-      title: <span className="uppercase tracking-wide text-[11px]">STT</span>,
-      dataIndex: 'stt',
-      key: 'stt',
-      width: 64,
-      align: 'center',
-    },
-    {
-      title: <span className="uppercase tracking-wide text-[11px]">PHÒNG BAN</span>,
-      dataIndex: 'phongBan',
-      key: 'phongBan',
-      ellipsis: true,
-    },
-    {
-      title: <span className="uppercase tracking-wide text-[11px]">CÔNG VIỆC</span>,
-      dataIndex: 'congViec',
-      key: 'congViec',
-      ellipsis: true,
-    },
-    {
-      title: <span className="uppercase tracking-wide text-[11px]">NGƯỜI PHỤ TRÁCH</span>,
-      dataIndex: 'nguoiPhuTrach',
-      key: 'nguoiPhuTrach',
-      width: 140,
-      ellipsis: true,
-    },
-    {
-      title: <span className="uppercase tracking-wide text-[11px]">DEADLINE</span>,
-      dataIndex: 'deadline',
-      key: 'deadline',
-      width: 110,
-      render: (d: string) => renderDateCell(d),
-    },
-    {
-      title: <span className="uppercase tracking-wide text-[11px]">GIA HẠN 1</span>,
-      dataIndex: 'giaHan1',
-      key: 'giaHan1',
-      width: 110,
-      render: (d: string) => renderDateCell(d),
-    },
-    {
-      title: <span className="uppercase tracking-wide text-[11px]">GIA HẠN 2</span>,
-      dataIndex: 'giaHan2',
-      key: 'giaHan2',
-      width: 110,
-      render: (d: string) => renderDateCell(d),
-    },
-    {
-      title: <span className="uppercase tracking-wide text-[11px]">GIA HẠN 3</span>,
-      dataIndex: 'giaHan3',
-      key: 'giaHan3',
-      width: 110,
-      render: (d: string) => renderDateCell(d),
-    },
-    {
-      title: <span className="uppercase tracking-wide text-[11px]">Thao tác</span>,
-      key: 'actions',
-      width: 120,
-      fixed: 'right',
-      render: (_, record) => (
-        <div className="flex items-center gap-1" data-task-action onClick={event => event.stopPropagation()}>
-          <Button type="link" size="small" icon={<EditOutlined />} onClick={() => openDetail(record.key, record.deptKey)}>
-            Sửa
-          </Button>
-          <Popconfirm
-            title="Xoá công việc này trên AppSheet?"
-            okText="Xoá"
-            cancelText="Huỷ"
-            okButtonProps={{ danger: true, loading: deletingTaskKey === record.key }}
-            onConfirm={() => void handleDeleteTask(record.key, record.deptKey)}
-            disabled={!appsheetConnected}
+  const showDeptColumn = listScope?.kind === 'block';
+
+  const tableColumns = useMemo<ColumnsType<TableRow>>(() => {
+    const th = (label: string) => (
+      <span className="uppercase tracking-wide text-[10px] font-semibold">{label}</span>
+    );
+
+    const columns: ColumnsType<TableRow> = [
+      {
+        title: th('STT'),
+        dataIndex: 'stt',
+        key: 'stt',
+        width: 48,
+        align: 'center',
+      },
+    ];
+
+    if (showDeptColumn) {
+      columns.push({
+        title: th('Phòng ban'),
+        dataIndex: 'phongBan',
+        key: 'phongBan',
+        width: '11%',
+        ellipsis: true,
+        className: 'task-col-phongban',
+      });
+    }
+
+    columns.push(
+      {
+        title: th('Công việc'),
+        dataIndex: 'congViec',
+        key: 'congViec',
+        width: showDeptColumn ? '24%' : '28%',
+        ellipsis: true,
+        className: 'task-col-congviec',
+        render: (text: string, record: TableRow) => (
+          <div className="flex items-center gap-1.5 min-w-0">
+            {isTaskOverduePastExtensions(taskDueContext(record)) ? (
+              <Tag
+                color="error"
+                className="task-overdue-blink m-0 shrink-0 text-[9px] font-bold uppercase px-1 leading-none"
+                title="Quá hạn"
+              >
+                HH
+              </Tag>
+            ) : null}
+            <span className="truncate" title={text}>
+              {text}
+            </span>
+          </div>
+        ),
+      },
+      {
+        title: th('Phụ trách'),
+        dataIndex: 'nguoiPhuTrach',
+        key: 'nguoiPhuTrach',
+        width: showDeptColumn ? '12%' : '14%',
+        ellipsis: true,
+        className: 'task-col-phutrach',
+      },
+      {
+        title: th('Deadline'),
+        dataIndex: 'deadline',
+        key: 'deadline',
+        width: 100,
+        className: 'task-col-deadline',
+        render: (d: string, record: TableRow) => (
+          <span className="whitespace-nowrap">{renderDateCell(d, record)}</span>
+        ),
+      },
+      {
+        title: th('GH 1'),
+        dataIndex: 'giaHan1',
+        key: 'giaHan1',
+        width: 88,
+        align: 'center',
+        className: 'task-col-giahan',
+        render: (d: string, record: TableRow) => (
+          <span className="whitespace-nowrap text-[11px]">{renderDateCell(d, record)}</span>
+        ),
+      },
+      {
+        title: th('GH 2'),
+        dataIndex: 'giaHan2',
+        key: 'giaHan2',
+        width: 88,
+        align: 'center',
+        className: 'task-col-giahan',
+        render: (d: string, record: TableRow) => (
+          <span className="whitespace-nowrap text-[11px]">{renderDateCell(d, record)}</span>
+        ),
+      },
+      {
+        title: th('GH 3'),
+        dataIndex: 'giaHan3',
+        key: 'giaHan3',
+        width: 88,
+        align: 'center',
+        className: 'task-col-giahan',
+        render: (d: string, record: TableRow) => (
+          <span className="whitespace-nowrap text-[11px]">{renderDateCell(d, record)}</span>
+        ),
+      },
+      {
+        title: th('Ngày hoàn thành'),
+        dataIndex: 'ngayHoanThanh',
+        key: 'ngayHoanThanh',
+        width: 108,
+        align: 'center',
+        className: 'task-col-ngayht',
+        render: (value: string) => renderCompletionDateCell(value),
+      },
+      {
+        title: th(''),
+        key: 'actions',
+        width: 112,
+        align: 'center',
+        className: 'task-col-actions',
+        render: (_, record) => {
+          const completed = isTaskRecordCompleted(record);
+          const overdue =
+            !completed && isTaskOverduePastExtensions(taskDueContext(record));
+          return (
+          <div
+            className={`flex items-center justify-center gap-0.5${overdue ? ' task-overdue-actions' : ''}`}
+            data-task-action
+            onClick={event => event.stopPropagation()}
           >
+            {!completed ? (
+              <Popconfirm
+                title={
+                  overdue
+                    ? 'Công việc đang quá hạn. Xác nhận đánh dấu đã hoàn thành?'
+                    : 'Đánh dấu công việc đã hoàn thành?'
+                }
+                okText="Xác nhận"
+                cancelText="Huỷ"
+                onConfirm={() => void handleMarkComplete(record.key, record.deptKey)}
+                disabled={!appsheetConnected}
+              >
+                <Button
+                  type="text"
+                  size="small"
+                  className="!px-1 !text-green-700 hover:!text-green-800"
+                  icon={<CheckCircleOutlined />}
+                  title="Đã hoàn thành"
+                  loading={completingTaskKey === record.key}
+                  disabled={!appsheetConnected}
+                />
+              </Popconfirm>
+            ) : null}
             <Button
-              type="link"
+              type="text"
               size="small"
-              danger
-              icon={<DeleteOutlined />}
-              loading={deletingTaskKey === record.key}
+              className="!px-1"
+              icon={<EditOutlined />}
+              title="Sửa"
+              onClick={() => openDetail(record.key, record.deptKey)}
+            />
+            <Popconfirm
+              title="Xoá công việc này trên AppSheet?"
+              okText="Xoá"
+              cancelText="Huỷ"
+              okButtonProps={{ danger: true, loading: deletingTaskKey === record.key }}
+              onConfirm={() => void handleDeleteTask(record.key, record.deptKey)}
               disabled={!appsheetConnected}
             >
-              Xoá
-            </Button>
-          </Popconfirm>
-        </div>
-      ),
-    },
-  ];
+              <Button
+                type="text"
+                size="small"
+                danger
+                className="!px-1"
+                icon={<DeleteOutlined />}
+                title="Xóa"
+                loading={deletingTaskKey === record.key}
+                disabled={!appsheetConnected}
+              />
+            </Popconfirm>
+          </div>
+          );
+        },
+      }
+    );
+
+    return columns;
+  }, [showDeptColumn, appsheetConnected, completingTaskKey, deletingTaskKey]);
 
   const selected = detailTask;
 
   return (
     <div className="flex flex-col h-[calc(100vh-80px)] bg-gray-100">
       {/* ── TOP BAR ── */}
-      <div className="bg-white px-4 md:px-5 py-3 border-b border-gray-200 flex flex-col md:flex-row md:items-center justify-between shadow-sm z-10 flex-shrink-0 gap-3">
+      <div className="bg-white px-4 md:px-6 py-3 border-b border-gray-200 flex flex-col md:flex-row md:items-center justify-between shadow-sm z-10 flex-shrink-0 gap-3">
         <div className="flex flex-wrap items-center gap-2 w-full md:w-auto">
-          <Button
-            type="primary"
-            icon={<PlusOutlined />}
-            className="bg-[#1E386B]"
-            disabled={!appsheetTable || !appsheetConnected}
-            onClick={() => openCreateModal()}
-          >
-            Tạo công việc mới
-          </Button>
+          {(!listScope || detailTask) && addTaskButton()}
         </div>
-        <div className="flex items-center gap-3 w-full md:w-auto">
+        <div className="flex items-center gap-3 w-full md:w-auto md:justify-end">
           <Text strong className="text-gray-600 text-sm hidden md:inline">
             Chọn tuần:
           </Text>
@@ -835,41 +1080,63 @@ const TaskView: React.FC = () => {
       <div className="flex flex-1 overflow-hidden">
         <div className="flex-1 flex flex-col overflow-hidden">
           {listScope && !detailTask ? (
-            <div className="flex-1 flex flex-col overflow-hidden p-3 md:p-5">
-              <div className="bg-[#1E386B] text-white px-4 py-3 rounded-t-lg flex-shrink-0">
-                <p className="text-[10px] uppercase tracking-widest text-white/70 m-0 mb-1">Danh sách công việc</p>
-                <h2 className="m-0 text-base font-bold uppercase leading-snug">{listTitle}</h2>
+            <div className="flex-1 flex flex-col overflow-hidden p-4 md:p-6 min-w-0">
+              <div className="flex-1 flex flex-col overflow-hidden max-w-7xl w-full mx-auto min-w-0">
+              <div className="bg-[#1E386B] text-white px-4 md:px-5 py-3 rounded-t-lg flex-shrink-0 flex items-start justify-between gap-3">
+                <div className="min-w-0 flex-1">
+                  <p className="text-[10px] uppercase tracking-widest text-white/70 m-0 mb-1">Danh sách công việc</p>
+                  <h2 className="m-0 text-base font-bold uppercase leading-snug">{listTitle}</h2>
+                </div>
+                <div className="shrink-0 pt-0.5">{addTaskButton({ size: 'small' })}</div>
               </div>
-              <div className="flex-1 overflow-auto bg-white border border-t-0 border-gray-200 rounded-b-lg shadow-sm p-2 md:p-4">
-                <div className="hidden md:block">
+              <div className="flex-1 overflow-auto bg-white border border-t-0 border-gray-200 rounded-b-lg shadow-sm p-3 md:p-4">
+                <div className="hidden md:block min-w-0">
                   <Table<TableRow>
                     rowKey="key"
+                    className="task-table-compact task-table-balanced"
                     columns={tableColumns}
                     dataSource={tableRows}
                     loading={taskLoading}
                     pagination={false}
                     size="small"
-                    scroll={{ x: 1180 }}
+                    tableLayout="fixed"
+                    scroll={{ x: showDeptColumn ? 1080 : 1000 }}
                     locale={{ emptyText: 'Chưa có công việc' }}
-                    onRow={record => ({
-                      onClick: event => {
-                        if ((event.target as HTMLElement).closest('[data-task-action]')) {
-                          return;
-                        }
-                        openDetail(record.key, record.deptKey);
-                      },
-                      className: 'cursor-pointer hover:bg-blue-50/50',
-                    })}
+                    onRow={record => {
+                      const overdue =
+                        !isTaskRecordCompleted(record) &&
+                        isTaskOverduePastExtensions(taskDueContext(record));
+                      return {
+                        onClick: event => {
+                          if ((event.target as HTMLElement).closest('[data-task-action]')) {
+                            return;
+                          }
+                          openDetail(record.key, record.deptKey);
+                        },
+                        className: overdue
+                          ? 'cursor-pointer task-overdue-row'
+                          : 'cursor-pointer hover:bg-blue-50/50',
+                      };
+                    }}
                   />
                 </div>
                 <div className="block md:hidden space-y-2">
                   {tableRows.length === 0 ? (
-                    <div className="text-center text-gray-400 py-6">Chưa có công việc</div>
+                    <div className="text-center text-gray-400 py-6 space-y-3">
+                      <p className="m-0">Chưa có công việc</p>
+                      {addTaskButton({ block: true })}
+                    </div>
                   ) : (
-                    tableRows.map(row => (
+                    tableRows.map(row => {
+                      const overdue =
+                        !isTaskRecordCompleted(row) &&
+                        isTaskOverduePastExtensions(taskDueContext(row));
+                      return (
                       <div
                         key={row.key}
-                        className="w-full text-left bg-white border border-gray-200 rounded-lg p-3 shadow-sm"
+                        className={`w-full text-left bg-white border border-gray-200 rounded-lg p-3 shadow-sm${
+                          overdue ? ' task-overdue-card' : ''
+                        }`}
                       >
                         <button
                           type="button"
@@ -877,21 +1144,66 @@ const TaskView: React.FC = () => {
                           className="w-full text-left active:scale-[0.99] transition"
                         >
                           <div className="flex items-start justify-between gap-2">
-                            <p className="font-semibold text-gray-800 text-sm leading-snug">{row.congViec}</p>
-                            <span className="text-[11px] text-gray-500">#{row.stt}</span>
+                            <p
+                              className={`text-sm leading-snug flex-1${
+                                overdue ? ' task-overdue-title' : ' font-semibold text-gray-800'
+                              }`}
+                            >
+                              {row.congViec}
+                            </p>
+                            <div className="flex flex-col items-end gap-1 shrink-0">
+                              {overdue ? (
+                                <Tag color="error" className="task-overdue-blink m-0 text-[10px] font-bold">
+                                  Quá hạn
+                                </Tag>
+                              ) : null}
+                              <span className="text-[11px] text-gray-500">#{row.stt}</span>
+                            </div>
                           </div>
                           <div className="mt-2 text-xs text-gray-600 space-y-1">
-                            <p>Phòng ban: <span className="font-medium">{row.phongBan}</span></p>
-                            <p>Phụ trách: <span className="font-medium">{row.nguoiPhuTrach}</span></p>
-                            <p className={dayjs(row.deadline, 'DD/MM/YYYY').isValid() && dayjs(row.deadline, 'DD/MM/YYYY').isBefore(dayjs(), 'day') ? 'text-red-500 font-medium' : ''}>
-                              Deadline: {row.deadline}
+                            {showDeptColumn ? (
+                              <p>
+                                Phòng ban: <span className="font-medium">{row.phongBan}</span>
+                              </p>
+                            ) : null}
+                            <p>
+                              Phụ trách: <span className="font-medium">{row.nguoiPhuTrach}</span>
                             </p>
-                            <p>Gia hạn 1: <span className="font-medium">{row.giaHan1 || '—'}</span></p>
-                            <p>Gia hạn 2: <span className="font-medium">{row.giaHan2 || '—'}</span></p>
-                            <p>Gia hạn 3: <span className="font-medium">{row.giaHan3 || '—'}</span></p>
+                            {renderMobileDateLine('Deadline', row.deadline, row)}
+                            {renderMobileDateLine('Gia hạn 1', row.giaHan1, row)}
+                            {renderMobileDateLine('Gia hạn 2', row.giaHan2, row)}
+                            {renderMobileDateLine('Gia hạn 3', row.giaHan3, row)}
+                            {row.ngayHoanThanh ? (
+                              <p>
+                                Ngày hoàn thành:{' '}
+                                <span className="font-semibold text-green-700">
+                                  {normalizeDisplayDate(row.ngayHoanThanh) || row.ngayHoanThanh}
+                                </span>
+                              </p>
+                            ) : null}
                           </div>
                         </button>
-                        <div className="mt-3 flex items-center gap-2 border-t border-gray-100 pt-3" data-task-action>
+                        <div className="mt-3 flex flex-wrap items-center gap-2 border-t border-gray-100 pt-3" data-task-action>
+                          {!isTaskRecordCompleted(row) ? (
+                            <Popconfirm
+                              title="Đánh dấu công việc đã hoàn thành?"
+                              okText="Xác nhận"
+                              cancelText="Huỷ"
+                              onConfirm={() => void handleMarkComplete(row.key, row.deptKey)}
+                              disabled={!appsheetConnected}
+                            >
+                              <Button
+                                size="small"
+                                type="primary"
+                                className="bg-green-600 border-green-600"
+                                icon={<CheckCircleOutlined />}
+                                loading={completingTaskKey === row.key}
+                                disabled={!appsheetConnected}
+                              >
+                                Đã hoàn thành
+                              </Button>
+                            </Popconfirm>
+                          ) : null}
                           <Button size="small" icon={<EditOutlined />} onClick={() => openDetail(row.key, row.deptKey)}>
                             Sửa
                           </Button>
@@ -915,9 +1227,11 @@ const TaskView: React.FC = () => {
                           </Popconfirm>
                         </div>
                       </div>
-                    ))
+                    );
+                    })
                   )}
                 </div>
+              </div>
               </div>
             </div>
           ) : selected ? (
@@ -925,18 +1239,53 @@ const TaskView: React.FC = () => {
               <div className="bg-[#1E386B] px-4 md:px-6 py-3 md:py-4 flex-shrink-0 shadow flex items-start justify-between gap-3">
                 <div className="min-w-0">
                   <p className="text-white/60 text-[10px] md:text-xs m-0 mb-0.5 tracking-wide uppercase">Chi tiết công việc</p>
-                  <h2 className="text-white font-bold text-base md:text-lg m-0 leading-snug line-clamp-2 md:line-clamp-none">
-                    {selected.congViec}
-                  </h2>
+                  <div className="flex flex-wrap items-center gap-2">
+                    {isTaskOverduePastExtensions({
+                      deadline: selected.ycXong,
+                      giaHan1: selected.giaHan1,
+                      giaHan2: selected.giaHan2,
+                      giaHan3: selected.giaHan3,
+                      tienDo: selected.tienDo,
+                      trangThai: selected.trangThai,
+                    }) ? (
+                      <Tag color="error" className="task-overdue-blink m-0 border-0 font-bold uppercase text-[11px]">
+                        Quá hạn
+                      </Tag>
+                    ) : null}
+                    <h2 className="text-white font-bold text-base md:text-lg m-0 leading-snug line-clamp-2 md:line-clamp-none">
+                      {selected.congViec}
+                    </h2>
+                  </div>
                 </div>
-                <Button
-                  type="primary"
-                  className="bg-[#F38320] border-[#F38320] flex-shrink-0"
-                  loading={savingDetail}
-                  onClick={handleDetailSave}
-                >
-                  Lưu AppSheet
-                </Button>
+                <div className="flex flex-wrap items-center justify-end gap-2 shrink-0">
+                  {!isTaskRecordCompleted(selected) ? (
+                    <Popconfirm
+                      title="Đánh dấu công việc đã hoàn thành?"
+                      okText="Xác nhận"
+                      cancelText="Huỷ"
+                      onConfirm={() => void handleMarkComplete(selected.key, selected.deptKey)}
+                      disabled={!appsheetConnected}
+                    >
+                      <Button
+                        type="primary"
+                        className="bg-green-600 border-green-600 hover:!bg-green-700 hover:!border-green-700"
+                        icon={<CheckCircleOutlined />}
+                        loading={completingTaskKey === selected.key}
+                        disabled={!appsheetConnected}
+                      >
+                        Đã hoàn thành
+                      </Button>
+                    </Popconfirm>
+                  ) : null}
+                  <Button
+                    type="primary"
+                    className="bg-[#F38320] border-[#F38320]"
+                    loading={savingDetail}
+                    onClick={handleDetailSave}
+                  >
+                    Lưu AppSheet
+                  </Button>
+                </div>
               </div>
 
               <div className="flex-1 overflow-auto p-5">
@@ -978,11 +1327,26 @@ const TaskView: React.FC = () => {
                           <Tag color={(STATUS_CFG[selected.tienDo] ?? { color: 'default' }).color}>
                             {selected.tienDo || 'Chưa bắt đầu'}
                           </Tag>
-                          <Button size="small" onClick={openTienDoModal}>
+                          <Button size="small" onClick={openTienDoModal} disabled={isTaskRecordCompleted(selected)}>
                             Sửa tiến độ
                           </Button>
                         </div>
                       </Form.Item>
+                      <Form.Item label="Trạng thái">
+                        <Tag
+                          color={
+                            (STATUS_CFG[selected.trangThai] ?? STATUS_CFG[selected.tienDo] ?? { color: 'default' })
+                              .color
+                          }
+                        >
+                          {selected.trangThai || '—'}
+                        </Tag>
+                      </Form.Item>
+                      {selected.ngayGioHoanThanh ? (
+                        <Form.Item label="Ngày hoàn thành">
+                          <Text className="font-medium">{selected.ngayGioHoanThanh}</Text>
+                        </Form.Item>
+                      ) : null}
                       <Form.Item name="canLD" label="Cần LĐ tác động">
                         <Select
                           options={[

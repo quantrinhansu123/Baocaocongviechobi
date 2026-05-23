@@ -1,6 +1,11 @@
 import { ORG_BLOCKS } from '../data/orgBlocks';
 import type { TaskRecord } from '../types/task';
-import { formatAppsheetDate } from '../utils/taskDate';
+import {
+  formatAppsheetDate,
+  formatUnknownAsDisplayDate,
+  normalizeDisplayDateTime,
+  TASK_COMPLETED_STATUS_LABEL,
+} from '../utils/taskDate';
 
 const ROMAN = ['I', 'II', 'III', 'IV'] as const;
 
@@ -65,6 +70,83 @@ export function resolveDeptKeyFromAppsheetTable(tableName?: string): string | nu
 
   const deptKey = TABLE_DEPT_KEY[tableName];
   return deptKey ?? null;
+}
+
+function pickFormattedDate(row: Record<string, unknown>, keys: string[]): string {
+  for (const key of keys) {
+    const value = row[key];
+    if (value === null || value === undefined) {
+      continue;
+    }
+    const formatted = formatUnknownAsDisplayDate(value);
+    if (formatted) {
+      return formatted;
+    }
+  }
+  return '';
+}
+
+/** Tên cột AppSheet (xác nhận bởi người dùng). */
+export const APPSHEET_NGAY_HOAN_THANH_COLUMN = 'Ngày hoàn thành';
+
+function resolveNgayHoanThanhColumnKey(row: Record<string, unknown>): string {
+  return resolveRowColumnKey(
+    row,
+    [APPSHEET_NGAY_HOAN_THANH_COLUMN, 'NGÀY HOÀN THÀNH', 'Ngay hoan thanh'],
+    APPSHEET_NGAY_HOAN_THANH_COLUMN
+  );
+}
+
+export function pickNgayHoanThanhFromRow(row: Record<string, unknown>): string {
+  const key = resolveNgayHoanThanhColumnKey(row);
+  const value = row[key];
+  if (value === null || value === undefined || String(value).trim() === '') {
+    return '';
+  }
+
+  const formattedDate = formatUnknownAsDisplayDate(value);
+  if (formattedDate) {
+    return formattedDate;
+  }
+
+  const formattedDateTime = normalizeDisplayDateTime(
+    value instanceof Date || typeof value === 'number' ? value : String(value)
+  );
+  if (formattedDateTime) {
+    return formattedDateTime.split(/\s+/)[0] ?? formattedDateTime;
+  }
+
+  return '';
+}
+
+function resolveRowColumnKey(
+  sourceRow: Record<string, unknown>,
+  keys: string[],
+  fallback: string
+): string {
+  for (const key of keys) {
+    if (Object.prototype.hasOwnProperty.call(sourceRow, key)) {
+      return key;
+    }
+  }
+
+  const normalizedTargets = new Map(keys.map(key => [key.toLowerCase(), key]));
+  for (const sourceKey of Object.keys(sourceRow)) {
+    const match = normalizedTargets.get(sourceKey.toLowerCase());
+    if (match) {
+      return sourceKey;
+    }
+  }
+
+  return fallback;
+}
+
+export function isTaskRecordCompleted(task: Pick<TaskRecord, 'tienDo' | 'trangThai'>): boolean {
+  if ((task.trangThai ?? '').trim() === TASK_COMPLETED_STATUS_LABEL) {
+    return true;
+  }
+
+  return (task.tienDo ?? '').trim() === 'Hoàn thành';
 }
 
 function pickField(row: Record<string, unknown>, keys: string[]): string {
@@ -193,16 +275,26 @@ export function mapAppsheetRowToTaskRecord(
         'Assignee',
         'Người phụ trách',
       ]),
-      ngayGiao: pickField(row, ['NGÀY GIAO', 'Ngày giao', 'Ngay giao', 'NgayGiao', 'ngayGiao', 'Start date']),
-      ycXong: pickField(row, ['Y/C XONG', 'Yêu cầu xong', 'Yeu cau xong', 'YcXong', 'ycXong', 'Deadline', 'Due date']),
-      giaHan1: pickField(row, ['GIA HẠN 1', 'Gia hạn 1', 'Gia han 1', 'GiaHan1', 'giaHan1']),
-      giaHan2: pickField(row, ['GIA HẠN 2', 'Gia hạn 2', 'Gia han 2', 'GiaHan2', 'giaHan2']),
-      giaHan3: pickField(row, ['GIA HẠN 3', 'Gia hạn 3', 'Gia han 3', 'GiaHan3', 'giaHan3']),
+      ngayGiao: pickFormattedDate(row, ['NGÀY GIAO', 'Ngày giao', 'Ngay giao', 'NgayGiao', 'ngayGiao', 'Start date']),
+      ycXong: pickFormattedDate(row, ['Y/C XONG', 'Yêu cầu xong', 'Yeu cau xong', 'YcXong', 'ycXong', 'Deadline', 'Due date']),
+      giaHan1: pickFormattedDate(row, ['GIA HẠN 1', 'Gia hạn 1', 'Gia han 1', 'GiaHan1', 'giaHan1']),
+      giaHan2: pickFormattedDate(row, ['GIA HẠN 2', 'Gia hạn 2', 'Gia han 2', 'GiaHan2', 'giaHan2']),
+      giaHan3: pickFormattedDate(row, ['GIA HẠN 3', 'Gia hạn 3', 'Gia han 3', 'GiaHan3', 'giaHan3']),
       ketQua: pickField(row, ['KẾT QUẢ', 'Kết quả', 'Ket qua', 'KetQua', 'ketQua', 'Result']),
       linkKQ: pickField(row, ['LINK KQ', 'Link KQ', 'LinkKQ', 'linkKQ', 'Link']),
       tienDo: normalizeAppsheetTienDo(
-        pickField(row, ['TIẾN ĐỘ', 'Tiến độ', 'Tien do', 'TienDo', 'tienDo', 'Status'])
+        pickField(row, ['TIẾN ĐỘ', 'Tiến độ', 'Tien do', 'TienDo', 'tienDo'])
       ),
+      trangThai: pickField(row, [
+        'TRẠNG THÁI',
+        'Trạng thái',
+        'Trang thai',
+        'TrangThai',
+        'trangThai',
+        'Tình trạng',
+        'Tinh trang',
+      ]),
+      ngayGioHoanThanh: pickNgayHoanThanhFromRow(row),
       vuongMac: pickField(row, ['VƯỚNG MẮC', 'Vướng mắc', 'Vuong mac', 'VuongMac', 'vuongMac']),
       canLD: pickField(row, ['CẦN LĐ TÁC ĐỘNG', 'Cần LD', 'Can LD', 'CanLD', 'canLD']) || 'Không',
       anhHuong: pickNumber(row, ['MỨC ẢNH HƯỞNG', 'Ảnh hưởng', 'Anh huong', 'AnhHuong', 'anhHuong', 'Priority'], 1),
@@ -281,6 +373,50 @@ export function buildAppsheetEditRow(task: TaskRecord, sourceRow: Record<string,
   if (tienDo) {
     row['TIẾN ĐỘ'] = tienDo;
   }
+
+  return row;
+}
+
+export function mergeTaskCompletion(
+  task: TaskRecord,
+  completedAt: Date,
+  editRow: Record<string, unknown>
+): TaskRecord {
+  const mergedSource = { ...task.sourceRow, ...editRow };
+  const ngayHoanThanh =
+    pickNgayHoanThanhFromRow(mergedSource) || formatAppsheetDate(completedAt);
+
+  return {
+    ...task,
+    tienDo: 'Hoàn thành',
+    trangThai: TASK_COMPLETED_STATUS_LABEL,
+    ngayGioHoanThanh: ngayHoanThanh,
+    sourceRow: mergedSource,
+  };
+}
+
+export function buildAppsheetCompleteTaskRow(
+  sourceRow: Record<string, unknown>,
+  completedAt: Date = new Date()
+): Record<string, unknown> {
+  const row: Record<string, unknown> = {};
+  const rowKey = pickField(sourceRow, ['TT', 'STT', 'Stt', 'stt']);
+
+  if (rowKey) {
+    row.TT = rowKey;
+  }
+
+  const statusKey = resolveRowColumnKey(
+    sourceRow,
+    ['TRẠNG THÁI', 'Trạng thái', 'Trang thai', 'Tình trạng', 'Tinh trang'],
+    'TRẠNG THÁI'
+  );
+  const tienDoKey = resolveRowColumnKey(sourceRow, ['TIẾN ĐỘ', 'Tiến độ', 'Tien do', 'TienDo'], 'TIẾN ĐỘ');
+  const ngayHoanThanhKey = resolveNgayHoanThanhColumnKey(sourceRow);
+
+  row[statusKey] = TASK_COMPLETED_STATUS_LABEL;
+  row[tienDoKey] = 'Hoàn thành';
+  row[ngayHoanThanhKey] = formatAppsheetDate(completedAt);
 
   return row;
 }

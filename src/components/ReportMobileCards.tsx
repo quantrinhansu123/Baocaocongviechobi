@@ -2,7 +2,7 @@ import React from 'react';
 import { Avatar, Button, Tag } from 'antd';
 import { ArrowRightOutlined, EyeOutlined, GoogleOutlined } from '@ant-design/icons';
 import type { ReportRecord } from '../types/report';
-import { formatAppsheetDate } from '../utils/taskDate';
+import { normalizeDisplayDate } from '../utils/taskDate';
 
 function initials(name: string): string {
   const trimmed = name.trim();
@@ -63,7 +63,7 @@ const ReportMobileCards: React.FC<ReportMobileCardsProps> = ({ rows, selectedKey
               <div className="flex flex-wrap gap-1 justify-end shrink-0">
                 {report.ngay ? (
                   <Tag className="m-0 rounded-md border-0 bg-blue-50 text-blue-700 text-[11px] px-2 py-0">
-                    {report.ngay}
+                    {normalizeDisplayDate(report.ngay)}
                   </Tag>
                 ) : null}
                 {report.ky ? (
@@ -82,7 +82,7 @@ const ReportMobileCards: React.FC<ReportMobileCardsProps> = ({ rows, selectedKey
                 {report.ngayTaoBaoCao ? (
                   <p className="text-[12px] text-gray-500 m-0">
                     <span className="font-semibold text-gray-600">Ngày tạo báo cáo:</span>{' '}
-                    {formatAppsheetDate(report.ngayTaoBaoCao)}
+                    {normalizeDisplayDate(report.ngayTaoBaoCao)}
                   </p>
                 ) : null}
               </div>

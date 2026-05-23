@@ -1,5 +1,6 @@
 import dayjs from 'dayjs';
 import type { TaskRecord } from '../types/task';
+import { normalizeDisplayDate } from '../utils/taskDate';
 import { findAppsheetTasks } from './appsheetApi';
 import { listAppsheetTableBindings, mapAppsheetRowsToTasksByDept } from './taskAppsheet';
 
@@ -56,7 +57,7 @@ function mapTaskRecordToDashboardTask(
   department: string,
   task: TaskRecord
 ): DashboardTask {
-  const deadline = task.giaHan3 || task.giaHan2 || task.giaHan1 || task.ycXong;
+  const deadline = normalizeDisplayDate(task.giaHan3 || task.giaHan2 || task.giaHan1 || task.ycXong);
   const status = task.tienDo || 'Chưa bắt đầu';
 
   return {

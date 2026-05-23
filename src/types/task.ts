@@ -11,6 +11,8 @@ export type TaskRecord = {
   ketQua: string;
   linkKQ: string;
   tienDo: string;
+  trangThai: string;
+  ngayGioHoanThanh: string;
   vuongMac: string;
   canLD: string;
   anhHuong: number;

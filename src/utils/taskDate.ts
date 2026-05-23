@@ -39,6 +39,44 @@ export function formatSpreadsheetSerialDate(value: string | number): string {
   return parsed ? parsed.format('DD/MM/YYYY') : '';
 }
 
+export type TaskDueDatesInput = {
+  deadline: string;
+  giaHan1?: string;
+  giaHan2?: string;
+  giaHan3?: string;
+  tienDo?: string;
+  trangThai?: string;
+};
+
+/** Ngày hạn cuối cùng = max(deadline, gia hạn 1–3). */
+export function getEffectiveDueDate(input: TaskDueDatesInput): dayjs.Dayjs | null {
+  const candidates = [input.deadline, input.giaHan1, input.giaHan2, input.giaHan3]
+    .map(value => parseTaskDate(value))
+    .filter((value): value is dayjs.Dayjs => value !== null);
+
+  if (candidates.length === 0) {
+    return null;
+  }
+
+  return candidates.reduce((latest, current) => (current.isAfter(latest) ? current : latest));
+}
+
+/** Quá hạn khi hôm nay > hạn cuối (kể cả gia hạn). Không cảnh báo nếu đã hoàn thành. */
+export function isTaskOverduePastExtensions(input: TaskDueDatesInput): boolean {
+  const tienDo = (input.tienDo ?? '').trim();
+  const trangThai = (input.trangThai ?? '').trim();
+  if (tienDo === 'Hoàn thành' || trangThai === TASK_COMPLETED_STATUS_LABEL) {
+    return false;
+  }
+
+  const effectiveDue = getEffectiveDueDate(input);
+  if (!effectiveDue) {
+    return false;
+  }
+
+  return dayjs().startOf('day').isAfter(effectiveDue.startOf('day'));
+}
+
 export function parseTaskDate(value: string | undefined): dayjs.Dayjs | null {
   if (!value) {
     return null;
@@ -51,6 +89,25 @@ export function parseTaskDate(value: string | undefined): dayjs.Dayjs | null {
 
   const mdy = dayjs(value, 'MM/DD/YYYY', true);
   return mdy.isValid() ? mdy : null;
+}
+
+export const DISPLAY_DATE_FORMAT = 'DD/MM/YYYY';
+export const DISPLAY_DATETIME_FORMAT = 'DD/MM/YYYY HH:mm:ss';
+export const TASK_COMPLETED_STATUS_LABEL = 'Đã hoàn thành';
+
+/** Chuẩn hóa về dd/mm/yyyy; nếu không parse được (vd. "Thứ 7") giữ nguyên chuỗi gốc. */
+export function normalizeDisplayDate(value: string | number | Date | null | undefined): string {
+  if (value === null || value === undefined) {
+    return '';
+  }
+
+  const trimmed = String(value).trim();
+  if (!trimmed) {
+    return '';
+  }
+
+  const formatted = formatAppsheetDate(value);
+  return formatted || trimmed;
 }
 
 export function formatAppsheetDate(value: string | number | Date): string {
@@ -111,12 +168,71 @@ export function formatAppsheetDate(value: string | number | Date): string {
 
 export function formatTaskDate(value: unknown): string {
   if (dayjs.isDayjs(value)) {
-    return value.format('DD/MM/YYYY');
+    return value.format(DISPLAY_DATE_FORMAT);
   }
 
-  if (typeof value === 'string') {
+  if (value instanceof Date) {
+    return normalizeDisplayDate(value);
+  }
+
+  if (typeof value === 'number' && Number.isFinite(value)) {
     return formatAppsheetDate(value);
   }
 
+  if (typeof value === 'string') {
+    return normalizeDisplayDate(value);
+  }
+
   return '';
+}
+
+/** Ghi/đọc ngày giờ hoàn thành AppSheet → dd/mm/yyyy HH:mm:ss */
+export function formatAppsheetDateTime(value: string | number | Date = new Date()): string {
+  if (value instanceof Date) {
+    const parsed = dayjs(value);
+    return parsed.isValid() ? parsed.format(DISPLAY_DATETIME_FORMAT) : '';
+  }
+
+  if (typeof value === 'number' && Number.isFinite(value)) {
+    const fromSerial = fromSpreadsheetSerial(value);
+    return fromSerial ? fromSerial.format(DISPLAY_DATETIME_FORMAT) : '';
+  }
+
+  const trimmed = String(value).trim();
+  if (!trimmed) {
+    return '';
+  }
+
+  const withTime = dayjs(trimmed, [...DMY_WITH_TIME_FORMATS, 'YYYY-MM-DD HH:mm:ss', 'YYYY-MM-DDTHH:mm:ss'], true);
+  if (withTime.isValid()) {
+    return withTime.format(DISPLAY_DATETIME_FORMAT);
+  }
+
+  const dateOnly = formatAppsheetDate(trimmed);
+  if (dateOnly) {
+    return `${dateOnly} 00:00:00`;
+  }
+
+  const loose = dayjs(trimmed);
+  return loose.isValid() ? loose.format(DISPLAY_DATETIME_FORMAT) : trimmed;
+}
+
+export function normalizeDisplayDateTime(value: string | number | Date | null | undefined): string {
+  if (value === null || value === undefined) {
+    return '';
+  }
+
+  const formatted = formatAppsheetDateTime(value instanceof Date ? value : String(value));
+  return formatted || String(value).trim();
+}
+
+/** Đọc cột ngày từ dòng AppSheet → dd/mm/yyyy */
+export function formatUnknownAsDisplayDate(value: unknown): string {
+  if (value === null || value === undefined) {
+    return '';
+  }
+  if (value instanceof Date || typeof value === 'number') {
+    return normalizeDisplayDate(value);
+  }
+  return normalizeDisplayDate(String(value));
 }

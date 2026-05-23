@@ -93,3 +93,93 @@ body {
 .safe-area-pb {
   padding-bottom: env(safe-area-inset-bottom, 0);
 }
+
+@keyframes task-overdue-blink {
+  0%,
+  100% {
+    opacity: 1;
+    color: #cf1322;
+  }
+  50% {
+    opacity: 0.35;
+    color: #ff7875;
+  }
+}
+
+.task-overdue-blink {
+  animation: task-overdue-blink 1s ease-in-out infinite;
+}
+
+.task-overdue-row > td {
+  background-color: rgba(255, 77, 79, 0.2) !important;
+  box-shadow: inset 4px 0 0 #ff4d4f;
+  color: #820014 !important;
+  font-weight: 600;
+}
+
+.task-overdue-row:hover > td {
+  background-color: rgba(255, 77, 79, 0.28) !important;
+}
+
+.task-table-compact .task-overdue-row .ant-table-cell {
+  color: #820014 !important;
+}
+
+.task-table-compact .task-overdue-row .task-col-actions .ant-btn {
+  font-weight: 600;
+}
+
+.task-overdue-card {
+  border: 2px solid #ff4d4f !important;
+  box-shadow: 0 0 0 1px rgba(255, 77, 79, 0.35);
+  background-color: rgba(255, 77, 79, 0.14);
+}
+
+.task-overdue-card .task-overdue-title {
+  color: #a8071a !important;
+  font-weight: 700;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .task-overdue-blink {
+    animation: none;
+    opacity: 1;
+    color: #cf1322;
+  }
+}
+
+.task-table-compact .ant-table-thead > tr > th,
+.task-table-compact .ant-table-tbody > tr > td {
+  padding: 5px 8px !important;
+  font-size: 12px !important;
+}
+
+.task-table-compact .ant-table-thead > tr > th {
+  font-size: 10px !important;
+  white-space: nowrap;
+}
+
+.task-table-compact .ant-table-cell {
+  line-height: 1.35 !important;
+}
+
+.task-table-compact.task-table-balanced .ant-table {
+  width: 100%;
+}
+
+.task-table-compact.task-table-balanced .ant-table-tbody > tr > td {
+  vertical-align: middle;
+}
+
+.task-table-compact .task-col-congviec,
+.task-table-compact .task-col-phongban,
+.task-table-compact .task-col-phutrach,
+.task-table-compact .task-col-giahan {
+  max-width: 0;
+}
+
+.task-table-compact .task-col-deadline,
+.task-table-compact .task-col-actions,
+.task-table-compact .task-col-ngayht {
+  white-space: nowrap;
+}
