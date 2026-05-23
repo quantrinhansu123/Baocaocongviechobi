@@ -88,6 +88,15 @@ function pickFormattedDate(row: Record<string, unknown>, keys: string[]): string
 
 /** Tên cột AppSheet (xác nhận bởi người dùng). */
 export const APPSHEET_NGAY_HOAN_THANH_COLUMN = 'Ngày hoàn thành';
+export const APPSHEET_TIEN_DO_COLUMN = 'TIẾN ĐỘ';
+
+function resolveTienDoColumnKey(row: Record<string, unknown>): string {
+  return resolveRowColumnKey(
+    row,
+    [APPSHEET_TIEN_DO_COLUMN, 'Tiến độ', 'Tien do', 'TienDo', 'tienDo'],
+    APPSHEET_TIEN_DO_COLUMN
+  );
+}
 
 function resolveNgayHoanThanhColumnKey(row: Record<string, unknown>): string {
   return resolveRowColumnKey(
@@ -411,11 +420,14 @@ export function buildAppsheetCompleteTaskRow(
     ['TRẠNG THÁI', 'Trạng thái', 'Trang thai', 'Tình trạng', 'Tinh trang'],
     'TRẠNG THÁI'
   );
-  const tienDoKey = resolveRowColumnKey(sourceRow, ['TIẾN ĐỘ', 'Tiến độ', 'Tien do', 'TienDo'], 'TIẾN ĐỘ');
+  const tienDoKey = resolveTienDoColumnKey(sourceRow);
   const ngayHoanThanhKey = resolveNgayHoanThanhColumnKey(sourceRow);
+  const tienDoValue = serializeAppsheetTienDo('Hoàn thành');
 
   row[statusKey] = TASK_COMPLETED_STATUS_LABEL;
-  row[tienDoKey] = 'Hoàn thành';
+  if (tienDoValue) {
+    row[tienDoKey] = tienDoValue;
+  }
   row[ngayHoanThanhKey] = formatAppsheetDate(completedAt);
 
   return row;
@@ -432,9 +444,10 @@ export function buildAppsheetTienDoEditRow(
     row.TT = rowKey;
   }
 
+  const tienDoKey = resolveTienDoColumnKey(sourceRow);
   const serialized = serializeAppsheetTienDo(tienDo);
   if (serialized) {
-    row['TIẾN ĐỘ'] = serialized;
+    row[tienDoKey] = serialized;
   }
 
   return row;
