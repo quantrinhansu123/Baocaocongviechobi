@@ -8,7 +8,7 @@ export default function App() {
     <ConfigProvider
       theme={{
         token: {
-          colorPrimary: '#fa8c16', // Orange 6
+          colorPrimary: '#F38320',
           borderRadius: 6,
           fontFamily: "-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif",
         },
@@ -19,7 +19,7 @@ export default function App() {
           },
           Menu: {
             darkItemBg: '#001529',
-            darkItemSelectedBg: '#fa8c16',
+            darkItemSelectedBg: '#F38320',
           },
           Button: {
             borderRadius: 4,
