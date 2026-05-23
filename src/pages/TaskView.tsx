@@ -179,7 +179,14 @@ const STATUS_CFG: Record<string, { color: string }> = {
   'Chưa bắt đầu': { color: 'default' },
 };
 
-const TIEN_DO_OPTIONS = Object.keys(STATUS_CFG).map(status => ({ value: status, label: status }));
+/** Giá trị TIẾN ĐỘ AppSheet chấp nhận khi ghi qua API. */
+const TIEN_DO_EDIT_OPTIONS = [
+  { value: 'Đang làm', label: 'Đang làm' },
+  { value: 'Hoàn thành', label: 'Hoàn thành' },
+  { value: 'Quá hạn', label: 'Quá hạn' },
+];
+
+const TIEN_DO_OPTIONS = TIEN_DO_EDIT_OPTIONS;
 
 const renderStars = (level: number) => (
   <div className="flex gap-0.5">
@@ -312,6 +319,7 @@ const TaskView: React.FC = () => {
   const [savingTienDo, setSavingTienDo] = useState(false);
   const [deletingTaskKey, setDeletingTaskKey] = useState<string | null>(null);
   const [completingTaskKey, setCompletingTaskKey] = useState<string | null>(null);
+  const [savingTienDoKey, setSavingTienDoKey] = useState<string | null>(null);
   const [tienDoDraft, setTienDoDraft] = useState('Chưa bắt đầu');
   const [appsheetConnected, setAppsheetConnected] = useState<boolean | null>(null);
   const [form] = Form.useForm();
@@ -638,45 +646,70 @@ const TaskView: React.FC = () => {
       return;
     }
 
-    setTienDoDraft(detailTask.tienDo || 'Chưa bắt đầu');
+    const current = detailTask.tienDo || 'Chưa bắt đầu';
+    const editable = TIEN_DO_EDIT_OPTIONS.some(option => option.value === current);
+    setTienDoDraft(editable ? current : 'Đang làm');
     setTienDoModalOpen(true);
   };
 
+  const updateTaskTienDo = useCallback(
+    async (taskKey: string, deptKey: string, tienDo: string) => {
+      if (!appsheetTable || !appsheetConnected) {
+        message.error('Chưa kết nối AppSheet API.');
+        return false;
+      }
+
+      const task = tasksByDept[deptKey]?.[taskKey];
+      if (!task?.sourceRow) {
+        message.error('Không tìm thấy bản ghi AppSheet để cập nhật.');
+        return false;
+      }
+
+      if ((task.tienDo || 'Chưa bắt đầu') === tienDo) {
+        return true;
+      }
+
+      const editRow = buildAppsheetTienDoEditRow(tienDo, task.sourceRow);
+      const tienDoWritten = Object.values(editRow).some(
+        value => value === 'Hoàn thành' || value === 'Đang thực hiện' || value === 'Quá hạn'
+      );
+      if (!tienDoWritten) {
+        message.error('Chỉ cập nhật được: Đang làm, Hoàn thành hoặc Quá hạn.');
+        return false;
+      }
+
+      setSavingTienDoKey(taskKey);
+      try {
+        await editAppsheetTask(editRow, appsheetTable);
+        const mapped = await reloadAppsheetTasks();
+        const refreshed = mapped?.[deptKey]?.[taskKey];
+        if (refreshed && detailTask?.key === taskKey && detailTask.deptKey === deptKey) {
+          setDetailTask({ ...refreshed, key: taskKey, deptKey });
+          detailForm.setFieldsValue({ tienDo: refreshed.tienDo });
+        }
+        message.success('Đã cập nhật TIẾN ĐỘ trên AppSheet.');
+        return true;
+      } catch (error) {
+        message.error(error instanceof Error ? error.message : 'Không thể cập nhật TIẾN ĐỘ trên AppSheet.');
+        return false;
+      } finally {
+        setSavingTienDoKey(null);
+      }
+    },
+    [appsheetTable, appsheetConnected, tasksByDept, detailTask, detailForm, reloadAppsheetTasks, message]
+  );
+
   const handleSaveTienDo = async () => {
-    if (!detailTask || !appsheetTable || !appsheetConnected) {
-      message.error('Chưa kết nối AppSheet API.');
-      return;
-    }
-
-    if (!detailTask.sourceRow) {
-      message.error('Không tìm thấy khóa bản ghi AppSheet để cập nhật.');
-      return;
-    }
-
-    const editRow = buildAppsheetTienDoEditRow(tienDoDraft, detailTask.sourceRow);
-    const tienDoWritten = Object.values(editRow).some(
-      value => value === 'Hoàn thành' || value === 'Đang thực hiện' || value === 'Quá hạn'
-    );
-    if (!tienDoWritten) {
-      message.error('Tiến độ này không được AppSheet chấp nhận. Chọn Đang làm, Hoàn thành hoặc Quá hạn.');
+    if (!detailTask) {
       return;
     }
 
     setSavingTienDo(true);
     try {
-      await editAppsheetTask(editRow, appsheetTable);
-      const result = await findAppsheetTasks({ table: appsheetTable });
-      const mapped = mapAppsheetRowsToTasksByDept(result.rows, result.table);
-      setTasksByDept(cloneTasksMap(mapped));
-      const refreshed = mapped[detailTask.deptKey]?.[detailTask.key];
-      if (refreshed) {
-        setDetailTask({ ...refreshed, key: detailTask.key, deptKey: detailTask.deptKey });
-        detailForm.setFieldsValue({ tienDo: refreshed.tienDo });
+      const ok = await updateTaskTienDo(detailTask.key, detailTask.deptKey, tienDoDraft);
+      if (ok) {
+        setTienDoModalOpen(false);
       }
-      setTienDoModalOpen(false);
-      message.success('Đã cập nhật TIẾN ĐỘ trên AppSheet.');
-    } catch (error) {
-      message.error(error instanceof Error ? error.message : 'Không thể cập nhật TIẾN ĐỘ trên AppSheet.');
     } finally {
       setSavingTienDo(false);
     }
@@ -813,7 +846,7 @@ const TaskView: React.FC = () => {
                 className="task-overdue-blink m-0 shrink-0 text-[9px] font-bold uppercase px-1 leading-none"
                 title="Quá hạn"
               >
-                HH
+                QH
               </Tag>
             ) : null}
             <span className="truncate" title={text}>
@@ -877,18 +910,37 @@ const TaskView: React.FC = () => {
         title: th('Tiến độ'),
         dataIndex: 'tienDo',
         key: 'tienDo',
-        width: 96,
+        width: 118,
         align: 'center',
         className: 'task-col-tiendo',
-        render: (value: string) => (
-          <Tag
-            color={(STATUS_CFG[value] ?? { color: 'default' }).color}
-            className="m-0 text-[10px] font-medium max-w-full truncate"
-            title={value || undefined}
-          >
-            {value || '—'}
-          </Tag>
-        ),
+        render: (value: string, record: TableRow) => {
+          const display = value || 'Chưa bắt đầu';
+          const editableValue = TIEN_DO_EDIT_OPTIONS.some(option => option.value === display)
+            ? display
+            : undefined;
+
+          return (
+            <div
+              className="flex justify-center min-w-0"
+              data-task-action
+              onClick={event => event.stopPropagation()}
+            >
+              <Select
+                size="small"
+                className="task-tiendo-select"
+                style={{ width: 108 }}
+                value={editableValue}
+                placeholder={display}
+                title={display}
+                loading={savingTienDoKey === record.key}
+                disabled={!appsheetConnected}
+                options={TIEN_DO_EDIT_OPTIONS}
+                popupMatchSelectWidth={120}
+                onChange={nextValue => void updateTaskTienDo(record.key, record.deptKey, nextValue)}
+              />
+            </div>
+          );
+        },
       },
       {
         title: th('Ngày hoàn thành'),
@@ -972,7 +1024,7 @@ const TaskView: React.FC = () => {
     );
 
     return columns;
-  }, [showDeptColumn, appsheetConnected, completingTaskKey, deletingTaskKey]);
+  }, [showDeptColumn, appsheetConnected, completingTaskKey, deletingTaskKey, savingTienDoKey, updateTaskTienDo]);
 
   const selected = detailTask;
 
@@ -1351,16 +1403,6 @@ const TaskView: React.FC = () => {
                             Sửa tiến độ
                           </Button>
                         </div>
-                      </Form.Item>
-                      <Form.Item label="Trạng thái">
-                        <Tag
-                          color={
-                            (STATUS_CFG[selected.trangThai] ?? STATUS_CFG[selected.tienDo] ?? { color: 'default' })
-                              .color
-                          }
-                        >
-                          {selected.trangThai || '—'}
-                        </Tag>
                       </Form.Item>
                       {selected.ngayGioHoanThanh ? (
                         <Form.Item label="Ngày hoàn thành">
