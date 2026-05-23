@@ -15,11 +15,15 @@ export default function App() {
         components: {
           Layout: {
             headerBg: '#ffffff',
-            siderBg: '#001529',
+            siderBg: '#1E386B',
           },
           Menu: {
-            darkItemBg: '#001529',
+            darkItemBg: '#1E386B',
+            darkSubMenuItemBg: '#152a47',
             darkItemSelectedBg: '#F38320',
+            darkItemSelectedColor: '#ffffff',
+            darkItemHoverBg: 'rgba(243, 131, 32, 0.18)',
+            darkItemHoverColor: '#ffffff',
           },
           Button: {
             borderRadius: 4,

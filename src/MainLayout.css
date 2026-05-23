@@ -30,14 +30,14 @@
     font-size: 24px;
     font-weight: 800;
     margin-bottom: 0;
-    color: #F38320;
+    color: #1E386B;
     line-height: 1;
 }
 
 .custom-navbar-brand .brand-subtitle {
     font-size: 10px;
     letter-spacing: 2px;
-    color: #1E386B;
+    color: #F38320;
     margin-bottom: 0;
     font-weight: 700;
 }
@@ -87,13 +87,21 @@
     transition: width 0.22s ease, min-width 0.22s ease, flex 0.22s ease !important;
 }
 
+.sidebar-report-menu.ant-menu-dark {
+    background: transparent !important;
+}
+
+.sidebar-report-menu.ant-menu-dark .ant-menu-sub.ant-menu-inline {
+    background: rgba(0, 0, 0, 0.14) !important;
+}
+
 .sidebar-report-menu.ant-menu-dark .ant-menu-item,
 .sidebar-report-menu.ant-menu-dark .ant-menu-submenu-title {
-    color: rgba(255, 255, 255, 0.9) !important;
+    color: rgba(255, 255, 255, 0.92) !important;
 }
 
 .sidebar-report-menu.ant-menu-dark .ant-menu-sub .ant-menu-item {
-    color: rgba(255, 255, 255, 0.88) !important;
+    color: rgba(255, 255, 255, 0.9) !important;
 }
 
 .sidebar-report-menu.ant-menu-dark .ant-menu-item-disabled,
@@ -104,15 +112,21 @@
 .sidebar-report-menu.ant-menu-dark .ant-menu-item:hover,
 .sidebar-report-menu.ant-menu-dark .ant-menu-submenu-title:hover {
     color: #ffffff !important;
-    background: rgba(255, 255, 255, 0.08) !important;
+    background: rgba(243, 131, 32, 0.2) !important;
 }
 
 .sidebar-report-menu.ant-menu-dark .ant-menu-item-selected {
-    background: rgba(243, 131, 32, 0.35) !important;
+    background: #f38320 !important;
     color: #ffffff !important;
+    font-weight: 600;
 }
 
 .sidebar-report-menu.ant-menu-dark .ant-menu-submenu-selected > .ant-menu-submenu-title {
+    color: #ffc48a !important;
+    font-weight: 600;
+}
+
+.sidebar-report-menu.ant-menu-dark .ant-menu-submenu-open > .ant-menu-submenu-title {
     color: #ffffff !important;
 }
 

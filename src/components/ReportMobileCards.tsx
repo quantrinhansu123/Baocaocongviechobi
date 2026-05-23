@@ -54,7 +54,7 @@ const ReportMobileCards: React.FC<ReportMobileCardsProps> = ({ rows, selectedKey
                   {String(index + 1).padStart(2, '0')}
                 </span>
                 <h3
-                  className="text-[15px] font-bold text-[#F38320] leading-snug m-0 line-clamp-2 min-w-0"
+                  className="text-[15px] font-bold text-[#1E386B] leading-snug m-0 line-clamp-2 min-w-0"
                   title={report.name}
                 >
                   {report.name}
@@ -122,7 +122,7 @@ const ReportMobileCards: React.FC<ReportMobileCardsProps> = ({ rows, selectedKey
                     href={driveUrl}
                     target="_blank"
                     rel="noreferrer"
-                    className="flex-1 rounded-lg border-orange-100 bg-orange-50/80 text-[#F38320] font-medium h-9"
+                    className="flex-1 rounded-lg border-orange-100 bg-orange-50/80 text-[#1E386B] font-medium h-9"
                   >
                     Drive
                   </Button>
@@ -135,7 +135,7 @@ const ReportMobileCards: React.FC<ReportMobileCardsProps> = ({ rows, selectedKey
                     href={viewUrl}
                     target="_blank"
                     rel="noreferrer"
-                    className="flex-1 rounded-lg border-orange-100 bg-orange-50/80 text-[#F38320] font-medium h-9"
+                    className="flex-1 rounded-lg border-orange-100 bg-orange-50/80 text-[#1E386B] font-medium h-9"
                   >
                     Xem
                   </Button>

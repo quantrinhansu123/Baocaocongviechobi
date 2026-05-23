@@ -9,8 +9,9 @@
   --color-ant-primary: #f38320;
   --color-ant-primary-hover: #ffc48a;
   --color-ant-bg: #f0f2f5;
-  --color-ant-sidebar: #001529;
-  --color-ant-sidebar-logo: #002140;
+  --color-ant-sidebar: #1e386b;
+  --color-ant-sidebar-deep: #152a47;
+  --color-ant-sidebar-logo: #f38320;
   --color-ant-border: #d9d9d9;
 }
 
@@ -19,12 +20,24 @@ body {
   font-family: var(--font-sans);
 }
 
+.text-brand-blue {
+  color: var(--color-brand-blue);
+}
+
+.text-brand-orange {
+  color: var(--color-brand-orange);
+}
+
 .ant-layout {
   @apply bg-ant-bg;
 }
 
 .ant-layout-sider {
-  background-color: var(--color-ant-sidebar) !important;
+  background: linear-gradient(180deg, var(--color-ant-sidebar) 0%, var(--color-ant-sidebar-deep) 100%) !important;
+}
+
+.sidebar-sider-brand .ant-layout-sider-children {
+  background: transparent !important;
 }
 
 .ant-layout-header {

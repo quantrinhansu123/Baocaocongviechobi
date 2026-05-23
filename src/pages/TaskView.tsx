@@ -199,7 +199,7 @@ const renderStars = (level: number) => (
 const InfoRow = ({ icon, label, children }: { icon: React.ReactNode; label: string; children: React.ReactNode }) => (
   <div className="flex flex-col md:flex-row md:items-start gap-1 md:gap-3 py-2.5 border-b border-gray-100 last:border-0">
     <div className="flex items-start gap-2 md:gap-3 md:w-44 flex-shrink-0">
-      <div className="w-5 mt-0.5 text-[#F38320] flex-shrink-0 text-sm flex justify-center">{icon}</div>
+      <div className="w-5 mt-0.5 text-[#1E386B] flex-shrink-0 text-sm flex justify-center">{icon}</div>
       <div className="flex-1 md:w-auto">
         <Text type="secondary" className="text-[11px] md:text-xs uppercase tracking-wide">
           {label}

@@ -293,9 +293,9 @@ const MainLayout: React.FC = () => {
         theme="dark"
         width={240}
         collapsedWidth={80}
-        className="shadow-lg hidden md:block"
+        className="shadow-lg hidden md:block sidebar-sider-brand"
       >
-        <div className={`h-16 flex items-center px-6 bg-[#002140] transition-all duration-300 ${collapsed ? 'justify-center px-0' : ''}`}>
+        <div className={`h-16 flex items-center px-6 bg-[#F38320] transition-all duration-300 ${collapsed ? 'justify-center px-0' : ''}`}>
           <div className="flex-shrink-0 h-10 w-10 flex items-center justify-center overflow-hidden mr-2 bg-white p-1 rounded-lg shadow-sm cursor-pointer" onClick={() => navigate('/')}>
             <img
               src={logo}
@@ -303,7 +303,11 @@ const MainLayout: React.FC = () => {
               className="w-full h-auto object-contain"
             />
           </div>
-          {!collapsed && <span className="font-bold text-lg text-white tracking-wider whitespace-nowrap overflow-hidden"> HoBi Wood</span>}
+          {!collapsed && (
+            <span className="font-bold text-lg text-[#1E386B] tracking-wider whitespace-nowrap overflow-hidden">
+              HoBi Wood
+            </span>
+          )}
         </div>
         <Menu
           theme="dark"
@@ -332,7 +336,7 @@ const MainLayout: React.FC = () => {
             {/* Desktop: Nút gập Sider */}
             <div className="hidden md:flex items-center">
               {React.createElement(collapsed ? MenuUnfoldOutlined : MenuFoldOutlined, {
-                className: 'text-xl cursor-pointer hover:text-[#F38320] transition-colors mr-4',
+                className: 'text-xl cursor-pointer text-[#1E386B] hover:text-[#F38320] transition-colors mr-4',
                 onClick: () => setCollapsed(!collapsed),
               })}
             </div>
@@ -345,7 +349,7 @@ const MainLayout: React.FC = () => {
                 className={`mr-3 flex items-center justify-center w-10 h-10 rounded-lg transition-all shrink-0 ${
                   isReportRoute
                     ? 'bg-white/20 text-white border border-white/50 hover:bg-white/30 shadow-sm'
-                    : 'bg-orange-50 text-[#F38320] border-2 border-[#F38320]/40 hover:bg-orange-100 shadow-sm'
+                    : 'bg-orange-50 text-[#1E386B] border-2 border-[#F38320]/40 hover:bg-orange-100 shadow-sm'
                 }`}
                 onClick={() => setMobileMenuOpen(true)}
               >
@@ -359,7 +363,7 @@ const MainLayout: React.FC = () => {
                 <div className="leading-tight">
                   <p
                     className={`font-bold text-base m-0 tracking-wide ${
-                      isReportRoute ? 'text-white' : 'text-[#F38320]'
+                      isReportRoute ? 'text-white' : 'text-[#1E386B]'
                     }`}
                   >
                     HoBi Wood
@@ -376,7 +380,7 @@ const MainLayout: React.FC = () => {
                   isReportRoute ? 'hover:bg-white/10 text-white' : 'hover:bg-gray-100 text-gray-700'
                 }`}
               >
-                <BellOutlined className={`text-xl ${isReportRoute ? 'text-white' : 'text-[#F38320]'}`} />
+                <BellOutlined className={`text-xl ${isReportRoute ? 'text-white' : 'text-[#1E386B]'}`} />
               </div>
             </Badge>
             <Dropdown menu={{ items: userMenuItems }} placement="bottomRight" trigger={['click']}>
@@ -401,7 +405,7 @@ const MainLayout: React.FC = () => {
               <div className="flex-shrink-0 h-8 w-8 flex items-center justify-center overflow-hidden mr-2 bg-white p-1 rounded-md shadow-sm">
                 <img src={logo} alt="Hobiwood Logo" className="w-full h-auto object-contain" />
               </div>
-              <span className="font-bold text-lg text-white tracking-wider">HoBi Wood</span>
+              <span className="font-bold text-lg text-[#1E386B] tracking-wider">HoBi Wood</span>
             </div>
           }
           placement="left"
@@ -409,8 +413,11 @@ const MainLayout: React.FC = () => {
           open={mobileMenuOpen}
           width={280}
           styles={{
-            body: { padding: '16px 0', backgroundColor: '#001529' },
-            header: { backgroundColor: '#002140', borderBottom: 'none', padding: '16px 24px' }
+            body: {
+              padding: '16px 0',
+              background: 'linear-gradient(180deg, #1E386B 0%, #152a47 100%)',
+            },
+            header: { backgroundColor: '#F38320', borderBottom: 'none', padding: '16px 24px' },
           }}
           closeIcon={<span className="text-white hover:text-gray-300 transition-colors text-lg">✖</span>}
         >

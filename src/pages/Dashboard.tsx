@@ -167,13 +167,13 @@ const Dashboard: React.FC = () => {
   const renderStatus = (status: string) => {
     if (status.includes('Hoàn thành')) return <span className="px-3 py-1 bg-green-100 text-green-700 rounded-full text-xs font-semibold">🟢 {status}</span>;
     if (status === 'Quá hạn') return <span className="px-3 py-1 bg-red-100 text-red-700 rounded-full text-xs font-semibold">🔴 Quá Hạn</span>;
-    return <span className="px-3 py-1 bg-orange-100 text-[#F38320] rounded-full text-xs font-semibold">🟡 Đang Làm</span>;
+    return <span className="px-3 py-1 bg-orange-100 text-[#1E386B] rounded-full text-xs font-semibold">🟡 Đang Làm</span>;
   };
 
   const renderImpact = (level: number) => (
     <div className="flex gap-1">
       {[...Array(4)].map((_, i) => (
-        <Star key={i} size={16} className={i < level ? 'fill-[#F38320] text-[#F38320]' : 'text-gray-300'} />
+        <Star key={i} size={16} className={i < level ? 'fill-[#F38320] text-[#1E386B]' : 'text-gray-300'} />
       ))}
     </div>
   );
@@ -251,7 +251,7 @@ const Dashboard: React.FC = () => {
       key: 'name',
       render: (text: string, record: any) => (
         <Tooltip title={record.desc} placement="topLeft">
-          <Text strong className="text-[#F38320] cursor-pointer hover:underline">{text}</Text>
+          <Text strong className="text-[#1E386B] cursor-pointer hover:underline">{text}</Text>
         </Tooltip>
       )
     },
@@ -622,7 +622,7 @@ const Dashboard: React.FC = () => {
               >
                 <div className="absolute left-0 top-0 bottom-0 w-1 bg-[#F38320]"></div>
                 <div className="flex flex-col pl-2">
-                  <Text strong className="text-[#F38320] text-base leading-tight mb-2 line-clamp-2">{task.name}</Text>
+                  <Text strong className="text-[#1E386B] text-base leading-tight mb-2 line-clamp-2">{task.name}</Text>
                   <div className="flex justify-between items-center text-sm">
                     <span className="text-gray-500 flex items-center">
                       <User size={14} className="mr-1" /> {task.assignee}
@@ -900,11 +900,11 @@ const Dashboard: React.FC = () => {
               <div className="col-span-1 space-y-4 md:space-y-6">
                 <div>
                   <p className="text-sm text-gray-500 mb-1">Người phụ trách</p>
-                  <p className="font-semibold flex items-center gap-2"><User size={18} className="text-[#F38320]" /> {selectedTask.assignee}</p>
+                  <p className="font-semibold flex items-center gap-2"><User size={18} className="text-[#1E386B]" /> {selectedTask.assignee}</p>
                 </div>
                 <div>
                   <p className="text-sm text-gray-500 mb-1">Deadline</p>
-                  <p className="font-semibold flex items-center gap-2"><Calendar size={18} className="text-[#F38320]" /> {selectedTask.deadline}</p>
+                  <p className="font-semibold flex items-center gap-2"><Calendar size={18} className="text-[#1E386B]" /> {selectedTask.deadline}</p>
                 </div>
                 <div>
                   <p className="text-sm text-gray-500 mb-2">Trạng thái</p>
@@ -925,12 +925,12 @@ const Dashboard: React.FC = () => {
               {/* Cột phải: Mô tả & Lịch sử */}
               <div className="col-span-1 md:col-span-2 space-y-4 md:space-y-6">
                 <div className="bg-gray-50 p-3 md:p-4 rounded-lg border border-gray-100">
-                  <h3 className="font-semibold text-[#F38320] mb-2 flex items-center gap-2">Mô tả chi tiết</h3>
+                  <h3 className="font-semibold text-[#1E386B] mb-2 flex items-center gap-2">Mô tả chi tiết</h3>
                   <p className="text-gray-700 leading-relaxed text-sm md:text-base">{selectedTask.desc}</p>
                 </div>
 
                 <div className="bg-gray-50 p-3 md:p-4 rounded-lg border border-gray-100">
-                  <h3 className="font-semibold text-[#F38320] mb-2 flex items-center gap-2">Lịch sử cập nhật</h3>
+                  <h3 className="font-semibold text-[#1E386B] mb-2 flex items-center gap-2">Lịch sử cập nhật</h3>
                   <div className="border-l-2 border-[#1E386B] pl-3 md:pl-4 py-1 ml-1 md:ml-2">
                     <p className="text-xs md:text-sm text-gray-500">Hôm qua</p>
                     <p className="text-gray-700 text-sm md:text-base">{selectedTask.history}</p>

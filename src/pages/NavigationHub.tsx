@@ -115,7 +115,7 @@ function ReportTable({ rows, selectedKey, onRowClick, emptyExtra }: ReportTableP
                 }`}
               >
                 <td className="px-4 py-4 text-gray-500 font-medium align-top">{index + 1}</td>
-                <td className="px-4 py-4 font-semibold text-[#F38320] align-top min-w-[200px] max-w-[280px]">
+                <td className="px-4 py-4 font-semibold text-[#1E386B] align-top min-w-[200px] max-w-[280px]">
                   <span className="leading-snug break-words">{report.name}</span>
                 </td>
                 <td className="px-4 py-4 text-gray-600 align-top min-w-[220px] max-w-[360px]">
@@ -170,7 +170,7 @@ function ReportTable({ rows, selectedKey, onRowClick, emptyExtra }: ReportTableP
                       target="_blank"
                       rel="noreferrer"
                       onClick={event => event.stopPropagation()}
-                      className="inline-flex items-center justify-center w-8 h-8 rounded-lg bg-orange-50 text-[#F38320] hover:bg-orange-100"
+                      className="inline-flex items-center justify-center w-8 h-8 rounded-lg bg-orange-50 text-[#1E386B] hover:bg-orange-100"
                       title="Mở link báo cáo"
                     >
                       <LinkOutlined />
@@ -488,7 +488,7 @@ const NavigationHub: React.FC = () => {
 
   const emptyState = (
     <div className="flex-1 flex flex-col items-center justify-center text-gray-400 gap-3 p-8 text-center pb-24 md:pb-8">
-      <div className="bg-white p-8 rounded-full shadow-sm border border-gray-100 text-[#F38320]/15">
+      <div className="bg-white p-8 rounded-full shadow-sm border border-gray-100 text-[#1E386B]/15">
         <FileTextOutlined className="text-5xl" />
       </div>
       <Text type="secondary" className="text-base max-w-md">
@@ -509,12 +509,12 @@ const NavigationHub: React.FC = () => {
     <>
       <div className="bg-white border-b border-gray-200 px-4 md:px-8 py-5 flex-shrink-0">
         <div className="text-xs text-gray-500 mb-1">
-          <span className="hover:text-[#F38320] cursor-default">Báo cáo định kỳ</span>
+          <span className="hover:text-[#1E386B] cursor-default">Báo cáo định kỳ</span>
           <span className="mx-2 text-gray-300">›</span>
           <span className="text-gray-700 font-medium">{breadcrumbParent}</span>
         </div>
 
-        <h1 className="text-xl md:text-2xl font-bold text-[#F38320] m-0 leading-tight">{pageTitle}</h1>
+        <h1 className="text-xl md:text-2xl font-bold text-[#1E386B] m-0 leading-tight">{pageTitle}</h1>
 
         <div className="mt-4 flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
           {periodOptions.length > 0 ? (
