@@ -654,7 +654,10 @@ const TaskView: React.FC = () => {
     }
 
     const editRow = buildAppsheetTienDoEditRow(tienDoDraft, detailTask.sourceRow);
-    if (!editRow['TIẾN ĐỘ']) {
+    const tienDoWritten = Object.values(editRow).some(
+      value => value === 'Hoàn thành' || value === 'Đang thực hiện' || value === 'Quá hạn'
+    );
+    if (!tienDoWritten) {
       message.error('Tiến độ này không được AppSheet chấp nhận. Chọn Đang làm, Hoàn thành hoặc Quá hạn.');
       return;
     }
@@ -868,6 +871,23 @@ const TaskView: React.FC = () => {
         className: 'task-col-giahan',
         render: (d: string, record: TableRow) => (
           <span className="whitespace-nowrap text-[11px]">{renderDateCell(d, record)}</span>
+        ),
+      },
+      {
+        title: th('Tiến độ'),
+        dataIndex: 'tienDo',
+        key: 'tienDo',
+        width: 96,
+        align: 'center',
+        className: 'task-col-tiendo',
+        render: (value: string) => (
+          <Tag
+            color={(STATUS_CFG[value] ?? { color: 'default' }).color}
+            className="m-0 text-[10px] font-medium max-w-full truncate"
+            title={value || undefined}
+          >
+            {value || '—'}
+          </Tag>
         ),
       },
       {
@@ -1100,7 +1120,7 @@ const TaskView: React.FC = () => {
                     pagination={false}
                     size="small"
                     tableLayout="fixed"
-                    scroll={{ x: showDeptColumn ? 1080 : 1000 }}
+                    scroll={{ x: showDeptColumn ? 1284 : 1204 }}
                     locale={{ emptyText: 'Chưa có công việc' }}
                     onRow={record => {
                       const overdue =
