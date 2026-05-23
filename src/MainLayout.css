@@ -1,8 +1,7 @@
-/* --- TOP BAR (Tầng 1) --- */
+/* --- TOP BAR (Tầng 1) — cam chủ đạo --- */
 .custom-header-top {
     display: flex;
-    background-color: #1E386B;
-    /* Đổi sang Xanh than Hobi Wood */
+    background-color: #F38320;
     padding: 6px 24px;
     justify-content: space-between;
     align-items: center;
@@ -11,14 +10,13 @@
 
 .custom-header-top a {
     text-decoration: none;
-    color: #e2e8f0;
+    color: #fff7ed;
     margin-right: 15px;
     transition: all 0.3s;
 }
 
 .custom-header-top a:hover {
-    color: #F38320 !important;
-    /* Hover ra màu Cam */
+    color: #1E386B !important;
 }
 
 /* --- LOGO BRAND --- */
@@ -32,15 +30,14 @@
     font-size: 24px;
     font-weight: 800;
     margin-bottom: 0;
-    color: #1E386B;
+    color: #F38320;
     line-height: 1;
 }
 
 .custom-navbar-brand .brand-subtitle {
     font-size: 10px;
     letter-spacing: 2px;
-    color: #F38320;
-    /* Chữ phụ màu Cam */
+    color: #1E386B;
     margin-bottom: 0;
     font-weight: 700;
 }
@@ -61,23 +58,20 @@
     text-decoration: none;
     transition: all 0.3s;
     padding: 24px 0;
-    /* Căn giữa theo chiều dọc */
     display: block;
 }
 
-/* Hiệu ứng hover & active ra màu Cam */
 .custom-nav-item:hover .nav-link,
 .custom-nav-item.active .nav-link {
-    color: #F38320;
+    color: #1E386B;
 }
 
-/* Thanh gạch chân trượt ra (Màu cam) */
 .custom-nav-item::after {
     content: "";
     display: block;
     width: 0;
     height: 3px;
-    background-color: #F38320;
+    background-color: #1E386B;
     position: absolute;
     bottom: 0;
     left: 0;
@@ -89,12 +83,10 @@
     width: 100%;
 }
 
-/* Sidebar co giãn theo chiều rộng nội dung khi mở submenu */
 .sidebar-sider-auto.ant-layout-sider {
     transition: width 0.22s ease, min-width 0.22s ease, flex 0.22s ease !important;
 }
 
-/* Chữ sáng hơn (dark menu mặc định hơi tối) */
 .sidebar-report-menu.ant-menu-dark .ant-menu-item,
 .sidebar-report-menu.ant-menu-dark .ant-menu-submenu-title {
     color: rgba(255, 255, 255, 0.9) !important;
@@ -116,7 +108,7 @@
 }
 
 .sidebar-report-menu.ant-menu-dark .ant-menu-item-selected {
-    background: rgba(243, 131, 32, 0.28) !important;
+    background: rgba(243, 131, 32, 0.35) !important;
     color: #ffffff !important;
 }
 
@@ -124,7 +116,6 @@
     color: #ffffff !important;
 }
 
-/* Icon đơn sắc (một tông trắng/xám sáng) */
 .sidebar-report-menu .sidebar-nav-icon {
     color: rgba(255, 255, 255, 0.82);
     font-size: 16px;
@@ -144,7 +135,6 @@
     color: rgba(255, 255, 255, 0.65) !important;
 }
 
-/* Báo cáo định kỳ: menu lồng nhau, nhãn dài xuống dòng */
 .sidebar-report-menu .ant-menu-submenu .ant-menu-submenu-title {
     padding-inline-end: 28px !important;
 }

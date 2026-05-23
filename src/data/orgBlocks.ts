@@ -12,7 +12,7 @@ export const ORG_BLOCKS: BlockSpec[] = [
   {
     key: 'bld',
     label: 'BAN LÃNH ĐẠO',
-    titleClass: 'text-[#1E386B]',
+    titleClass: 'text-[#F38320]',
     deptTitleClass: 'text-[#1e40af]',
     depts: [
       { key: 'bld-ca-nhan', name: 'CÔNG VIỆC CÁ NHÂN' },

@@ -54,7 +54,7 @@ const ReportMobileCards: React.FC<ReportMobileCardsProps> = ({ rows, selectedKey
                   {String(index + 1).padStart(2, '0')}
                 </span>
                 <h3
-                  className="text-[15px] font-bold text-[#1E386B] leading-snug m-0 line-clamp-2 min-w-0"
+                  className="text-[15px] font-bold text-[#F38320] leading-snug m-0 line-clamp-2 min-w-0"
                   title={report.name}
                 >
                   {report.name}
@@ -90,7 +90,7 @@ const ReportMobileCards: React.FC<ReportMobileCardsProps> = ({ rows, selectedKey
 
             <div className="flex items-center justify-between gap-2 mb-4 px-1">
               <div className="flex flex-col items-center min-w-0 flex-1">
-                <Avatar size={40} className="bg-[#1E386B] text-xs font-bold mb-1.5">
+                <Avatar size={40} className="bg-[#F38320] text-xs font-bold mb-1.5">
                   {initials(report.nguoiGui || '?')}
                 </Avatar>
                 <span className="text-[10px] text-gray-400 uppercase tracking-wide">Người gửi</span>
@@ -122,7 +122,7 @@ const ReportMobileCards: React.FC<ReportMobileCardsProps> = ({ rows, selectedKey
                     href={driveUrl}
                     target="_blank"
                     rel="noreferrer"
-                    className="flex-1 rounded-lg border-blue-100 bg-blue-50/60 text-[#1677ff] font-medium h-9"
+                    className="flex-1 rounded-lg border-orange-100 bg-orange-50/80 text-[#F38320] font-medium h-9"
                   >
                     Drive
                   </Button>
@@ -135,7 +135,7 @@ const ReportMobileCards: React.FC<ReportMobileCardsProps> = ({ rows, selectedKey
                     href={viewUrl}
                     target="_blank"
                     rel="noreferrer"
-                    className="flex-1 rounded-lg border-blue-100 bg-blue-50/60 text-[#1677ff] font-medium h-9"
+                    className="flex-1 rounded-lg border-orange-100 bg-orange-50/80 text-[#F38320] font-medium h-9"
                   >
                     Xem
                   </Button>

@@ -887,7 +887,7 @@ const Dashboard: React.FC = () => {
           <div className="bg-white rounded-xl shadow-xl w-full max-w-4xl flex flex-col max-h-[90vh] md:max-h-[85vh]">
 
             {/* Header Modal */}
-            <div className="bg-[#1E386B] text-white p-4 md:p-5 flex justify-between items-center rounded-t-xl shrink-0">
+            <div className="bg-[#F38320] text-white p-4 md:p-5 flex justify-between items-center rounded-t-xl shrink-0">
               <h2 className="text-lg md:text-xl font-bold pr-4">{selectedTask.name}</h2>
               <button onClick={() => setSelectedTask(null)} className="hover:bg-white/20 p-1 rounded transition shrink-0">
                 <X size={24} />
@@ -900,11 +900,11 @@ const Dashboard: React.FC = () => {
               <div className="col-span-1 space-y-4 md:space-y-6">
                 <div>
                   <p className="text-sm text-gray-500 mb-1">Người phụ trách</p>
-                  <p className="font-semibold flex items-center gap-2"><User size={18} className="text-[#1E386B]" /> {selectedTask.assignee}</p>
+                  <p className="font-semibold flex items-center gap-2"><User size={18} className="text-[#F38320]" /> {selectedTask.assignee}</p>
                 </div>
                 <div>
                   <p className="text-sm text-gray-500 mb-1">Deadline</p>
-                  <p className="font-semibold flex items-center gap-2"><Calendar size={18} className="text-[#1E386B]" /> {selectedTask.deadline}</p>
+                  <p className="font-semibold flex items-center gap-2"><Calendar size={18} className="text-[#F38320]" /> {selectedTask.deadline}</p>
                 </div>
                 <div>
                   <p className="text-sm text-gray-500 mb-2">Trạng thái</p>
@@ -925,13 +925,13 @@ const Dashboard: React.FC = () => {
               {/* Cột phải: Mô tả & Lịch sử */}
               <div className="col-span-1 md:col-span-2 space-y-4 md:space-y-6">
                 <div className="bg-gray-50 p-3 md:p-4 rounded-lg border border-gray-100">
-                  <h3 className="font-semibold text-[#1E386B] mb-2 flex items-center gap-2">Mô tả chi tiết</h3>
+                  <h3 className="font-semibold text-[#F38320] mb-2 flex items-center gap-2">Mô tả chi tiết</h3>
                   <p className="text-gray-700 leading-relaxed text-sm md:text-base">{selectedTask.desc}</p>
                 </div>
 
                 <div className="bg-gray-50 p-3 md:p-4 rounded-lg border border-gray-100">
-                  <h3 className="font-semibold text-[#1E386B] mb-2 flex items-center gap-2">Lịch sử cập nhật</h3>
-                  <div className="border-l-2 border-[#F38320] pl-3 md:pl-4 py-1 ml-1 md:ml-2">
+                  <h3 className="font-semibold text-[#F38320] mb-2 flex items-center gap-2">Lịch sử cập nhật</h3>
+                  <div className="border-l-2 border-[#1E386B] pl-3 md:pl-4 py-1 ml-1 md:ml-2">
                     <p className="text-xs md:text-sm text-gray-500">Hôm qua</p>
                     <p className="text-gray-700 text-sm md:text-base">{selectedTask.history}</p>
                   </div>
@@ -944,12 +944,12 @@ const Dashboard: React.FC = () => {
               <MessageSquare className="text-gray-400 mt-2 min-w-[20px]" size={20} />
               <div className="flex-1 w-full">
                 <textarea
-                  className="w-full border border-gray-300 rounded-lg p-2 md:p-3 outline-none focus:border-[#F38320] focus:ring-1 focus:ring-[#F38320] transition resize-none text-sm"
+                  className="w-full border border-gray-300 rounded-lg p-2 md:p-3 outline-none focus:border-[#F38320] focus:ring-1 focus:ring-[#1E386B]/30 transition resize-none text-sm"
                   rows={2}
                   placeholder="Bình luận hoặc cập nhật trạng thái..."
                 />
                 <div className="flex justify-end mt-2">
-                  <button className="bg-[#F38320] text-white px-4 md:px-6 py-2 rounded-lg font-medium hover:bg-orange-600 transition text-sm">
+                  <button className="bg-[#F38320] text-white px-4 md:px-6 py-2 rounded-lg font-medium hover:bg-[#e07518] transition text-sm">
                     Gửi
                   </button>
                 </div>

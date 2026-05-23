@@ -323,7 +323,7 @@ const MainLayout: React.FC = () => {
         <Header
           className={`p-0 flex items-center justify-between shadow-sm px-4 md:px-6 z-10 h-16 border-b ${
             isReportRoute
-              ? 'md:bg-white md:border-gray-200 bg-[#1E386B] border-transparent'
+              ? 'md:bg-white md:border-gray-200 bg-[#F38320] border-transparent'
               : 'bg-white border-gray-200'
           }`}
         >
@@ -332,7 +332,7 @@ const MainLayout: React.FC = () => {
             {/* Desktop: Nút gập Sider */}
             <div className="hidden md:flex items-center">
               {React.createElement(collapsed ? MenuUnfoldOutlined : MenuFoldOutlined, {
-                className: 'text-xl cursor-pointer hover:text-blue-500 transition-colors mr-4',
+                className: 'text-xl cursor-pointer hover:text-[#F38320] transition-colors mr-4',
                 onClick: () => setCollapsed(!collapsed),
               })}
             </div>
@@ -344,8 +344,8 @@ const MainLayout: React.FC = () => {
                 aria-label="Mở menu"
                 className={`mr-3 flex items-center justify-center w-10 h-10 rounded-lg transition-all shrink-0 ${
                   isReportRoute
-                    ? 'bg-white text-[#1677ff] shadow-md hover:bg-blue-50 ring-2 ring-[#69b1ff]/60'
-                    : 'bg-[#e6f4ff] text-[#1677ff] border-2 border-[#91caff] hover:bg-[#bae0ff] shadow-sm'
+                    ? 'bg-white/20 text-white border border-white/50 hover:bg-white/30 shadow-sm'
+                    : 'bg-orange-50 text-[#F38320] border-2 border-[#F38320]/40 hover:bg-orange-100 shadow-sm'
                 }`}
                 onClick={() => setMobileMenuOpen(true)}
               >
@@ -359,7 +359,7 @@ const MainLayout: React.FC = () => {
                 <div className="leading-tight">
                   <p
                     className={`font-bold text-base m-0 tracking-wide ${
-                      isReportRoute ? 'text-white' : 'text-[#1E386B]'
+                      isReportRoute ? 'text-white' : 'text-[#F38320]'
                     }`}
                   >
                     HoBi Wood
@@ -370,13 +370,13 @@ const MainLayout: React.FC = () => {
           </div>
 
           <Space size="middle" className="md:size-large">
-            <Badge count={3} dot offset={[-2, 2]} color="#F38320">
+            <Badge count={3} dot offset={[-2, 2]} color="#1E386B">
               <div
                 className={`h-9 w-9 flex items-center justify-center rounded-full cursor-pointer transition-colors ${
                   isReportRoute ? 'hover:bg-white/10 text-white' : 'hover:bg-gray-100 text-gray-700'
                 }`}
               >
-                <BellOutlined className={`text-xl ${isReportRoute ? 'text-white' : 'text-[#1677ff]'}`} />
+                <BellOutlined className={`text-xl ${isReportRoute ? 'text-white' : 'text-[#F38320]'}`} />
               </div>
             </Badge>
             <Dropdown menu={{ items: userMenuItems }} placement="bottomRight" trigger={['click']}>
@@ -385,7 +385,7 @@ const MainLayout: React.FC = () => {
                   isReportRoute ? 'hover:bg-white/10' : 'hover:bg-gray-100'
                 }`}
               >
-                <Avatar icon={<UserOutlined />} className="bg-[#1E386B]" />
+                <Avatar icon={<UserOutlined />} className="bg-[#F38320]" />
                 <div className="hidden md:block">
                   <div className="text-sm font-bold leading-none text-[rgba(0,0,0,0.88)]">Anh Tuyển</div>
                 </div>

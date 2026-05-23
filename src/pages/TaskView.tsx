@@ -199,7 +199,7 @@ const renderStars = (level: number) => (
 const InfoRow = ({ icon, label, children }: { icon: React.ReactNode; label: string; children: React.ReactNode }) => (
   <div className="flex flex-col md:flex-row md:items-start gap-1 md:gap-3 py-2.5 border-b border-gray-100 last:border-0">
     <div className="flex items-start gap-2 md:gap-3 md:w-44 flex-shrink-0">
-      <div className="w-5 mt-0.5 text-[#1E386B] flex-shrink-0 text-sm flex justify-center">{icon}</div>
+      <div className="w-5 mt-0.5 text-[#F38320] flex-shrink-0 text-sm flex justify-center">{icon}</div>
       <div className="flex-1 md:w-auto">
         <Text type="secondary" className="text-[11px] md:text-xs uppercase tracking-wide">
           {label}
@@ -1154,7 +1154,7 @@ const TaskView: React.FC = () => {
           {listScope && !detailTask ? (
             <div className="flex-1 flex flex-col overflow-hidden p-4 md:p-6 min-w-0">
               <div className="flex-1 flex flex-col overflow-hidden max-w-7xl w-full mx-auto min-w-0">
-              <div className="bg-[#1E386B] text-white px-4 md:px-5 py-3 rounded-t-lg flex-shrink-0 flex items-start justify-between gap-3">
+              <div className="bg-[#F38320] text-white px-4 md:px-5 py-3 rounded-t-lg flex-shrink-0 flex items-start justify-between gap-3">
                 <div className="min-w-0 flex-1">
                   <p className="text-[10px] uppercase tracking-widest text-white/70 m-0 mb-1">Danh sách công việc</p>
                   <h2 className="m-0 text-base font-bold uppercase leading-snug">{listTitle}</h2>
@@ -1308,7 +1308,7 @@ const TaskView: React.FC = () => {
             </div>
           ) : selected ? (
             <>
-              <div className="bg-[#1E386B] px-4 md:px-6 py-3 md:py-4 flex-shrink-0 shadow flex items-start justify-between gap-3">
+              <div className="bg-[#F38320] px-4 md:px-6 py-3 md:py-4 flex-shrink-0 shadow flex items-start justify-between gap-3">
                 <div className="min-w-0">
                   <p className="text-white/60 text-[10px] md:text-xs m-0 mb-0.5 tracking-wide uppercase">Chi tiết công việc</p>
                   <div className="flex flex-wrap items-center gap-2">
@@ -1362,7 +1362,7 @@ const TaskView: React.FC = () => {
 
               <div className="flex-1 overflow-auto p-5">
                 <div className="bg-white rounded-xl shadow-sm border border-gray-200">
-                  <div className="bg-[#F38320] text-white text-center font-bold py-2 text-xs tracking-widest rounded-t-xl uppercase">
+                  <div className="bg-[#1E386B] text-white text-center font-bold py-2 text-xs tracking-widest rounded-t-xl uppercase">
                     Thông tin công việc
                   </div>
 

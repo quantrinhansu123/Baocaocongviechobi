@@ -46,11 +46,11 @@ const MobileBottomNav: React.FC = () => {
               type="button"
               onClick={() => navigate(item.key === '/profile' ? '/' : item.key)}
               className={`flex flex-col items-center justify-center gap-0.5 text-[11px] font-medium transition-colors ${
-                active ? 'text-[#1E386B]' : 'text-gray-400'
+                active ? 'text-[#F38320]' : 'text-gray-400'
               }`}
             >
-              {active ? <span className="w-1 h-1 rounded-full bg-[#1E386B] mb-0.5" /> : <span className="h-1.5" />}
-              <Icon className={`text-xl ${active ? 'text-[#1E386B]' : 'text-gray-400'}`} />
+              {active ? <span className="w-1 h-1 rounded-full bg-[#F38320] mb-0.5" /> : <span className="h-1.5" />}
+              <Icon className={`text-xl ${active ? 'text-[#F38320]' : 'text-gray-400'}`} />
               <span>{item.label}</span>
             </button>
           );
