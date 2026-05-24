@@ -228,6 +228,7 @@ type TableRow = {
   trangThai: string;
   ngayHoanThanh: string;
   deptKey: string;
+  sourceRow?: Record<string, unknown>;
 };
 
 function renderCompletionDateCell(value: string) {
@@ -448,6 +449,7 @@ const TaskView: React.FC = () => {
             trangThai: t.trangThai,
             ngayHoanThanh: t.ngayGioHoanThanh,
             deptKey: scope.deptKey,
+            sourceRow: t.sourceRow,
           });
         });
         rows.sort((a, b) => a.stt - b.stt);
@@ -474,6 +476,7 @@ const TaskView: React.FC = () => {
             trangThai: t.trangThai,
             ngayHoanThanh: t.ngayGioHoanThanh,
             deptKey: dept.key,
+            sourceRow: t.sourceRow,
           });
         });
       });

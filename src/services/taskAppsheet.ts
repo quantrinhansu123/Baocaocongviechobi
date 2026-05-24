@@ -5,6 +5,7 @@ import {
   formatUnknownAsDisplayDate,
   normalizeDisplayDateTime,
   TASK_COMPLETED_STATUS_LABEL,
+  getEffectiveDueDate,
 } from '../utils/taskDate';
 
 const ROMAN = ['I', 'II', 'III', 'IV'] as const;
@@ -153,11 +154,24 @@ function resolveRowColumnKey(
 export function isTaskRecordCompleted(
   task: Pick<TaskRecord, 'tienDo' | 'trangThai'> & { ngayGioHoanThanh?: string; ngayHoanThanh?: string }
 ): boolean {
-  if ((task.tienDo ?? '').trim() === 'Hoàn thành') {
-    return true;
-  }
+  const normalizedTienDo = (task.tienDo ?? '').trim().toLowerCase();
+  const normalizedTrangThai = (task.trangThai ?? '').trim().toLowerCase();
+  const COMPLETED_SYNONYMS = new Set([
+    'hoàn thành',
+    'đã hoàn thành',
+    'hoan thanh',
+    'da hoan thanh',
+    'hoàn tất',
+    'hoan tat',
+    'đã xong',
+    'da xong',
+    'xong',
+    'done',
+    'completed',
+    'complete'
+  ]);
 
-  if ((task.trangThai ?? '').trim() === TASK_COMPLETED_STATUS_LABEL) {
+  if (COMPLETED_SYNONYMS.has(normalizedTienDo) || COMPLETED_SYNONYMS.has(normalizedTrangThai)) {
     return true;
   }
 
@@ -275,6 +289,58 @@ export function mapAppsheetRowToTaskRecord(
   const deptKey = resolveDeptKey(row, tableName);
   const taskKey = resolveTaskKey(row, index, deptKey);
 
+  const deadlineVal = pickFormattedDate(row, ['Y/C XONG', 'Yêu cầu xong', 'Yeu cau xong', 'YcXong', 'ycXong', 'Deadline', 'Due date']);
+  const giaHan1Val = pickFormattedDate(row, ['GIA HẠN 1', 'Gia hạn 1', 'Gia han 1', 'GiaHan1', 'giaHan1']);
+  const giaHan2Val = pickFormattedDate(row, ['GIA HẠN 2', 'Gia hạn 2', 'Gia han 2', 'GiaHan2', 'giaHan2']);
+  const giaHan3Val = pickFormattedDate(row, ['GIA HẠN 3', 'Gia hạn 3', 'Gia han 3', 'GiaHan3', 'giaHan3']);
+
+  const dueDatesInput = {
+    deadline: deadlineVal,
+    giaHan1: giaHan1Val,
+    giaHan2: giaHan2Val,
+    giaHan3: giaHan3Val
+  };
+  const effectiveDue = getEffectiveDueDate(dueDatesInput);
+  const effectiveDeadlineStr = effectiveDue ? effectiveDue.format('DD/MM/YYYY') : deadlineVal;
+
+  const tienDoVal = normalizeAppsheetTienDo(
+    pickField(row, ['TIẾN ĐỘ', 'Tiến độ', 'Tien do', 'TienDo', 'tienDo'])
+  );
+  const trangThaiVal = pickField(row, [
+    'TRẠNG THÁI',
+    'Trạng thái',
+    'Trang thai',
+    'TrangThai',
+    'trangThai',
+    'Tình trạng',
+    'Tinh trang',
+  ]);
+  const rawNgayHoanThanh = pickNgayHoanThanhFromRow(row);
+
+  const normalizedTienDo = tienDoVal?.trim().toLowerCase() || '';
+  const normalizedTrangThai = trangThaiVal?.trim().toLowerCase() || '';
+  const COMPLETED_SYNONYMS = new Set([
+    'hoàn thành',
+    'đã hoàn thành',
+    'hoan thanh',
+    'da hoan thanh',
+    'hoàn tất',
+    'hoan tat',
+    'đã xong',
+    'da xong',
+    'xong',
+    'done',
+    'completed',
+    'complete'
+  ]);
+
+  const isCompleted = 
+    COMPLETED_SYNONYMS.has(normalizedTienDo) || 
+    COMPLETED_SYNONYMS.has(normalizedTrangThai) || 
+    Boolean(rawNgayHoanThanh);
+
+  const ngayGioHoanThanh = rawNgayHoanThanh ? rawNgayHoanThanh : effectiveDeadlineStr;
+
   return {
     deptKey,
     taskKey,
@@ -292,25 +358,15 @@ export function mapAppsheetRowToTaskRecord(
         'Người phụ trách',
       ]),
       ngayGiao: pickFormattedDate(row, ['NGÀY GIAO', 'Ngày giao', 'Ngay giao', 'NgayGiao', 'ngayGiao', 'Start date']),
-      ycXong: pickFormattedDate(row, ['Y/C XONG', 'Yêu cầu xong', 'Yeu cau xong', 'YcXong', 'ycXong', 'Deadline', 'Due date']),
+      ycXong: deadlineVal,
       giaHan1: pickFormattedDate(row, ['GIA HẠN 1', 'Gia hạn 1', 'Gia han 1', 'GiaHan1', 'giaHan1']),
       giaHan2: pickFormattedDate(row, ['GIA HẠN 2', 'Gia hạn 2', 'Gia han 2', 'GiaHan2', 'giaHan2']),
       giaHan3: pickFormattedDate(row, ['GIA HẠN 3', 'Gia hạn 3', 'Gia han 3', 'GiaHan3', 'giaHan3']),
       ketQua: pickField(row, ['KẾT QUẢ', 'Kết quả', 'Ket qua', 'KetQua', 'ketQua', 'Result']),
       linkKQ: pickField(row, ['LINK KQ', 'Link KQ', 'LinkKQ', 'linkKQ', 'Link']),
-      tienDo: normalizeAppsheetTienDo(
-        pickField(row, ['TIẾN ĐỘ', 'Tiến độ', 'Tien do', 'TienDo', 'tienDo'])
-      ),
-      trangThai: pickField(row, [
-        'TRẠNG THÁI',
-        'Trạng thái',
-        'Trang thai',
-        'TrangThai',
-        'trangThai',
-        'Tình trạng',
-        'Tinh trang',
-      ]),
-      ngayGioHoanThanh: pickNgayHoanThanhFromRow(row),
+      tienDo: tienDoVal,
+      trangThai: trangThaiVal,
+      ngayGioHoanThanh,
       vuongMac: pickField(row, ['VƯỚNG MẮC', 'Vướng mắc', 'Vuong mac', 'VuongMac', 'vuongMac']),
       canLD: pickField(row, ['CẦN LĐ TÁC ĐỘNG', 'Cần LD', 'Can LD', 'CanLD', 'canLD']) || 'Không',
       anhHuong: pickNumber(row, ['MỨC ẢNH HƯỞNG', 'Ảnh hưởng', 'Anh huong', 'AnhHuong', 'anhHuong', 'Priority'], 1),

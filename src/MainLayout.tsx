@@ -41,6 +41,7 @@ const TASK_MENU_TREE = [
     depts: [
       { key: 'bld-ca-nhan', label: '1. CÔNG VIỆC CÁ NHÂN' },
       { key: 'bld-cong-viec-bld', label: '2. CÔNG VIỆC CỦA BLĐ' },
+      { key: 'bld-danh-muc', label: '3. DANH MỤC CÔNG VIỆC' },
     ],
   },
   {

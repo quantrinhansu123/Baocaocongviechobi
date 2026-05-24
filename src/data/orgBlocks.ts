@@ -17,6 +17,7 @@ export const ORG_BLOCKS: BlockSpec[] = [
     depts: [
       { key: 'bld-ca-nhan', name: 'CÔNG VIỆC CÁ NHÂN' },
       { key: 'bld-cong-viec-bld', name: 'CÔNG VIỆC CỦA BLĐ' },
+      { key: 'bld-danh-muc', name: 'DANH MỤC CÔNG VIỆC' },
     ],
   },
   {

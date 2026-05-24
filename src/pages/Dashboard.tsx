@@ -220,7 +220,7 @@ const Dashboard: React.FC = () => {
 
   const overdueColumns = [
     {
-      title: 'Công việc',
+      title: 'CÔNG VIỆC',
       dataIndex: 'name',
       key: 'name',
       render: (text: string, record: any) => (
@@ -230,14 +230,14 @@ const Dashboard: React.FC = () => {
       )
     },
     {
-      title: 'Phòng ban',
+      title: 'PHÒNG BAN',
       dataIndex: 'department',
       key: 'department',
       render: (text: string) => <Tag>{text}</Tag>
     },
-    { title: 'Người phụ trách', dataIndex: 'assignee', key: 'assignee' },
+    { title: 'NGƯỜI PHỤ TRÁCH', dataIndex: 'assignee', key: 'assignee' },
     {
-      title: 'Deadline',
+      title: 'DEADLINE',
       dataIndex: 'deadline',
       key: 'deadline',
       render: (date: string) => <strong className="text-red-600">{date}</strong>
@@ -246,7 +246,7 @@ const Dashboard: React.FC = () => {
 
   const importantColumns = [
     {
-      title: 'Công việc',
+      title: 'CÔNG VIỆC',
       dataIndex: 'name',
       key: 'name',
       render: (text: string, record: any) => (
@@ -255,9 +255,21 @@ const Dashboard: React.FC = () => {
         </Tooltip>
       )
     },
-    { title: 'Người phụ trách', dataIndex: 'assignee', key: 'assignee' },
+    { title: 'NGƯỜI PHỤ TRÁCH', dataIndex: 'assignee', key: 'assignee' },
     {
-      title: 'Mức độ ảnh hưởng',
+      title: 'PHÒNG BAN',
+      dataIndex: 'department',
+      key: 'department',
+      render: (text: string) => <Tag>{text}</Tag>
+    },
+    {
+      title: 'DEADLINE',
+      dataIndex: 'deadline',
+      key: 'deadline',
+      render: (date: string) => <strong className="text-[#1E386B]">{date}</strong>
+    },
+    {
+      title: 'MỨC ĐỘ ẢNH HƯỞNG',
       dataIndex: 'impact',
       key: 'impact',
       render: (impact: number) => renderImpact(impact)
@@ -623,6 +635,10 @@ const Dashboard: React.FC = () => {
                 <div className="absolute left-0 top-0 bottom-0 w-1 bg-[#F38320]"></div>
                 <div className="flex flex-col pl-2">
                   <Text strong className="text-[#1E386B] text-base leading-tight mb-2 line-clamp-2">{task.name}</Text>
+                  <div className="flex justify-between items-center text-sm mb-2">
+                    <Tag className="m-0 border-none bg-gray-100 text-gray-700">{task.department}</Tag>
+                    <span className="text-[#1E386B] font-bold bg-orange-50 px-2 py-0.5 rounded text-xs border border-orange-100">Hạn: {task.deadline}</span>
+                  </div>
                   <div className="flex justify-between items-center text-sm">
                     <span className="text-gray-500 flex items-center">
                       <User size={14} className="mr-1" /> {task.assignee}
