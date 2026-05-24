@@ -38,6 +38,7 @@ import {
   normalizeDisplayDate,
   parseTaskDate,
   type TaskDueDatesInput,
+  calculateAutomaticStatus,
 } from '../utils/taskDate';
 import { addAppsheetTask, deleteAppsheetTask, editAppsheetTask, findAppsheetTasks } from '../services/appsheetApi';
 import {
@@ -435,6 +436,16 @@ const TaskView: React.FC = () => {
         const bucket: Record<string, TaskRecord> = tasksByDept[scope.deptKey] ?? {};
         const label = meta?.deptName ?? scope.deptKey;
         Object.entries(bucket).forEach(([taskKey, t]) => {
+          let computedTienDo = calculateAutomaticStatus({
+            deadline: t.ycXong,
+            giaHan1: t.giaHan1,
+            giaHan2: t.giaHan2,
+            giaHan3: t.giaHan3,
+            ngayHoanThanh: t.ngayGioHoanThanh,
+          });
+          if (computedTienDo === 'Hoàn thành' && t.tienDo && t.tienDo.toLowerCase().includes('gia hạn')) {
+            computedTienDo = t.tienDo as any;
+          }
           rows.push({
             key: taskKey,
             stt: t.stt,
@@ -445,7 +456,7 @@ const TaskView: React.FC = () => {
             giaHan1: t.giaHan1,
             giaHan2: t.giaHan2,
             giaHan3: t.giaHan3,
-            tienDo: t.tienDo,
+            tienDo: computedTienDo,
             trangThai: t.trangThai,
             ngayHoanThanh: t.ngayGioHoanThanh,
             deptKey: scope.deptKey,
@@ -462,6 +473,16 @@ const TaskView: React.FC = () => {
         const label = meta?.deptName ?? dept.name;
         const bucket: Record<string, TaskRecord> = tasksByDept[dept.key] ?? {};
         Object.entries(bucket).forEach(([taskKey, t]) => {
+          let computedTienDo = calculateAutomaticStatus({
+            deadline: t.ycXong,
+            giaHan1: t.giaHan1,
+            giaHan2: t.giaHan2,
+            giaHan3: t.giaHan3,
+            ngayHoanThanh: t.ngayGioHoanThanh,
+          });
+          if (computedTienDo === 'Hoàn thành' && t.tienDo && t.tienDo.toLowerCase().includes('gia hạn')) {
+            computedTienDo = t.tienDo as any;
+          }
           rows.push({
             key: taskKey,
             stt: t.stt,
@@ -472,7 +493,7 @@ const TaskView: React.FC = () => {
             giaHan1: t.giaHan1,
             giaHan2: t.giaHan2,
             giaHan3: t.giaHan3,
-            tienDo: t.tienDo,
+            tienDo: computedTienDo,
             trangThai: t.trangThai,
             ngayHoanThanh: t.ngayGioHoanThanh,
             deptKey: dept.key,

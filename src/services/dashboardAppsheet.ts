@@ -1,6 +1,6 @@
 import dayjs from 'dayjs';
 import type { TaskRecord } from '../types/task';
-import { normalizeDisplayDate, isTaskOverduePastExtensions } from '../utils/taskDate';
+import { normalizeDisplayDate, isTaskOverduePastExtensions, calculateAutomaticStatus } from '../utils/taskDate';
 import { findAppsheetTasks } from './appsheetApi';
 import { listAppsheetTableBindings, mapAppsheetRowsToTasksByDept } from './taskAppsheet';
 
@@ -58,19 +58,17 @@ function mapTaskRecordToDashboardTask(
   task: TaskRecord
 ): DashboardTask {
   const deadline = normalizeDisplayDate(task.giaHan3 || task.giaHan2 || task.giaHan1 || task.ycXong);
-  let status = task.tienDo || 'Chưa bắt đầu';
-
-  const isOverdue = isTaskOverduePastExtensions({
+  let status: string = calculateAutomaticStatus({
     deadline: task.ycXong,
     giaHan1: task.giaHan1,
     giaHan2: task.giaHan2,
     giaHan3: task.giaHan3,
-    tienDo: task.tienDo,
-    trangThai: task.trangThai,
+    ngayHoanThanh: task.ngayGioHoanThanh,
   });
 
-  if (isOverdue) {
-    status = 'Quá hạn';
+  // Preserve completed extensions if they are completed
+  if (status === 'Hoàn thành' && task.tienDo && task.tienDo.toLowerCase().includes('gia hạn')) {
+    status = task.tienDo;
   }
 
   return {

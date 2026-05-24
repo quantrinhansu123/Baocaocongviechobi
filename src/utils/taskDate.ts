@@ -48,6 +48,7 @@ export type TaskDueDatesInput = {
   trangThai?: string;
 };
 
+
 /** Ngày hạn cuối cùng = max(deadline, gia hạn 1–3). */
 export function getEffectiveDueDate(input: TaskDueDatesInput): dayjs.Dayjs | null {
   const candidates = [input.deadline, input.giaHan1, input.giaHan2, input.giaHan3]
@@ -61,20 +62,58 @@ export function getEffectiveDueDate(input: TaskDueDatesInput): dayjs.Dayjs | nul
   return candidates.reduce((latest, current) => (current.isAfter(latest) ? current : latest));
 }
 
-/** Quá hạn khi hôm nay > hạn cuối (kể cả gia hạn). Không cảnh báo nếu đã hoàn thành. */
-export function isTaskOverduePastExtensions(input: TaskDueDatesInput): boolean {
-  const tienDo = (input.tienDo ?? '').trim();
-  const trangThai = (input.trangThai ?? '').trim();
-  if (tienDo === 'Hoàn thành' || trangThai === TASK_COMPLETED_STATUS_LABEL) {
-    return false;
-  }
+/** Tự động tính toán trạng thái: Quá hạn, Hoàn thành, Đang làm */
+export function calculateAutomaticStatus(input: {
+  deadline: string;
+  giaHan1?: string;
+  giaHan2?: string;
+  giaHan3?: string;
+  ngayHoanThanh?: string;
+}): 'Hoàn thành' | 'Quá hạn' | 'Đang làm' {
+  const effectiveDue = getEffectiveDueDate({
+    deadline: input.deadline,
+    giaHan1: input.giaHan1,
+    giaHan2: input.giaHan2,
+    giaHan3: input.giaHan3,
+  });
 
-  const effectiveDue = getEffectiveDueDate(input);
-  if (!effectiveDue) {
-    return false;
-  }
+  const ngayHTStr = (input.ngayHoanThanh ?? '').trim();
+  const hasCompletedDate = Boolean(ngayHTStr && ngayHTStr !== '—');
 
-  return dayjs().startOf('day').isAfter(effectiveDue.startOf('day'));
+  if (!hasCompletedDate) {
+    if (!effectiveDue) {
+      return 'Đang làm';
+    }
+    const today = dayjs().startOf('day');
+    if (today.isAfter(effectiveDue.startOf('day'))) {
+      return 'Quá hạn';
+    }
+    return 'Đang làm';
+  } else {
+    // Có ngày hoàn thành
+    const completedDate = parseTaskDate(ngayHTStr);
+    if (!completedDate) {
+      return 'Hoàn thành';
+    }
+    if (!effectiveDue) {
+      return 'Hoàn thành';
+    }
+    if (completedDate.startOf('day').isAfter(effectiveDue.startOf('day'))) {
+      return 'Quá hạn';
+    }
+    return 'Hoàn thành';
+  }
+}
+
+/** Quá hạn khi hôm nay > hạn cuối (kể cả gia hạn), hoặc ngày hoàn thành > hạn cuối. */
+export function isTaskOverduePastExtensions(input: TaskDueDatesInput & { ngayHoanThanh?: string }): boolean {
+  return calculateAutomaticStatus({
+    deadline: input.deadline,
+    giaHan1: input.giaHan1,
+    giaHan2: input.giaHan2,
+    giaHan3: input.giaHan3,
+    ngayHoanThanh: input.ngayHoanThanh,
+  }) === 'Quá hạn';
 }
 
 export function parseTaskDate(value: string | undefined): dayjs.Dayjs | null {

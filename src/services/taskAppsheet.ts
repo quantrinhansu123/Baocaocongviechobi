@@ -339,7 +339,7 @@ export function mapAppsheetRowToTaskRecord(
     COMPLETED_SYNONYMS.has(normalizedTrangThai) || 
     Boolean(rawNgayHoanThanh);
 
-  const ngayGioHoanThanh = rawNgayHoanThanh ? rawNgayHoanThanh : effectiveDeadlineStr;
+  const ngayGioHoanThanh = rawNgayHoanThanh;
 
   return {
     deptKey,
