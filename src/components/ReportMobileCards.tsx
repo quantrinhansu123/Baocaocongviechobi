@@ -1,6 +1,12 @@
 import React from 'react';
-import { Avatar, Button, Tag } from 'antd';
-import { ArrowRightOutlined, EyeOutlined, GoogleOutlined } from '@ant-design/icons';
+import { Avatar, Button, Popconfirm, Tag } from 'antd';
+import {
+  ArrowRightOutlined,
+  DeleteOutlined,
+  EditOutlined,
+  EyeOutlined,
+  GoogleOutlined,
+} from '@ant-design/icons';
 import type { ReportRecord } from '../types/report';
 import { normalizeDisplayDate } from '../utils/taskDate';
 
@@ -24,9 +30,23 @@ type ReportMobileCardsProps = {
   rows: ReportRecord[];
   selectedKey?: string;
   onSelect: (report: ReportRecord) => void;
+  showRowActions?: boolean;
+  appsheetConnected?: boolean;
+  deletingKey?: string | null;
+  onEdit?: (report: ReportRecord) => void;
+  onDelete?: (report: ReportRecord) => void;
 };
 
-const ReportMobileCards: React.FC<ReportMobileCardsProps> = ({ rows, selectedKey, onSelect }) => {
+const ReportMobileCards: React.FC<ReportMobileCardsProps> = ({
+  rows,
+  selectedKey,
+  onSelect,
+  showRowActions,
+  appsheetConnected,
+  deletingKey,
+  onEdit,
+  onDelete,
+}) => {
   if (rows.length === 0) {
     return (
       <div className="py-12 text-center text-gray-400 text-sm px-4">Chưa có báo cáo trong kỳ này.</div>
@@ -112,36 +132,68 @@ const ReportMobileCards: React.FC<ReportMobileCardsProps> = ({ rows, selectedKey
               </div>
             </div>
 
-            {(driveUrl || viewUrl) && (
-              <div className="flex gap-2" onClick={event => event.stopPropagation()}>
-                {driveUrl ? (
+            <div className="flex flex-wrap gap-2" onClick={event => event.stopPropagation()}>
+              {driveUrl ? (
+                <Button
+                  type="default"
+                  size="small"
+                  icon={<GoogleOutlined />}
+                  href={driveUrl}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="flex-1 min-w-[100px] rounded-lg border-orange-100 bg-orange-50/80 text-[#1E386B] font-medium h-9"
+                >
+                  Drive
+                </Button>
+              ) : null}
+              {viewUrl ? (
+                <Button
+                  type="default"
+                  size="small"
+                  icon={<EyeOutlined />}
+                  href={viewUrl}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="flex-1 min-w-[100px] rounded-lg border-orange-100 bg-orange-50/80 text-[#1E386B] font-medium h-9"
+                >
+                  Xem
+                </Button>
+              ) : null}
+              {showRowActions ? (
+                <>
                   <Button
                     type="default"
                     size="small"
-                    icon={<GoogleOutlined />}
-                    href={driveUrl}
-                    target="_blank"
-                    rel="noreferrer"
-                    className="flex-1 rounded-lg border-orange-100 bg-orange-50/80 text-[#1E386B] font-medium h-9"
+                    icon={<EditOutlined />}
+                    className="flex-1 min-w-[100px] rounded-lg font-medium h-9"
+                    disabled={!appsheetConnected || !report.sourceRow}
+                    onClick={() => onEdit?.(report)}
                   >
-                    Drive
+                    Sửa
                   </Button>
-                ) : null}
-                {viewUrl ? (
-                  <Button
-                    type="default"
-                    size="small"
-                    icon={<EyeOutlined />}
-                    href={viewUrl}
-                    target="_blank"
-                    rel="noreferrer"
-                    className="flex-1 rounded-lg border-orange-100 bg-orange-50/80 text-[#1E386B] font-medium h-9"
+                  <Popconfirm
+                    title="Xoá báo cáo này trên AppSheet?"
+                    okText="Xoá"
+                    cancelText="Huỷ"
+                    okButtonProps={{ danger: true, loading: deletingKey === report.key }}
+                    onConfirm={() => onDelete?.(report)}
+                    disabled={!appsheetConnected || !report.sourceRow}
                   >
-                    Xem
-                  </Button>
-                ) : null}
-              </div>
-            )}
+                    <Button
+                      type="default"
+                      size="small"
+                      danger
+                      icon={<DeleteOutlined />}
+                      className="flex-1 min-w-[100px] rounded-lg font-medium h-9"
+                      loading={deletingKey === report.key}
+                      disabled={!appsheetConnected || !report.sourceRow}
+                    >
+                      Xóa
+                    </Button>
+                  </Popconfirm>
+                </>
+              ) : null}
+            </div>
           </article>
         );
       })}

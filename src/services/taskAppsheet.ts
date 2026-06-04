@@ -1,3 +1,11 @@
+import { findAppsheetTasks } from './appsheetApi';
+import {
+  applyAppsheetRowKey,
+  getAppsheetRowKeyColumn,
+  hasAppsheetRowKey,
+  pickAppsheetRowKey,
+  TASK_ROW_KEY_COLUMN,
+} from './appsheetRowKey';
 import { ORG_BLOCKS } from '../data/orgBlocks';
 import type { TaskRecord } from '../types/task';
 import {
@@ -90,6 +98,74 @@ function pickFormattedDate(row: Record<string, unknown>, keys: string[]): string
 /** Tên cột AppSheet (xác nhận bởi người dùng). */
 export const APPSHEET_NGAY_HOAN_THANH_COLUMN = 'Ngày hoàn thành';
 export const APPSHEET_TIEN_DO_COLUMN = 'TIẾN ĐỘ';
+export { hasAppsheetRowKey, pickAppsheetRowKey, TASK_ROW_KEY_COLUMN } from './appsheetRowKey';
+
+function buildTtSelector(tt: string): string {
+  const trimmed = tt.trim();
+  if (/^\d+(\.\d+)?$/.test(trimmed)) {
+    return `Filter([TT], =${Number(trimmed)})`;
+  }
+  const escaped = trimmed.replace(/"/g, '""');
+  return `Filter([TT], ="${escaped}")`;
+}
+
+function matchRowByTt(row: Record<string, unknown>, tt: string): boolean {
+  const rowTt = pickField(row, ['TT', 'STT', 'Stt', 'stt']);
+  return rowTt === tt || String(rowTt) === String(tt);
+}
+
+function mergeHydratedRow(
+  sourceRow: Record<string, unknown>,
+  refreshed: Record<string, unknown>,
+  tableName: string
+): Record<string, unknown> {
+  const column = getAppsheetRowKeyColumn(tableName);
+  const rowKey = pickAppsheetRowKey(refreshed, tableName);
+  if (!rowKey) {
+    return sourceRow;
+  }
+
+  return {
+    ...sourceRow,
+    ...refreshed,
+    [column]: rowKey,
+  };
+}
+
+/** Tải lại cột id từ AppSheet khi bản ghi trong bộ nhớ thiếu khóa dòng. */
+export async function hydrateSourceRowAppsheetKey(
+  sourceRow: Record<string, unknown>,
+  tableName: string
+): Promise<Record<string, unknown>> {
+  const existingKey = pickAppsheetRowKey(sourceRow, tableName);
+  if (existingKey) {
+    return { ...sourceRow, [getAppsheetRowKeyColumn(tableName)]: existingKey };
+  }
+
+  const tt = pickField(sourceRow, ['TT', 'STT', 'Stt', 'stt']);
+  if (!tt) {
+    return sourceRow;
+  }
+
+  try {
+    const selectorResult = await findAppsheetTasks({ table: tableName, selector: buildTtSelector(tt) });
+    const fromSelector =
+      selectorResult.rows.find(row => matchRowByTt(row, tt)) ?? selectorResult.rows[0];
+    if (fromSelector && pickAppsheetRowKey(fromSelector)) {
+      return mergeHydratedRow(sourceRow, fromSelector, tableName);
+    }
+
+    const fullResult = await findAppsheetTasks({ table: tableName });
+    const fromFull = fullResult.rows.find(row => matchRowByTt(row, tt));
+    if (fromFull) {
+      return mergeHydratedRow(sourceRow, fromFull, tableName);
+    }
+  } catch {
+    return sourceRow;
+  }
+
+  return sourceRow;
+}
 
 function resolveTienDoColumnKey(row: Record<string, unknown>): string {
   return resolveRowColumnKey(
@@ -345,7 +421,7 @@ export function mapAppsheetRowToTaskRecord(
     deptKey,
     taskKey,
     task: {
-      stt: pickNumber(row, ['TT', 'STT', 'Stt', 'stt', '_RowNumber'], index + 1),
+      stt: pickNumber(row, ['TT', 'STT', 'Stt', 'stt'], index + 1),
       kyBaoCao: pickField(row, ['Kỳ báo cáo', 'Ky bao cao', 'KyBaoCao', 'kyBaoCao', 'Period']),
       congViec: pickField(row, ['CÔNG VIỆC', 'Công việc', 'Cong viec', 'CongViec', 'congViec', 'Task', 'Title']),
       nguoiGiao: pickField(row, [
@@ -370,6 +446,7 @@ export function mapAppsheetRowToTaskRecord(
       vuongMac: pickField(row, ['VƯỚNG MẮC', 'Vướng mắc', 'Vuong mac', 'VuongMac', 'vuongMac']),
       canLD: pickField(row, ['CẦN LĐ TÁC ĐỘNG', 'Cần LD', 'Can LD', 'CanLD', 'canLD']) || 'Không',
       anhHuong: pickNumber(row, ['MỨC ẢNH HƯỞNG', 'Ảnh hưởng', 'Anh huong', 'AnhHuong', 'anhHuong', 'Priority'], 1),
+      appsheetRowKey: pickAppsheetRowKey(row, tableName),
       sourceRow: { ...row },
     },
   };
@@ -418,15 +495,12 @@ export function buildAppsheetTaskRow(input: {
   };
 }
 
-export function buildAppsheetEditRow(task: TaskRecord, sourceRow: Record<string, unknown>): Record<string, unknown> {
+export function buildAppsheetEditRow(
+  task: TaskRecord,
+  sourceRow: Record<string, unknown>,
+  tableName: string
+): Record<string, unknown> {
   const row: Record<string, unknown> = {};
-  const rowKey = pickField(sourceRow, ['TT', 'STT', 'Stt', 'stt']);
-
-  if (rowKey) {
-    row.TT = rowKey;
-  } else if (task.stt) {
-    row.TT = String(task.stt);
-  }
 
   row['CÔNG VIỆC'] = task.congViec;
   row['NGƯỜI ĐƯỢC GIAO'] = task.nguoiGiao;
@@ -446,7 +520,7 @@ export function buildAppsheetEditRow(task: TaskRecord, sourceRow: Record<string,
     row['TIẾN ĐỘ'] = tienDo;
   }
 
-  return row;
+  return applyAppsheetRowKey(row, sourceRow, task.appsheetRowKey, tableName);
 }
 
 export function mergeTaskCompletion(
@@ -463,6 +537,7 @@ export function mergeTaskCompletion(
     tienDo: 'Hoàn thành',
     trangThai: '',
     ngayGioHoanThanh: ngayHoanThanh,
+    appsheetRowKey: pickAppsheetRowKey(mergedSource) ?? task.appsheetRowKey,
     sourceRow: mergedSource,
   };
 }
@@ -470,33 +545,27 @@ export function mergeTaskCompletion(
 /** Chỉ gửi các cột có thật trên AppSheet: TT, TIẾN ĐỘ, Ngày hoàn thành. */
 export function buildAppsheetCompleteTaskRow(
   sourceRow: Record<string, unknown>,
-  completedAt: Date = new Date()
+  completedAt: Date = new Date(),
+  explicitRowKey?: string | null,
+  tableName?: string
 ): Record<string, unknown> {
   const row: Record<string, unknown> = {};
-  const rowKey = pickField(sourceRow, ['TT', 'STT', 'Stt', 'stt']);
-
-  if (rowKey) {
-    row.TT = rowKey;
-  }
 
   const tienDoValue = serializeAppsheetTienDo('Hoàn thành') ?? 'Hoàn thành';
   row[APPSHEET_TIEN_DO_COLUMN] = tienDoValue;
   row[APPSHEET_NGAY_HOAN_THANH_COLUMN] = formatAppsheetDate(completedAt);
 
-  return row;
+  return applyAppsheetRowKey(row, sourceRow, explicitRowKey, tableName);
 }
 
 export function buildAppsheetTienDoEditRow(
   tienDo: string,
   sourceRow: Record<string, unknown>,
-  completedAt: Date = new Date()
+  completedAt: Date = new Date(),
+  explicitRowKey?: string | null,
+  tableName?: string
 ): Record<string, unknown> {
   const row: Record<string, unknown> = {};
-  const rowKey = pickField(sourceRow, ['TT', 'STT', 'Stt', 'stt']);
-
-  if (rowKey) {
-    row.TT = rowKey;
-  }
 
   const serialized = serializeAppsheetTienDo(tienDo);
   if (serialized) {
@@ -507,16 +576,13 @@ export function buildAppsheetTienDoEditRow(
     row[APPSHEET_NGAY_HOAN_THANH_COLUMN] = formatAppsheetDate(completedAt);
   }
 
-  return row;
+  return applyAppsheetRowKey(row, sourceRow, explicitRowKey, tableName);
 }
 
-export function buildAppsheetDeleteRow(sourceRow: Record<string, unknown>): Record<string, unknown> {
-  const row: Record<string, unknown> = {};
-  const rowKey = pickField(sourceRow, ['TT', 'STT', 'Stt', 'stt']);
-
-  if (rowKey) {
-    row.TT = rowKey;
-  }
-
-  return row;
+export function buildAppsheetDeleteRow(
+  sourceRow: Record<string, unknown>,
+  explicitRowKey?: string | null,
+  tableName?: string
+): Record<string, unknown> {
+  return applyAppsheetRowKey({}, sourceRow, explicitRowKey, tableName);
 }

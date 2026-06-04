@@ -1,4 +1,5 @@
 import type { IncomingMessage, ServerResponse } from 'node:http';
+import { normalizeRowsForKeyAction } from './normalizeRowKey';
 
 export default async function handler(req: IncomingMessage, res: ServerResponse) {
   await writeAppsheetRows(req, res, 'Edit');
@@ -9,7 +10,9 @@ async function writeAppsheetRows(req: IncomingMessage, res: ServerResponse, acti
     const body = await readJsonBody(req);
     const table = String(body.table ?? clean(process.env.APPSHEET_TABLE) ?? 'I.1');
     const rows = Array.isArray(body.rows) ? (body.rows as Record<string, unknown>[]) : [];
-    const raw = await invokeAppsheet(action, table, rows);
+    const normalizedRows =
+      action === 'Edit' ? normalizeRowsForKeyAction(rows, 'Edit', table) : rows;
+    const raw = await invokeAppsheet(action, table, normalizedRows);
     sendJson(res, 200, { table, raw });
   } catch (error) {
     sendJson(res, 500, { message: error instanceof Error ? error.message : 'AppSheet write failed.' });

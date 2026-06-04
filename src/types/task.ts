@@ -16,5 +16,7 @@ export type TaskRecord = {
   vuongMac: string;
   canLD: string;
   anhHuong: number;
+  /** Khóa dòng AppSheet (cột TT trên bảng công việc) — dùng khi Edit/Delete */
+  appsheetRowKey?: string | null;
   sourceRow?: Record<string, unknown>;
 };

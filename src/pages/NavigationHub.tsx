@@ -1,7 +1,23 @@
 import dayjs from 'dayjs';
 import React, { useEffect, useMemo, useState } from 'react';
-import { App as AntdApp, Typography, Tag, Select, Spin, Tabs, Input, Avatar, Button, Modal, Form, DatePicker } from 'antd';
 import {
+  App as AntdApp,
+  Typography,
+  Tag,
+  Select,
+  Spin,
+  Tabs,
+  Input,
+  Avatar,
+  Button,
+  Modal,
+  Form,
+  DatePicker,
+  Popconfirm,
+} from 'antd';
+import {
+  DeleteOutlined,
+  EditOutlined,
   FileTextOutlined,
   LinkOutlined,
   SearchOutlined,
@@ -11,20 +27,40 @@ import {
   PlusOutlined,
 } from '@ant-design/icons';
 import { useNavigate, useSearchParams } from 'react-router-dom';
-import { addAppsheetTask } from '../services/appsheetApi';
+import { addAppsheetTask, deleteAppsheetTask, editAppsheetTask, findAppsheetTasks } from '../services/appsheetApi';
 import { loadReportCatalog } from '../services/reportCatalog';
-import { listPeriodsForBlock, listPeriodsForGroup } from '../data/reportNavigation';
 import {
+  findReportGroup,
+  listPeriodsForBlock,
+  listPeriodsForGroup,
+  parseBlockKeyFromGroupParam,
+} from '../data/reportNavigation';
+import {
+  buildAppsheetReportDeleteRow,
+  buildAppsheetReportEditRow,
   buildAppsheetReportRow,
+  getNextReportRowNumber,
   getReportAppsheetTableName,
   kyLabelFromPeriodLabel,
 } from '../services/reportAppsheet';
+import { hasAppsheetRowKey } from '../services/appsheetRowKey';
 import type { ReportCatalog, ReportGroupRecord, ReportRecord } from '../types/report';
 import ReportMobileCards from '../components/ReportMobileCards';
 import { useMobileShell } from '../contexts/MobileShellContext';
 import { formatAppsheetDate, formatTaskDate, normalizeDisplayDate } from '../utils/taskDate';
 
 const { Text } = Typography;
+
+/** Khối II — bật Sửa / Xóa trên từng dòng báo cáo */
+const REPORT_BLOCK_WITH_ROW_ACTIONS = 'bc-II';
+
+function parseFormDate(value: string): dayjs.Dayjs | undefined {
+  if (!value.trim()) {
+    return undefined;
+  }
+  const parsed = dayjs(value.trim(), ['DD/MM/YYYY', 'D/M/YYYY'], true);
+  return parsed.isValid() ? parsed : undefined;
+}
 
 type WeekOption = {
   value: string;
@@ -74,9 +110,24 @@ type ReportTableProps = {
   selectedKey?: string;
   onRowClick: (report: ReportRecord) => void;
   emptyExtra?: React.ReactNode;
+  showRowActions?: boolean;
+  appsheetConnected?: boolean;
+  deletingKey?: string | null;
+  onEdit?: (report: ReportRecord) => void;
+  onDelete?: (report: ReportRecord) => void;
 };
 
-function ReportTable({ rows, selectedKey, onRowClick, emptyExtra }: ReportTableProps) {
+function ReportTable({
+  rows,
+  selectedKey,
+  onRowClick,
+  emptyExtra,
+  showRowActions,
+  appsheetConnected,
+  deletingKey,
+  onEdit,
+  onDelete,
+}: ReportTableProps) {
   if (rows.length === 0) {
     return (
       <div className="px-6 py-16 text-center text-gray-400 text-sm space-y-4">
@@ -91,16 +142,17 @@ function ReportTable({ rows, selectedKey, onRowClick, emptyExtra }: ReportTableP
       <table className="w-full text-sm border-collapse min-w-[1000px]">
         <thead>
           <tr className="bg-gray-50 text-gray-600 border-b border-gray-200">
-            {['#', 'TÊN BÁO CÁO', 'NỘI DUNG', 'NGÀY TẠO BÁO CÁO', 'NGÀY GỬI', 'KỲ', 'NGƯỜI GỬI', 'NGƯỜI NHẬN', ''].map(
-              header => (
-                <th
-                  key={header || 'link'}
-                  className="px-4 py-3 text-left text-[11px] font-bold uppercase tracking-wide whitespace-nowrap"
-                >
-                  {header}
-                </th>
-              )
-            )}
+            {(showRowActions
+              ? ['#', 'TÊN BÁO CÁO', 'NỘI DUNG', 'NGÀY TẠO BÁO CÁO', 'NGÀY GỬI', 'KỲ', 'NGƯỜI GỬI', 'NGƯỜI NHẬN', 'LINK', 'THAO TÁC']
+              : ['#', 'TÊN BÁO CÁO', 'NỘI DUNG', 'NGÀY TẠO BÁO CÁO', 'NGÀY GỬI', 'KỲ', 'NGƯỜI GỬI', 'NGƯỜI NHẬN', '']
+            ).map(header => (
+              <th
+                key={header || 'link'}
+                className="px-4 py-3 text-left text-[11px] font-bold uppercase tracking-wide whitespace-nowrap"
+              >
+                {header}
+              </th>
+            ))}
           </tr>
         </thead>
         <tbody>
@@ -177,6 +229,43 @@ function ReportTable({ rows, selectedKey, onRowClick, emptyExtra }: ReportTableP
                     </a>
                   ) : null}
                 </td>
+                {showRowActions ? (
+                  <td className="px-4 py-4 align-top text-center whitespace-nowrap">
+                    <div
+                      className="inline-flex items-center justify-center gap-0.5"
+                      onClick={event => event.stopPropagation()}
+                    >
+                      <Button
+                        type="text"
+                        size="small"
+                        className="!px-1"
+                        icon={<EditOutlined />}
+                        title="Sửa"
+                        disabled={!appsheetConnected || !report.sourceRow}
+                        onClick={() => onEdit?.(report)}
+                      />
+                      <Popconfirm
+                        title="Xoá báo cáo này trên AppSheet?"
+                        okText="Xoá"
+                        cancelText="Huỷ"
+                        okButtonProps={{ danger: true, loading: deletingKey === report.key }}
+                        onConfirm={() => onDelete?.(report)}
+                        disabled={!appsheetConnected || !report.sourceRow}
+                      >
+                        <Button
+                          type="text"
+                          size="small"
+                          danger
+                          className="!px-1"
+                          icon={<DeleteOutlined />}
+                          title="Xóa"
+                          loading={deletingKey === report.key}
+                          disabled={!appsheetConnected || !report.sourceRow}
+                        />
+                      </Popconfirm>
+                    </div>
+                  </td>
+                ) : null}
               </tr>
             );
           })}
@@ -196,8 +285,11 @@ const NavigationHub: React.FC = () => {
   const [appsheetConnected, setAppsheetConnected] = useState<boolean | null>(null);
   const [selectedWeek, setSelectedWeek] = useState('week_16');
   const [searchText, setSearchText] = useState('');
-  const [createOpen, setCreateOpen] = useState(false);
-  const [creatingReport, setCreatingReport] = useState(false);
+  const [reportFormOpen, setReportFormOpen] = useState(false);
+  const [reportFormMode, setReportFormMode] = useState<'create' | 'edit'>('create');
+  const [editingReport, setEditingReport] = useState<ReportRecord | null>(null);
+  const [savingReport, setSavingReport] = useState(false);
+  const [deletingReportKey, setDeletingReportKey] = useState<string | null>(null);
   const [form] = Form.useForm();
 
   const reportId = searchParams.get('r')?.trim() || null;
@@ -207,12 +299,22 @@ const NavigationHub: React.FC = () => {
 
   const selectedReport = reportId ? catalog.reports[reportId] ?? null : null;
 
+  const resolvedGroupFromParam = useMemo(() => {
+    if (!groupKeyParam) {
+      return null;
+    }
+    return findReportGroup(groupKeyParam, catalog);
+  }, [groupKeyParam, catalog.groups]);
+
   const activeGroupKey = useMemo(() => {
+    if (resolvedGroupFromParam) {
+      return resolvedGroupFromParam.groupKey;
+    }
     if (groupKeyParam) {
       return groupKeyParam;
     }
     return selectedReport?.groupKey ?? null;
-  }, [groupKeyParam, selectedReport?.groupKey]);
+  }, [resolvedGroupFromParam, groupKeyParam, selectedReport?.groupKey]);
 
   const activeBlockKey = useMemo(() => {
     if (blockKeyParam) {
@@ -221,18 +323,42 @@ const NavigationHub: React.FC = () => {
     if (selectedReport?.blockKey) {
       return selectedReport.blockKey;
     }
+    if (resolvedGroupFromParam) {
+      return resolvedGroupFromParam.blockKey;
+    }
+    if (groupKeyParam) {
+      const fallbackBlockKey = parseBlockKeyFromGroupParam(groupKeyParam);
+      if (fallbackBlockKey && catalog.blocks.some(block => block.blockKey === fallbackBlockKey)) {
+        return fallbackBlockKey;
+      }
+    }
     if (activeGroupKey) {
       return catalog.groups.find(group => group.groupKey === activeGroupKey)?.blockKey ?? null;
     }
     return null;
-  }, [blockKeyParam, selectedReport?.blockKey, activeGroupKey, catalog.groups]);
+  }, [
+    blockKeyParam,
+    selectedReport?.blockKey,
+    resolvedGroupFromParam,
+    groupKeyParam,
+    activeGroupKey,
+    catalog.groups,
+    catalog.blocks,
+  ]);
 
   const activeGroup = useMemo<ReportGroupRecord | null>(() => {
+    if (resolvedGroupFromParam) {
+      return resolvedGroupFromParam;
+    }
     if (!activeGroupKey) {
       return null;
     }
     return catalog.groups.find(group => group.groupKey === activeGroupKey) ?? null;
-  }, [activeGroupKey, catalog.groups]);
+  }, [resolvedGroupFromParam, activeGroupKey, catalog.groups]);
+
+  const unknownGroupParam = Boolean(
+    groupKeyParam && !reportsLoading && !resolvedGroupFromParam
+  );
 
   const activeBlock = useMemo(() => {
     if (!activeBlockKey) {
@@ -360,6 +486,19 @@ const NavigationHub: React.FC = () => {
     };
   }, [message]);
 
+  useEffect(() => {
+    if (!groupKeyParam || reportsLoading || !resolvedGroupFromParam) {
+      return;
+    }
+    if (resolvedGroupFromParam.groupKey === groupKeyParam) {
+      return;
+    }
+
+    const params = new URLSearchParams(searchParams);
+    params.set('g', resolvedGroupFromParam.groupKey);
+    navigate(`/navigation?${params.toString()}`, { replace: true });
+  }, [groupKeyParam, reportsLoading, resolvedGroupFromParam, searchParams, navigate]);
+
   const buildNavigationParams = (overrides?: { periodKey?: string; reportKey?: string | null }) => {
     const params = new URLSearchParams();
 
@@ -407,19 +546,77 @@ const NavigationHub: React.FC = () => {
   };
 
   const showContent = Boolean(activeGroupKey || blockKeyParam);
-  const pageTitle = activeGroup?.label ?? activeBlock?.blockLabel ?? 'Báo cáo định kỳ';
+  const pageTitle =
+    activeGroup?.label ??
+    (unknownGroupParam && activeBlock ? activeBlock.blockLabel : null) ??
+    activeBlock?.blockLabel ??
+    'Báo cáo định kỳ';
   const mobileTitle = stripLeadingIndex(pageTitle);
   const breadcrumbParent = activeBlock ? breadcrumbBlockLabel(activeBlock.blockLabel) : 'Báo cáo định kỳ';
 
   const canCreateReport = Boolean(showContent && activeBlock?.ma && appsheetConnected);
+  const canManageReports = Boolean(
+    showContent && activeBlockKey === REPORT_BLOCK_WITH_ROW_ACTIONS && appsheetConnected
+  );
 
   const openCreateModal = () => {
+    setReportFormMode('create');
+    setEditingReport(null);
     form.resetFields();
     form.setFieldsValue({
       loaiBaoCao: activeGroup?.label ?? '',
       kyBaoCao: kyLabelFromPeriodLabel(activePeriodLabel),
+      ngayBaoCao: dayjs(),
+      ngayUpdateLink: dayjs(),
     });
-    setCreateOpen(true);
+    setReportFormOpen(true);
+  };
+
+  const openEditModal = (report: ReportRecord) => {
+    if (!report.sourceRow) {
+      message.error('Không có dữ liệu AppSheet cho báo cáo này. Hãy F5 tải lại.');
+      return;
+    }
+    setReportFormMode('edit');
+    setEditingReport(report);
+    form.setFieldsValue({
+      loaiBaoCao: report.loaiBaoCao || activeGroup?.label || '',
+      tenBaoCao: report.name,
+      noidung: report.noidung,
+      kyBaoCao: report.ky,
+      ngayBaoCao: parseFormDate(report.ngay),
+      nguoiGui: report.nguoiGui,
+      nguoiNhan: report.nguoiNhan,
+      link: report.link,
+      ngayUpdateLink: parseFormDate(report.ngayTaoBaoCao),
+    });
+    setReportFormOpen(true);
+  };
+
+  const handleDeleteReport = async (report: ReportRecord) => {
+    if (!report.sourceRow) {
+      message.error('Không có dữ liệu AppSheet để xóa. Hãy F5 tải lại.');
+      return;
+    }
+    const reportTable = getReportAppsheetTableName();
+    if (!hasAppsheetRowKey(report.sourceRow, report.key, reportTable)) {
+      message.error('Không có khóa id để xóa trên AppSheet.');
+      return;
+    }
+
+    setDeletingReportKey(report.key);
+    try {
+      await deleteAppsheetTask(buildAppsheetReportDeleteRow(report.sourceRow, report.key), reportTable);
+      await reloadReports();
+      message.success('Đã xóa báo cáo trên AppSheet.');
+      if (reportId === report.key) {
+        navigate(`/navigation?${buildNavigationParams({ reportKey: null }).toString()}`);
+      }
+    } catch (error) {
+      message.error(error instanceof Error ? error.message : 'Không thể xóa báo cáo trên AppSheet.');
+    } finally {
+      setDeletingReportKey(null);
+    }
   };
 
   const addReportButton = (options?: { size?: 'small' | 'middle' | 'large'; block?: boolean }) => (
@@ -436,15 +633,10 @@ const NavigationHub: React.FC = () => {
     </Button>
   );
 
-  const handleCreateSubmit = () => {
+  const handleReportFormSubmit = () => {
     form
       .validateFields()
       .then(async values => {
-        if (!activeBlock?.ma) {
-          message.error('Chọn phòng ban trên menu để thêm báo cáo.');
-          return;
-        }
-
         if (!appsheetConnected) {
           message.error('Chưa kết nối AppSheet API.');
           return;
@@ -456,31 +648,82 @@ const NavigationHub: React.FC = () => {
           return;
         }
 
-        setCreatingReport(true);
+        const reportTable = getReportAppsheetTableName();
+        setSavingReport(true);
+
         try {
-          await addAppsheetTask(
-            buildAppsheetReportRow({
-              ma: activeBlock.ma,
-              loaiBaoCao,
-              tenBaoCao: values.tenBaoCao as string,
-              noidung: values.noidung as string | undefined,
-              kyBaoCao: values.kyBaoCao as string | undefined,
-              ngayBaoCao: normalizeDisplayDate(values.ngayBaoCao as string | undefined),
-              nguoiGui: values.nguoiGui as string | undefined,
-              nguoiNhan: values.nguoiNhan as string | undefined,
-              link: values.link as string | undefined,
-              ngayUpdateLink: formatTaskDate(values.ngayUpdateLink),
-            }),
-            getReportAppsheetTableName()
-          );
-          await reloadReports();
-          message.success('Đã thêm báo cáo vào AppSheet.');
-          setCreateOpen(false);
+          if (reportFormMode === 'edit') {
+            if (!editingReport?.sourceRow) {
+              message.error('Không có dữ liệu AppSheet để sửa.');
+              return;
+            }
+            if (!hasAppsheetRowKey(editingReport.sourceRow, editingReport.key, reportTable)) {
+              message.error('Không có khóa id để cập nhật AppSheet.');
+              return;
+            }
+
+            await editAppsheetTask(
+              buildAppsheetReportEditRow(
+                editingReport.sourceRow,
+                {
+                  loaiBaoCao,
+                  tenBaoCao: values.tenBaoCao as string,
+                  noidung: (values.noidung as string | undefined) ?? '',
+                  kyBaoCao: values.kyBaoCao as string | undefined,
+                  ngayBaoCao: formatTaskDate(values.ngayBaoCao),
+                  nguoiGui: (values.nguoiGui as string | undefined) ?? '',
+                  nguoiNhan: (values.nguoiNhan as string | undefined) ?? '',
+                  link: (values.link as string | undefined) ?? '',
+                  ngayUpdateLink: formatTaskDate(values.ngayUpdateLink),
+                },
+                editingReport.key
+              ),
+              reportTable
+            );
+            await reloadReports();
+            message.success('Đã cập nhật báo cáo trên AppSheet.');
+          } else {
+            if (!activeBlock?.ma) {
+              message.error('Chọn phòng ban trên menu để thêm báo cáo.');
+              return;
+            }
+
+            const findResult = await findAppsheetTasks({ table: reportTable });
+            await addAppsheetTask(
+              buildAppsheetReportRow({
+                ma: activeBlock.ma,
+                blockKey: activeBlock.blockKey,
+                loaiBaoCao,
+                tenBaoCao: values.tenBaoCao as string,
+                existingRows: findResult.rows,
+                rowNumber: getNextReportRowNumber(findResult.rows),
+                noidung: values.noidung as string | undefined,
+                kyBaoCao: values.kyBaoCao as string | undefined,
+                ngayBaoCao: formatTaskDate(values.ngayBaoCao),
+                nguoiGui: values.nguoiGui as string | undefined,
+                nguoiNhan: values.nguoiNhan as string | undefined,
+                link: values.link as string | undefined,
+                ngayUpdateLink: formatTaskDate(values.ngayUpdateLink),
+              }),
+              reportTable
+            );
+            await reloadReports();
+            message.success('Đã thêm báo cáo vào AppSheet.');
+          }
+
+          setReportFormOpen(false);
+          setEditingReport(null);
           form.resetFields();
         } catch (error) {
-          message.error(error instanceof Error ? error.message : 'Không thể thêm báo cáo trên AppSheet.');
+          message.error(
+            error instanceof Error
+              ? error.message
+              : reportFormMode === 'edit'
+                ? 'Không thể cập nhật báo cáo trên AppSheet.'
+                : 'Không thể thêm báo cáo trên AppSheet.'
+          );
         } finally {
-          setCreatingReport(false);
+          setSavingReport(false);
         }
       })
       .catch(() => {});
@@ -515,6 +758,11 @@ const NavigationHub: React.FC = () => {
         </div>
 
         <h1 className="text-xl md:text-2xl font-bold text-[#1E386B] m-0 leading-tight">{pageTitle}</h1>
+        {unknownGroupParam ? (
+          <p className="text-sm text-amber-700 mt-2 mb-0">
+            Không tìm thấy nhóm báo cáo trong menu (link có thể cũ). Chọn lại mục ở thanh trái hoặc thêm báo cáo mới.
+          </p>
+        ) : null}
 
         <div className="mt-4 flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
           {periodOptions.length > 0 ? (
@@ -581,6 +829,11 @@ const NavigationHub: React.FC = () => {
             rows={filteredReports}
             selectedKey={selectedReport?.key}
             onRowClick={handleReportSelect}
+            showRowActions={canManageReports}
+            appsheetConnected={appsheetConnected === true}
+            deletingKey={deletingReportKey}
+            onEdit={openEditModal}
+            onDelete={report => void handleDeleteReport(report)}
             emptyExtra={
               <div className="flex justify-center pt-2">
                 {addReportButton()}
@@ -672,6 +925,11 @@ const NavigationHub: React.FC = () => {
           rows={filteredReports}
           selectedKey={selectedReport?.key}
           onSelect={handleReportSelect}
+          showRowActions={canManageReports}
+          appsheetConnected={appsheetConnected === true}
+          deletingKey={deletingReportKey}
+          onEdit={openEditModal}
+          onDelete={report => void handleDeleteReport(report)}
         />
       </div>
     </>
@@ -682,60 +940,74 @@ const NavigationHub: React.FC = () => {
   return (
     <div className="flex flex-col min-h-full md:min-h-[calc(100vh-80px)] bg-[#eef1f6] md:bg-[#f0f2f5] -mx-0">
       <Modal
-        title="Thêm báo cáo định kỳ"
-        open={createOpen}
-        onOk={handleCreateSubmit}
+        title={reportFormMode === 'edit' ? 'Sửa báo cáo định kỳ' : 'Thêm báo cáo định kỳ'}
+        open={reportFormOpen}
+        onOk={handleReportFormSubmit}
         onCancel={() => {
-          setCreateOpen(false);
+          setReportFormOpen(false);
+          setEditingReport(null);
           form.resetFields();
         }}
         okText="Lưu"
         cancelText="Huỷ"
-        confirmLoading={creatingReport}
+        confirmLoading={savingReport}
         destroyOnHidden
-        width={560}
+        width={720}
+        styles={{ body: { paddingTop: 8 } }}
       >
         <Form form={form} layout="vertical" className="mt-2">
-          {activeBlock ? (
-            <Form.Item label="Khối (Mã)">
-              <Input disabled value={`${activeBlock.ma} — ${activeBlock.blockLabel}`} />
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-4">
+            {activeBlock ? (
+              <Form.Item label="Khối (Mã)" className="sm:col-span-2 mb-2">
+                <Input disabled value={`${activeBlock.ma} — ${activeBlock.blockLabel}`} />
+              </Form.Item>
+            ) : null}
+            <Form.Item
+              name="loaiBaoCao"
+              label="Loại báo cáo / Phòng ban"
+              rules={[{ required: true, message: 'Nhập loại báo cáo' }]}
+              className="mb-2"
+            >
+              <Input
+                placeholder="VD: 1. PHÒNG HCNS"
+                disabled={Boolean(activeGroup) && reportFormMode === 'create'}
+              />
             </Form.Item>
-          ) : null}
-          <Form.Item
-            name="loaiBaoCao"
-            label="Loại báo cáo / Phòng ban"
-            rules={[{ required: true, message: 'Nhập loại báo cáo' }]}
-          >
-            <Input placeholder="VD: 1. CÔNG VIỆC CÁ NHÂN" disabled={Boolean(activeGroup)} />
-          </Form.Item>
-          <Form.Item
-            name="tenBaoCao"
-            label="Tên báo cáo"
-            rules={[{ required: true, message: 'Nhập tên báo cáo' }]}
-          >
-            <Input placeholder="Tên báo cáo" />
-          </Form.Item>
-          <Form.Item name="noidung" label="Nội dung">
-            <Input.TextArea rows={3} placeholder="Mô tả báo cáo" />
-          </Form.Item>
-          <Form.Item name="kyBaoCao" label="Kỳ báo cáo" rules={[{ required: true, message: 'Nhập kỳ' }]}>
-            <Input placeholder="Tuần / Tháng / Quý" />
-          </Form.Item>
-          <Form.Item name="ngayBaoCao" label="Ngày báo cáo">
-            <Input placeholder="VD: Thứ 7" />
-          </Form.Item>
-          <Form.Item name="nguoiGui" label="Người gửi">
-            <Input />
-          </Form.Item>
-          <Form.Item name="nguoiNhan" label="Người nhận">
-            <Input />
-          </Form.Item>
-          <Form.Item name="link" label="Link báo cáo">
-            <Input placeholder="https://..." />
-          </Form.Item>
-          <Form.Item name="ngayUpdateLink" label="Ngày tạo báo cáo (Ngày update link)">
-            <DatePicker className="w-full" format="DD/MM/YYYY" placeholder="Chọn ngày" />
-          </Form.Item>
+            <Form.Item
+              name="tenBaoCao"
+              label="Tên báo cáo"
+              rules={[{ required: true, message: 'Nhập tên báo cáo' }]}
+              className="mb-2"
+            >
+              <Input placeholder="Tên báo cáo" />
+            </Form.Item>
+            <Form.Item name="noidung" label="Nội dung" className="sm:col-span-2 mb-2">
+              <Input.TextArea rows={3} placeholder="Mô tả báo cáo" />
+            </Form.Item>
+            <Form.Item
+              name="kyBaoCao"
+              label="Kỳ báo cáo"
+              rules={[{ required: true, message: 'Nhập kỳ' }]}
+              className="mb-2"
+            >
+              <Input placeholder="Tuần / Tháng / Quý" />
+            </Form.Item>
+            <Form.Item name="ngayBaoCao" label="Ngày báo cáo" className="mb-2">
+              <DatePicker className="w-full" format="DD/MM/YYYY" placeholder="Chọn ngày" />
+            </Form.Item>
+            <Form.Item name="nguoiGui" label="Người gửi" className="mb-2">
+              <Input />
+            </Form.Item>
+            <Form.Item name="nguoiNhan" label="Người nhận" className="mb-2">
+              <Input />
+            </Form.Item>
+            <Form.Item name="link" label="Link báo cáo" className="mb-2">
+              <Input placeholder="https://..." />
+            </Form.Item>
+            <Form.Item name="ngayUpdateLink" label="Ngày tạo báo cáo (Ngày update link)" className="mb-0">
+              <DatePicker className="w-full" format="DD/MM/YYYY" placeholder="Chọn ngày" />
+            </Form.Item>
+          </div>
         </Form>
       </Modal>
 

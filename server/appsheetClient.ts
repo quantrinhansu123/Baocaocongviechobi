@@ -128,10 +128,60 @@ export async function addAppsheetRows(
   tableName: string,
   rows: Record<string, unknown>[]
 ): Promise<unknown> {
-  return invokeAppsheetAction(config, tableName, {
-    Action: 'Add',
-    Properties: defaultProperties(config),
-    Rows: rows,
+  try {
+    return await invokeAppsheetAction(config, tableName, {
+      Action: 'Add',
+      Properties: defaultProperties(config),
+      Rows: rows,
+    });
+  } catch (error) {
+    if (tableName === REPORT_TABLE && error instanceof Error) {
+      throw new Error(formatReportAddError(error.message));
+    }
+    throw error;
+  }
+}
+
+const REPORT_TABLE = 'BC định kỳ';
+
+const REPORT_ROW_NUMBER_REQUIRED_HINT =
+  'Đã gửi _RowNumber và đặt id = số thứ tự dòng, nhưng API Add vẫn không chấp nhận (AppSheet bỏ qua cột _RowNumber). ' +
+  'Sửa trong AppSheet: Data → "BC định kỳ" → cột _RowNumber → bỏ Required; khóa dòng chỉ dùng id. Deploy lại app.';
+
+function formatReportAddError(message: string): string {
+  if (!message.includes('_RowNumber')) {
+    return message;
+  }
+  return `${REPORT_ROW_NUMBER_REQUIRED_HINT}\n\nChi tiết AppSheet: ${message}`;
+}
+
+function pickRowKeyValue(row: Record<string, unknown>, tableName: string): string | null {
+  const keys =
+    tableName === REPORT_TABLE ? ['id', 'ID', 'Id'] : ['TT', 'STT', 'Stt', 'stt'];
+  for (const key of keys) {
+    const value = row[key];
+    if (value === null || value === undefined) {
+      continue;
+    }
+    const trimmed = String(value).trim();
+    if (trimmed) {
+      return trimmed;
+    }
+  }
+  return null;
+}
+
+function normalizeRowsWithKey(
+  rows: Record<string, unknown>[],
+  tableName: string
+): Record<string, unknown>[] {
+  const column = tableName === REPORT_TABLE ? 'id' : 'TT';
+  return rows.map(row => {
+    const rowKey = pickRowKeyValue(row, tableName);
+    if (!rowKey) {
+      throw new Error(`Không có giá trị cột ${column}. Tải lại danh sách hoặc kiểm tra AppSheet.`);
+    }
+    return { ...row, [column]: rowKey };
   });
 }
 
@@ -143,7 +193,7 @@ export async function editAppsheetRows(
   return invokeAppsheetAction(config, tableName, {
     Action: 'Edit',
     Properties: defaultProperties(config),
-    Rows: rows,
+    Rows: normalizeRowsWithKey(rows, tableName),
   });
 }
 
@@ -155,6 +205,6 @@ export async function deleteAppsheetRows(
   return invokeAppsheetAction(config, tableName, {
     Action: 'Delete',
     Properties: defaultProperties(config),
-    Rows: rows,
+    Rows: normalizeRowsWithKey(rows, tableName),
   });
 }

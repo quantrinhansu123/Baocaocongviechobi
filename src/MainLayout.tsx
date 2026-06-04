@@ -26,7 +26,13 @@ import AdminView from './pages/AdminView';
 import WorkReportDetail from './pages/WorkReportDetail';
 import TaskView from './pages/TaskView';
 import logo from './img/logo.png';
-import { buildReportMenuItems, openKeysForBlockId, openKeysForGroupId, openKeysForReportId } from './data/reportNavigation';
+import {
+  buildReportMenuItems,
+  findReportGroup,
+  openKeysForBlockId,
+  openKeysForGroupId,
+  openKeysForReportId,
+} from './data/reportNavigation';
 import { loadReportCatalog } from './services/reportCatalog';
 import type { ReportCatalog } from './types/report';
 import MobileBottomNav from './components/MobileBottomNav';
@@ -203,8 +209,11 @@ const MainLayout: React.FC = () => {
       if (report?.groupKey) {
         return [report.groupKey];
       }
-      if (selectedGroupKey && reportCatalog.groups.some(group => group.groupKey === selectedGroupKey)) {
-        return [selectedGroupKey];
+      if (selectedGroupKey) {
+        const resolved = findReportGroup(selectedGroupKey, reportCatalog);
+        if (resolved) {
+          return [resolved.groupKey];
+        }
       }
       if (selectedBlockKey && reportCatalog.blocks.some(block => block.blockKey === selectedBlockKey)) {
         return [`block-reports-${selectedBlockKey}`];

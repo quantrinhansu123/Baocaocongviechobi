@@ -43,6 +43,8 @@ import {
 import { addAppsheetTask, deleteAppsheetTask, editAppsheetTask, findAppsheetTasks } from '../services/appsheetApi';
 import {
   buildAppsheetCompleteTaskRow,
+  hasAppsheetRowKey,
+  hydrateSourceRowAppsheetKey,
   mergeTaskCompletion,
   buildAppsheetDeleteRow,
   buildAppsheetEditRow,
@@ -641,11 +643,17 @@ const TaskView: React.FC = () => {
 
         setSavingDetail(true);
         try {
-          const editRow = buildAppsheetEditRow(updatedTask, detailTask.sourceRow);
-          if (!editRow.TT) {
-            message.error('Không tìm thấy khóa bản ghi AppSheet để cập nhật.');
+          const sourceRow = await hydrateSourceRowAppsheetKey(detailTask.sourceRow, appsheetTable);
+          if (!hasAppsheetRowKey(sourceRow, detailTask.appsheetRowKey, appsheetTable)) {
+            message.error('Không tìm thấy khóa TT trên AppSheet. F5 tải lại danh sách.');
             return;
           }
+
+          const editRow = buildAppsheetEditRow(
+            { ...updatedTask, sourceRow, appsheetRowKey: detailTask.appsheetRowKey },
+            sourceRow,
+            appsheetTable
+          );
 
           await editAppsheetTask(editRow, appsheetTable);
           const result = await findAppsheetTasks({ table: appsheetTable });
@@ -689,11 +697,23 @@ const TaskView: React.FC = () => {
         return false;
       }
 
+      const sourceRow = await hydrateSourceRowAppsheetKey(task.sourceRow, appsheetTable);
+      if (!hasAppsheetRowKey(sourceRow, task.appsheetRowKey, appsheetTable)) {
+        message.error('Không tìm thấy khóa TT trên AppSheet. F5 tải lại danh sách.');
+        return false;
+      }
+
       if ((task.tienDo || 'Chưa bắt đầu') === tienDo) {
         return true;
       }
 
-      const editRow = buildAppsheetTienDoEditRow(tienDo, task.sourceRow);
+      const editRow = buildAppsheetTienDoEditRow(
+        tienDo,
+        sourceRow,
+        new Date(),
+        task.appsheetRowKey,
+        appsheetTable
+      );
       const tienDoWritten = Object.values(editRow).some(
         value => value === 'Hoàn thành' || value === 'Đang thực hiện' || value === 'Quá hạn'
       );
@@ -764,11 +784,18 @@ const TaskView: React.FC = () => {
     }
 
     const completedAt = new Date();
-    const editRow = buildAppsheetCompleteTaskRow(task.sourceRow, completedAt);
-    if (!editRow.TT) {
-      message.error('Không tìm thấy khóa bản ghi AppSheet để cập nhật.');
+    const sourceRow = await hydrateSourceRowAppsheetKey(task.sourceRow, appsheetTable);
+    if (!hasAppsheetRowKey(sourceRow, task.appsheetRowKey, appsheetTable)) {
+      message.error('Không tìm thấy khóa TT trên AppSheet. F5 tải lại danh sách.');
       return;
     }
+
+    const editRow = buildAppsheetCompleteTaskRow(
+      sourceRow,
+      completedAt,
+      task.appsheetRowKey,
+      appsheetTable
+    );
 
     setCompletingTaskKey(taskKey);
     try {
@@ -807,9 +834,18 @@ const TaskView: React.FC = () => {
       return;
     }
 
+    const sourceRow = await hydrateSourceRowAppsheetKey(task.sourceRow, appsheetTable);
+    if (!hasAppsheetRowKey(sourceRow, task.appsheetRowKey, appsheetTable)) {
+      message.error('Không tìm thấy khóa TT trên AppSheet. F5 tải lại danh sách.');
+      return;
+    }
+
     setDeletingTaskKey(taskKey);
     try {
-      await deleteAppsheetTask(buildAppsheetDeleteRow(task.sourceRow), appsheetTable);
+      await deleteAppsheetTask(
+        buildAppsheetDeleteRow(sourceRow, task.appsheetRowKey, appsheetTable),
+        appsheetTable
+      );
       await reloadAppsheetTasks();
       if (detailTask?.key === taskKey) {
         setDetailTask(null);

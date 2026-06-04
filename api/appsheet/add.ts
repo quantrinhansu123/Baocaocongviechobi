@@ -4,15 +4,33 @@ export default async function handler(req: IncomingMessage, res: ServerResponse)
   await writeAppsheetRows(req, res, 'Add');
 }
 
+const REPORT_TABLE = 'BC định kỳ';
+
+const REPORT_ROW_NUMBER_REQUIRED_HINT =
+  'Đã gửi _RowNumber và đặt id = số thứ tự dòng, nhưng API Add vẫn không chấp nhận (AppSheet bỏ qua cột _RowNumber). ' +
+  'Sửa trong AppSheet: Data → "BC định kỳ" → cột _RowNumber → bỏ Required; khóa dòng chỉ dùng id. Deploy lại app.';
+
+function formatReportAddError(message: string): string {
+  if (!message.includes('_RowNumber')) {
+    return message;
+  }
+  return `${REPORT_ROW_NUMBER_REQUIRED_HINT}\n\nChi tiết AppSheet: ${message}`;
+}
+
 async function writeAppsheetRows(req: IncomingMessage, res: ServerResponse, action: 'Add' | 'Edit' | 'Delete') {
+  let table = clean(process.env.APPSHEET_TABLE) ?? 'I.1';
+
   try {
     const body = await readJsonBody(req);
-    const table = String(body.table ?? clean(process.env.APPSHEET_TABLE) ?? 'I.1');
+    table = String(body.table ?? table);
     const rows = Array.isArray(body.rows) ? (body.rows as Record<string, unknown>[]) : [];
     const raw = await invokeAppsheet(action, table, rows);
     sendJson(res, 200, { table, raw });
   } catch (error) {
-    sendJson(res, 500, { message: error instanceof Error ? error.message : 'AppSheet write failed.' });
+    const rawMessage = error instanceof Error ? error.message : 'AppSheet write failed.';
+    const message =
+      action === 'Add' && table === REPORT_TABLE ? formatReportAddError(rawMessage) : rawMessage;
+    sendJson(res, 500, { message });
   }
 }
 

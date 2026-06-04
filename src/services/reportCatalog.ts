@@ -6,7 +6,7 @@ let cachedCatalog: ReportCatalog | null = null;
 let catalogCacheVersion = 0;
 
 /** Tăng khi đổi format nhãn menu — buộc tải lại catalog sau deploy */
-const CATALOG_FORMAT_VERSION = 6;
+const CATALOG_FORMAT_VERSION = 8;
 
 export async function loadReportCatalog(options?: { force?: boolean }): Promise<ReportCatalog> {
   if (!options?.force && cachedCatalog && catalogCacheVersion === CATALOG_FORMAT_VERSION) {

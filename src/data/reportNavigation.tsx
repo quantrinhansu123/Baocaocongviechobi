@@ -1,5 +1,5 @@
 import type { MenuProps } from 'antd';
-import type { ReportCatalog, ReportRecord } from '../types/report';
+import type { ReportCatalog, ReportGroupRecord, ReportRecord } from '../types/report';
 import { formatBlockLabelRomanDot } from '../services/reportAppsheet';
 
 export function openKeysForReportId(
@@ -14,6 +14,33 @@ export function openKeysForReportId(
   return ['/navigation', report.blockKey, report.groupKey].filter((key): key is string => Boolean(key));
 }
 
+export function parseBlockKeyFromGroupParam(groupKeyParam: string): string | null {
+  const trimmed = groupKeyParam.trim();
+  const stable = /^group-(bc-[A-Za-z]+)-/i.exec(trimmed);
+  if (stable) {
+    return stable[1];
+  }
+  const legacy = /^group-(.+)-(\d+)$/.exec(trimmed);
+  return legacy?.[1] ?? null;
+}
+
+export function findReportGroup(
+  groupKeyParam: string,
+  catalog: ReportCatalog
+): ReportGroupRecord | null {
+  const trimmed = groupKeyParam.trim();
+  if (!trimmed) {
+    return null;
+  }
+
+  const direct = catalog.groups.find(group => group.groupKey === trimmed);
+  if (direct) {
+    return direct;
+  }
+
+  return catalog.groups.find(group => group.legacyGroupKeys?.includes(trimmed)) ?? null;
+}
+
 export function openKeysForGroupId(
   groupKey: string | null | undefined,
   catalog: ReportCatalog
@@ -22,8 +49,12 @@ export function openKeysForGroupId(
     return ['/navigation'];
   }
 
-  const group = catalog.groups.find(item => item.groupKey === groupKey);
+  const group = findReportGroup(groupKey, catalog);
   if (!group) {
+    const blockKey = parseBlockKeyFromGroupParam(groupKey);
+    if (blockKey && catalog.blocks.some(block => block.blockKey === blockKey)) {
+      return ['/navigation', blockKey];
+    }
     return ['/navigation'];
   }
 

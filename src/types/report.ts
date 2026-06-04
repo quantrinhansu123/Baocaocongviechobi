@@ -10,6 +10,8 @@ export type ReportGroupRecord = {
   blockKey: string;
   label: string;
   order: number;
+  /** Khóa menu cũ (group-bc-II-4) — giữ link/bookmark sau khi đổi sang khóa ổn định */
+  legacyGroupKeys?: string[];
 };
 
 export type ReportCatalog = {

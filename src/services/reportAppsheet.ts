@@ -1,5 +1,6 @@
 import type { ReportBlockRecord, ReportCatalog, ReportGroupRecord, ReportRecord } from '../types/report';
-import { formatUnknownAsDisplayDate, normalizeDisplayDate } from '../utils/taskDate';
+import { applyAppsheetRowKey, pickAppsheetRowKey } from './appsheetRowKey';
+import { formatAppsheetDate, formatUnknownAsDisplayDate, normalizeDisplayDate } from '../utils/taskDate';
 
 const REPORT_TABLE_NAME = 'BC định kỳ';
 
@@ -40,6 +41,7 @@ function pickDateField(row: Record<string, unknown>, keys: string[]): string {
   for (const [key, value] of Object.entries(row)) {
     const normalized = normalizeColumnKey(key);
     if (
+      normalized.includes('ngay bao cao') ||
       normalized.includes('ngay update link') ||
       normalized.includes('update link') ||
       normalized === 'ngay cap nhat link'
@@ -154,10 +156,97 @@ export function kyLabelFromPeriodLabel(periodLabel: string): string {
   return periodLabel.replace(/^Báo cáo\s+/i, '').trim() || 'Tuần';
 }
 
+const MA_BLOCK_SID_ROOT: Record<string, string> = {
+  I: 'sid1',
+  II: 'sid2',
+  III: 'sid3',
+  IV: 'sid4',
+};
+
+function normalizeReportMa(ma: string): string {
+  return ma.trim().toUpperCase().replace(/\.$/, '');
+}
+
+function discoverBlockSidRoot(ma: string, existingRows: Record<string, unknown>[]): string | null {
+  const normalized = normalizeReportMa(ma);
+  const mapped = MA_BLOCK_SID_ROOT[normalized];
+  if (mapped) {
+    return mapped;
+  }
+
+  for (const row of existingRows) {
+    const rowMa = pickField(row, ['Mã', 'Ma']);
+    if (normalizeReportMa(rowMa) !== normalized) {
+      continue;
+    }
+    const id = pickField(row, ['id', 'ID', 'Id']);
+    if (/^sid\d+$/i.test(id)) {
+      return id;
+    }
+  }
+
+  return null;
+}
+
+/** Sinh id kiểu sid1.7 theo khối (I→sid1, II→sid2, …). */
+export function generateReportAppsheetId(
+  ma: string,
+  existingRows: Record<string, unknown>[] = [],
+  blockKey?: string
+): string {
+  const resolvedMa = resolveReportMa(ma, blockKey);
+  const blockRoot = discoverBlockSidRoot(resolvedMa || ma, existingRows);
+  if (!blockRoot) {
+    const safeMa = resolvedMa || normalizeReportMa(ma) || 'X';
+    return `sid-${safeMa}-${Date.now().toString(36)}`;
+  }
+
+  let maxSuffix = 0;
+  const prefix = `${blockRoot}.`;
+  for (const row of existingRows) {
+    const id = pickField(row, ['id', 'ID', 'Id']);
+    if (!id.startsWith(prefix)) {
+      continue;
+    }
+    const suffix = Number(id.slice(prefix.length));
+    if (Number.isFinite(suffix) && suffix > maxSuffix) {
+      maxSuffix = Math.trunc(suffix);
+    }
+  }
+
+  return `${blockRoot}.${maxSuffix + 1}`;
+}
+
+/** Số thứ tự tiếp theo (AppSheet Find trả _RowNumber dạng chuỗi). */
+export function getNextReportRowNumber(existingRows: Record<string, unknown>[]): number {
+  let max = 1;
+  for (const row of existingRows) {
+    const value = row._RowNumber;
+    const parsed = typeof value === 'number' ? value : Number(String(value ?? '').trim());
+    if (Number.isFinite(parsed) && parsed > max) {
+      max = Math.trunc(parsed);
+    }
+  }
+  return max + 1;
+}
+
+function resolveReportMa(ma: string, blockKey?: string): string {
+  const fromMa = normalizeReportMa(ma);
+  if (fromMa) {
+    return fromMa;
+  }
+  const match = blockKey?.match(/^bc-(.+)$/i);
+  return match ? normalizeReportMa(match[1]) : '';
+}
+
 export function buildAppsheetReportRow(input: {
   ma: string;
+  blockKey?: string;
   loaiBaoCao: string;
   tenBaoCao: string;
+  id?: string;
+  existingRows?: Record<string, unknown>[];
+  rowNumber?: number;
   noidung?: string;
   kyBaoCao?: string;
   ngayBaoCao?: string;
@@ -166,8 +255,18 @@ export function buildAppsheetReportRow(input: {
   link?: string;
   ngayUpdateLink?: string;
 }): Record<string, unknown> {
+  const existingRows = input.existingRows ?? [];
+  const resolvedMa = resolveReportMa(input.ma, input.blockKey);
+  const rowNumber = Math.trunc(
+    input.rowNumber ?? getNextReportRowNumber(existingRows)
+  );
+  const blockRoot = discoverBlockSidRoot(resolvedMa || input.ma, existingRows);
+  // Gắn số thứ tự dòng (_RowNumber) vào id: sid1.45 hoặc "45" nếu không có khối sid.
+  const defaultId = blockRoot ? `${blockRoot}.${rowNumber}` : String(rowNumber);
   const row: Record<string, unknown> = {
-    Mã: input.ma.trim(),
+    _RowNumber: rowNumber,
+    id: (input.id?.trim() || defaultId).trim(),
+    Mã: input.ma.trim() || resolvedMa,
     'Loại báo cáo': input.loaiBaoCao.trim(),
     'Tên báo cáo': input.tenBaoCao.trim(),
   };
@@ -179,7 +278,7 @@ export function buildAppsheetReportRow(input: {
     row['Kỳ báo cáo'] = input.kyBaoCao.trim();
   }
   if (input.ngayBaoCao?.trim()) {
-    row['Ngày báo cáo'] = input.ngayBaoCao.trim();
+    row['Ngày báo cáo'] = formatAppsheetDate(input.ngayBaoCao) || input.ngayBaoCao.trim();
   }
   if (input.nguoiGui?.trim()) {
     row['Người gửi báo cáo'] = input.nguoiGui.trim();
@@ -197,6 +296,94 @@ export function buildAppsheetReportRow(input: {
   return row;
 }
 
+export type AppsheetReportFieldUpdates = {
+  ma?: string;
+  loaiBaoCao?: string;
+  tenBaoCao?: string;
+  noidung?: string;
+  kyBaoCao?: string;
+  ngayBaoCao?: string;
+  nguoiGui?: string;
+  nguoiNhan?: string;
+  link?: string;
+  ngayUpdateLink?: string;
+};
+
+export function buildAppsheetReportEditRow(
+  sourceRow: Record<string, unknown>,
+  updates: AppsheetReportFieldUpdates,
+  reportKey?: string
+): Record<string, unknown> {
+  const table = getReportAppsheetTableName();
+  const row: Record<string, unknown> = {};
+
+  if (updates.ma !== undefined) {
+    row['Mã'] = updates.ma.trim();
+  }
+  if (updates.loaiBaoCao !== undefined) {
+    row['Loại báo cáo'] = updates.loaiBaoCao.trim();
+  }
+  if (updates.tenBaoCao !== undefined) {
+    row['Tên báo cáo'] = updates.tenBaoCao.trim();
+  }
+  if (updates.noidung !== undefined) {
+    row['Nội dung'] = updates.noidung.trim();
+  }
+  if (updates.kyBaoCao !== undefined) {
+    row['Kỳ báo cáo'] = updates.kyBaoCao.trim();
+  }
+  if (updates.ngayBaoCao !== undefined) {
+    const formatted = formatAppsheetDate(updates.ngayBaoCao) || updates.ngayBaoCao.trim();
+    row['Ngày báo cáo'] = formatted;
+  }
+  if (updates.nguoiGui !== undefined) {
+    row['Người gửi báo cáo'] = updates.nguoiGui.trim();
+  }
+  if (updates.nguoiNhan !== undefined) {
+    row['Người nhận báo cáo'] = updates.nguoiNhan.trim();
+  }
+  if (updates.link !== undefined) {
+    row['Link báo cáo'] = updates.link.trim();
+  }
+  if (updates.ngayUpdateLink !== undefined) {
+    row['Ngày update link'] =
+      formatAppsheetDate(updates.ngayUpdateLink) || updates.ngayUpdateLink.trim();
+  }
+
+  const rowKey = reportKey?.trim() || pickAppsheetRowKey(sourceRow, table);
+  return applyAppsheetRowKey(row, sourceRow, rowKey, table);
+}
+
+export function buildAppsheetReportDeleteRow(
+  sourceRow: Record<string, unknown>,
+  reportKey?: string
+): Record<string, unknown> {
+  const table = getReportAppsheetTableName();
+  const rowKey = reportKey?.trim() || pickAppsheetRowKey(sourceRow, table);
+  return applyAppsheetRowKey({}, sourceRow, rowKey, table);
+}
+
+function slugifyGroupLabel(label: string): string {
+  const normalized = label
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/[^a-zA-Z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '')
+    .toLowerCase();
+  return normalized || 'nhom';
+}
+
+function buildStableGroupKey(blockKey: string, label: string, groupKeys: Set<string>): string {
+  const base = `group-${blockKey}-${slugifyGroupLabel(label)}`;
+  let key = base;
+  let suffix = 2;
+  while (groupKeys.has(key)) {
+    key = `${base}-${suffix}`;
+    suffix += 1;
+  }
+  return key;
+}
+
 function ensureReportGroup(
   groups: ReportGroupRecord[],
   groupKeys: Set<string>,
@@ -208,13 +395,15 @@ function ensureReportGroup(
     return existing.groupKey;
   }
 
-  const groupKey = `group-${blockKey}-${groups.length + 1}`;
+  const legacyGroupKey = `group-${blockKey}-${groups.length + 1}`;
+  const groupKey = buildStableGroupKey(blockKey, label, groupKeys);
   groupKeys.add(groupKey);
   groups.push({
     groupKey,
     blockKey,
     label,
     order: groups.filter(group => group.blockKey === blockKey).length + 1,
+    legacyGroupKeys: legacyGroupKey !== groupKey ? [legacyGroupKey] : undefined,
   });
   return groupKey;
 }
@@ -268,9 +457,9 @@ export function mapAppsheetRowsToReportCatalog(rows: Record<string, unknown>[]):
 
     const key =
       pickField(row, ['id', 'ID', 'Id']) ||
-      `report-${pickField(row, ['_RowNumber']) || String(index + 1)}`;
+      pickField(row, ['id', 'ID', 'Id']) || `report-${String(index + 1)}`;
     const ky = pickField(row, ['Kỳ báo cáo', 'Ky bao cao']);
-    const ngay = normalizeDisplayDate(pickField(row, ['Ngày báo cáo', 'Ngay bao cao']));
+    const ngay = pickDateField(row, ['Ngày báo cáo', 'Ngay bao cao', 'Ngày Báo cáo']);
     const ngayTaoBaoCao = pickDateField(row, [
       'Ngày update link',
       'Ngay update link',
