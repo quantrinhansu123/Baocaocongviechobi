@@ -594,6 +594,7 @@ const TaskView: React.FC = () => {
               giaHan3,
               anhHuong: Number(values.anhHuong),
               stt: nextStt,
+              linkKQ: values.linkKQ as string | undefined,
             }),
             appsheetTable
           );
@@ -1168,6 +1169,9 @@ const TaskView: React.FC = () => {
           </Form.Item>
           <Form.Item name="deadline" label="Y/C xong" rules={[{ required: true, message: 'Chọn deadline' }]}>
             <DatePicker className="w-full" format="DD/MM/YYYY" />
+          </Form.Item>
+          <Form.Item name="linkKQ" label="Link KQ" extra="Bắt buộc trên AppSheet — để trống sẽ dùng link mặc định">
+            <Input placeholder="https://..." />
           </Form.Item>
           <div className="md:col-span-2">
             <p className="text-[11px] font-semibold uppercase tracking-wide text-gray-400 mb-2">Gia hạn</p>

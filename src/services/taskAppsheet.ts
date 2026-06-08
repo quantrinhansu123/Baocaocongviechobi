@@ -98,7 +98,88 @@ function pickFormattedDate(row: Record<string, unknown>, keys: string[]): string
 /** Tên cột AppSheet (xác nhận bởi người dùng). */
 export const APPSHEET_NGAY_HOAN_THANH_COLUMN = 'Ngày hoàn thành';
 export const APPSHEET_TIEN_DO_COLUMN = 'TIẾN ĐỘ';
+export const APPSHEET_LINK_KQ_COLUMN = 'LINK KQ';
+
+const LINK_KQ_KEYS = ['LINK KQ', 'Link KQ', 'LinkKQ', 'linkKQ', 'Link'];
+
+const DEFAULT_LINK_KQ = 'https://docs.google.com';
+
 export { hasAppsheetRowKey, pickAppsheetRowKey, TASK_ROW_KEY_COLUMN } from './appsheetRowKey';
+
+function parseAppsheetUrlField(value: string): string {
+  const trimmed = value.trim();
+  if (!trimmed) {
+    return '';
+  }
+
+  try {
+    const parsed = JSON.parse(trimmed) as { Url?: string; LinkText?: string };
+    if (parsed.Url?.trim()) {
+      return parsed.Url.trim();
+    }
+    if (parsed.LinkText?.trim()) {
+      return parsed.LinkText.trim();
+    }
+  } catch {
+    return trimmed;
+  }
+
+  return trimmed;
+}
+
+/** AppSheet cột Url (LINK KQ) nhận chuỗi https://... — không gửi JSON {Url, LinkText}. */
+export function formatAppsheetUrlValue(value: string): string {
+  const trimmed = value.trim();
+  if (!trimmed) {
+    return '';
+  }
+
+  try {
+    const parsed = JSON.parse(trimmed) as { Url?: string; LinkText?: string };
+    if (parsed.Url?.trim()) {
+      return parsed.Url.trim();
+    }
+    if (parsed.LinkText?.trim() && /^https?:\/\//i.test(parsed.LinkText.trim())) {
+      return parsed.LinkText.trim();
+    }
+  } catch {
+    // plain URL
+  }
+
+  if (/^https?:\/\//i.test(trimmed)) {
+    return trimmed;
+  }
+
+  return `https://${trimmed.replace(/^\/+/, '')}`;
+}
+
+function pickLinkKQRawValue(row: Record<string, unknown>): string {
+  return pickField(row, LINK_KQ_KEYS);
+}
+
+function resolveAppsheetLinkKQ(value: string | undefined, sourceRow?: Record<string, unknown>): string {
+  const fromValue = formatAppsheetUrlValue(value ?? '');
+  if (fromValue) {
+    return fromValue;
+  }
+
+  if (sourceRow) {
+    const fromSource = formatAppsheetUrlValue(pickLinkKQRawValue(sourceRow));
+    if (fromSource) {
+      return fromSource;
+    }
+  }
+
+  return DEFAULT_LINK_KQ;
+}
+
+function applyLinkKQToRow(
+  row: Record<string, unknown>,
+  sourceRow?: Record<string, unknown>,
+  explicitLink?: string
+): void {
+  row[APPSHEET_LINK_KQ_COLUMN] = resolveAppsheetLinkKQ(explicitLink, sourceRow);
+}
 
 function buildTtSelector(tt: string): string {
   const trimmed = tt.trim();
@@ -439,7 +520,7 @@ export function mapAppsheetRowToTaskRecord(
       giaHan2: pickFormattedDate(row, ['GIA HẠN 2', 'Gia hạn 2', 'Gia han 2', 'GiaHan2', 'giaHan2']),
       giaHan3: pickFormattedDate(row, ['GIA HẠN 3', 'Gia hạn 3', 'Gia han 3', 'GiaHan3', 'giaHan3']),
       ketQua: pickField(row, ['KẾT QUẢ', 'Kết quả', 'Ket qua', 'KetQua', 'ketQua', 'Result']),
-      linkKQ: pickField(row, ['LINK KQ', 'Link KQ', 'LinkKQ', 'linkKQ', 'Link']),
+      linkKQ: parseAppsheetUrlField(pickLinkKQRawValue(row)),
       tienDo: tienDoVal,
       trangThai: trangThaiVal,
       ngayGioHoanThanh,
@@ -480,8 +561,9 @@ export function buildAppsheetTaskRow(input: {
   anhHuong: number;
   kyBaoCao?: string;
   stt?: number;
+  linkKQ?: string;
 }): Record<string, unknown> {
-  return {
+  const row: Record<string, unknown> = {
     TT: input.stt != null ? String(input.stt) : '',
     'CÔNG VIỆC': input.congViec,
     'NGƯỜI ĐƯỢC GIAO': input.nguoiPhuTrach,
@@ -493,6 +575,8 @@ export function buildAppsheetTaskRow(input: {
     'CẦN LĐ TÁC ĐỘNG': 'Không',
     'MỨC ẢNH HƯỞNG': String(input.anhHuong),
   };
+  applyLinkKQToRow(row, undefined, input.linkKQ);
+  return row;
 }
 
 export function buildAppsheetEditRow(
@@ -510,7 +594,7 @@ export function buildAppsheetEditRow(
   row['GIA HẠN 2'] = formatAppsheetDate(task.giaHan2);
   row['GIA HẠN 3'] = formatAppsheetDate(task.giaHan3);
   row['KẾT QUẢ'] = task.ketQua;
-  row['LINK KQ'] = task.linkKQ;
+  applyLinkKQToRow(row, sourceRow, task.linkKQ);
   row['VƯỚNG MẮC'] = task.vuongMac;
   row['CẦN LĐ TÁC ĐỘNG'] = task.canLD.trim() || 'Không';
   row['MỨC ẢNH HƯỞNG'] = String(task.anhHuong);
@@ -554,6 +638,7 @@ export function buildAppsheetCompleteTaskRow(
   const tienDoValue = serializeAppsheetTienDo('Hoàn thành') ?? 'Hoàn thành';
   row[APPSHEET_TIEN_DO_COLUMN] = tienDoValue;
   row[APPSHEET_NGAY_HOAN_THANH_COLUMN] = formatAppsheetDate(completedAt);
+  applyLinkKQToRow(row, sourceRow);
 
   return applyAppsheetRowKey(row, sourceRow, explicitRowKey, tableName);
 }
@@ -575,6 +660,8 @@ export function buildAppsheetTienDoEditRow(
   if (tienDo.trim() === 'Hoàn thành' && !pickNgayHoanThanhFromRow(sourceRow)) {
     row[APPSHEET_NGAY_HOAN_THANH_COLUMN] = formatAppsheetDate(completedAt);
   }
+
+  applyLinkKQToRow(row, sourceRow);
 
   return applyAppsheetRowKey(row, sourceRow, explicitRowKey, tableName);
 }
