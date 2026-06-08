@@ -1170,7 +1170,7 @@ const TaskView: React.FC = () => {
           <Form.Item name="deadline" label="Y/C xong" rules={[{ required: true, message: 'Chọn deadline' }]}>
             <DatePicker className="w-full" format="DD/MM/YYYY" />
           </Form.Item>
-          <Form.Item name="linkKQ" label="Link KQ" extra="Bắt buộc trên AppSheet — để trống sẽ dùng link mặc định">
+          <Form.Item name="linkKQ" label="Link KQ (tùy chọn)">
             <Input placeholder="https://..." />
           </Form.Item>
           <div className="md:col-span-2">
@@ -1484,7 +1484,7 @@ const TaskView: React.FC = () => {
                       <Form.Item name="anhHuong" label="Mức ảnh hưởng" rules={[{ required: true, message: 'Chọn mức độ' }]}>
                         <Select options={[1, 2, 3, 4].map(level => ({ value: level, label: `${level} sao` }))} />
                       </Form.Item>
-                      <Form.Item name="linkKQ" label="Link KQ" className="xl:col-span-2">
+                      <Form.Item name="linkKQ" label="Link KQ (tùy chọn)" className="xl:col-span-2">
                         <Input />
                       </Form.Item>
                       <Form.Item name="ketQua" label="Kết quả" className="xl:col-span-2">

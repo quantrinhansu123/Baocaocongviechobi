@@ -102,8 +102,6 @@ export const APPSHEET_LINK_KQ_COLUMN = 'LINK KQ';
 
 const LINK_KQ_KEYS = ['LINK KQ', 'Link KQ', 'LinkKQ', 'linkKQ', 'Link'];
 
-const DEFAULT_LINK_KQ = 'https://docs.google.com';
-
 export { hasAppsheetRowKey, pickAppsheetRowKey, TASK_ROW_KEY_COLUMN } from './appsheetRowKey';
 
 function parseAppsheetUrlField(value: string): string {
@@ -157,28 +155,18 @@ function pickLinkKQRawValue(row: Record<string, unknown>): string {
   return pickField(row, LINK_KQ_KEYS);
 }
 
-function resolveAppsheetLinkKQ(value: string | undefined, sourceRow?: Record<string, unknown>): string {
-  const fromValue = formatAppsheetUrlValue(value ?? '');
-  if (fromValue) {
-    return fromValue;
+function resolveAppsheetLinkKQ(value: string | undefined): string | null {
+  if (value === undefined || !value.trim()) {
+    return null;
   }
-
-  if (sourceRow) {
-    const fromSource = formatAppsheetUrlValue(pickLinkKQRawValue(sourceRow));
-    if (fromSource) {
-      return fromSource;
-    }
-  }
-
-  return DEFAULT_LINK_KQ;
+  return formatAppsheetUrlValue(value) || null;
 }
 
-function applyLinkKQToRow(
-  row: Record<string, unknown>,
-  sourceRow?: Record<string, unknown>,
-  explicitLink?: string
-): void {
-  row[APPSHEET_LINK_KQ_COLUMN] = resolveAppsheetLinkKQ(explicitLink, sourceRow);
+function applyLinkKQToRow(row: Record<string, unknown>, explicitLink?: string): void {
+  const resolved = resolveAppsheetLinkKQ(explicitLink);
+  if (resolved) {
+    row[APPSHEET_LINK_KQ_COLUMN] = resolved;
+  }
 }
 
 function buildTtSelector(tt: string): string {
@@ -575,7 +563,7 @@ export function buildAppsheetTaskRow(input: {
     'CẦN LĐ TÁC ĐỘNG': 'Không',
     'MỨC ẢNH HƯỞNG': String(input.anhHuong),
   };
-  applyLinkKQToRow(row, undefined, input.linkKQ);
+  applyLinkKQToRow(row, input.linkKQ);
   return row;
 }
 
@@ -594,7 +582,7 @@ export function buildAppsheetEditRow(
   row['GIA HẠN 2'] = formatAppsheetDate(task.giaHan2);
   row['GIA HẠN 3'] = formatAppsheetDate(task.giaHan3);
   row['KẾT QUẢ'] = task.ketQua;
-  applyLinkKQToRow(row, sourceRow, task.linkKQ);
+  applyLinkKQToRow(row, task.linkKQ);
   row['VƯỚNG MẮC'] = task.vuongMac;
   row['CẦN LĐ TÁC ĐỘNG'] = task.canLD.trim() || 'Không';
   row['MỨC ẢNH HƯỞNG'] = String(task.anhHuong);
@@ -638,7 +626,6 @@ export function buildAppsheetCompleteTaskRow(
   const tienDoValue = serializeAppsheetTienDo('Hoàn thành') ?? 'Hoàn thành';
   row[APPSHEET_TIEN_DO_COLUMN] = tienDoValue;
   row[APPSHEET_NGAY_HOAN_THANH_COLUMN] = formatAppsheetDate(completedAt);
-  applyLinkKQToRow(row, sourceRow);
 
   return applyAppsheetRowKey(row, sourceRow, explicitRowKey, tableName);
 }
@@ -660,8 +647,6 @@ export function buildAppsheetTienDoEditRow(
   if (tienDo.trim() === 'Hoàn thành' && !pickNgayHoanThanhFromRow(sourceRow)) {
     row[APPSHEET_NGAY_HOAN_THANH_COLUMN] = formatAppsheetDate(completedAt);
   }
-
-  applyLinkKQToRow(row, sourceRow);
 
   return applyAppsheetRowKey(row, sourceRow, explicitRowKey, tableName);
 }
