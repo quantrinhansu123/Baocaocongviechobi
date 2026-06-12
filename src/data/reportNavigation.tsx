@@ -1,6 +1,6 @@
 import type { MenuProps } from 'antd';
 import type { ReportCatalog, ReportGroupRecord, ReportRecord } from '../types/report';
-import { formatBlockLabelRomanDot } from '../services/reportAppsheet';
+import { formatBlockLabelRomanDot } from '../services/reportData';
 
 export function openKeysForReportId(
   reportId: string | null | undefined,

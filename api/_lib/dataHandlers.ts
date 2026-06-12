@@ -53,7 +53,7 @@ export async function handleDataStatus(req: { url?: string }, res: Parameters<ty
     return;
   }
 
-  const url = new URL(req.url ?? '/api/appsheet/status', 'http://localhost');
+  const url = new URL(req.url ?? '/api/data/status', 'http://localhost');
   const tableName = url.searchParams.get('table')?.trim() || DEFAULT_TABLE;
   const err = tableError(tableName);
   if (err) {
@@ -86,7 +86,7 @@ export async function handleDataFindGet(req: { url?: string }, res: Parameters<t
     return;
   }
 
-  const url = new URL(req.url ?? '/api/appsheet/find', 'http://localhost');
+  const url = new URL(req.url ?? '/api/data/find', 'http://localhost');
   const tableName = url.searchParams.get('table')?.trim() || DEFAULT_TABLE;
   const err = tableError(tableName);
   if (err) {

@@ -1,6 +1,6 @@
 import type { ReportBlockRecord, ReportCatalog, ReportGroupRecord, ReportRecord } from '../types/report';
-import { applyAppsheetRowKey, pickAppsheetRowKey } from './appsheetRowKey';
-import { formatAppsheetDate, formatUnknownAsDisplayDate, normalizeDisplayDate } from '../utils/taskDate';
+import { applyRowKey, pickRowKey } from './rowKey';
+import { formatRecordDate, formatUnknownAsDisplayDate, normalizeDisplayDate } from '../utils/taskDate';
 
 const REPORT_TABLE_NAME = 'BC định kỳ';
 
@@ -56,7 +56,7 @@ function pickDateField(row: Record<string, unknown>, keys: string[]): string {
   return '';
 }
 
-function parseAppsheetLink(value: string): string {
+function parseReportLink(value: string): string {
   const trimmed = value.trim();
   if (!trimmed) {
     return '';
@@ -138,7 +138,7 @@ function isReportLeaf(row: Record<string, unknown>, name: string): boolean {
   return true;
 }
 
-export function getReportAppsheetTableName(): string {
+export function getReportTableName(): string {
   return REPORT_TABLE_NAME;
 }
 
@@ -189,7 +189,7 @@ function discoverBlockSidRoot(ma: string, existingRows: Record<string, unknown>[
 }
 
 /** Sinh id kiểu sid1.7 theo khối (I→sid1, II→sid2, …). */
-export function generateReportAppsheetId(
+export function generateReportId(
   ma: string,
   existingRows: Record<string, unknown>[] = [],
   blockKey?: string
@@ -217,7 +217,7 @@ export function generateReportAppsheetId(
   return `${blockRoot}.${maxSuffix + 1}`;
 }
 
-/** Số thứ tự tiếp theo (AppSheet Find trả _RowNumber dạng chuỗi). */
+/** Số thứ tự tiếp theo (_RowNumber dạng chuỗi). */
 export function getNextReportRowNumber(existingRows: Record<string, unknown>[]): number {
   let max = 1;
   for (const row of existingRows) {
@@ -239,7 +239,7 @@ function resolveReportMa(ma: string, blockKey?: string): string {
   return match ? normalizeReportMa(match[1]) : '';
 }
 
-export function buildAppsheetReportRow(input: {
+export function buildReportRow(input: {
   ma: string;
   blockKey?: string;
   loaiBaoCao: string;
@@ -277,7 +277,7 @@ export function buildAppsheetReportRow(input: {
     row['Kỳ báo cáo'] = input.kyBaoCao.trim();
   }
   if (input.ngayBaoCao?.trim()) {
-    row['Ngày báo cáo'] = formatAppsheetDate(input.ngayBaoCao) || input.ngayBaoCao.trim();
+    row['Ngày báo cáo'] = formatRecordDate(input.ngayBaoCao) || input.ngayBaoCao.trim();
   }
   if (input.nguoiGui?.trim()) {
     row['Người gửi báo cáo'] = input.nguoiGui.trim();
@@ -295,7 +295,7 @@ export function buildAppsheetReportRow(input: {
   return row;
 }
 
-export type AppsheetReportFieldUpdates = {
+export type ReportFieldUpdates = {
   ma?: string;
   loaiBaoCao?: string;
   tenBaoCao?: string;
@@ -308,12 +308,12 @@ export type AppsheetReportFieldUpdates = {
   ngayUpdateLink?: string;
 };
 
-export function buildAppsheetReportEditRow(
+export function buildReportEditRow(
   sourceRow: Record<string, unknown>,
-  updates: AppsheetReportFieldUpdates,
+  updates: ReportFieldUpdates,
   reportKey?: string
 ): Record<string, unknown> {
-  const table = getReportAppsheetTableName();
+  const table = getReportTableName();
   const row: Record<string, unknown> = {};
 
   if (updates.ma !== undefined) {
@@ -332,7 +332,7 @@ export function buildAppsheetReportEditRow(
     row['Kỳ báo cáo'] = updates.kyBaoCao.trim();
   }
   if (updates.ngayBaoCao !== undefined) {
-    const formatted = formatAppsheetDate(updates.ngayBaoCao) || updates.ngayBaoCao.trim();
+    const formatted = formatRecordDate(updates.ngayBaoCao) || updates.ngayBaoCao.trim();
     row['Ngày báo cáo'] = formatted;
   }
   if (updates.nguoiGui !== undefined) {
@@ -346,20 +346,20 @@ export function buildAppsheetReportEditRow(
   }
   if (updates.ngayUpdateLink !== undefined) {
     row['Ngày update link'] =
-      formatAppsheetDate(updates.ngayUpdateLink) || updates.ngayUpdateLink.trim();
+      formatRecordDate(updates.ngayUpdateLink) || updates.ngayUpdateLink.trim();
   }
 
-  const rowKey = reportKey?.trim() || pickAppsheetRowKey(sourceRow, table);
-  return applyAppsheetRowKey(row, sourceRow, rowKey, table);
+  const rowKey = reportKey?.trim() || pickRowKey(sourceRow, table);
+  return applyRowKey(row, sourceRow, rowKey, table);
 }
 
-export function buildAppsheetReportDeleteRow(
+export function buildReportDeleteRow(
   sourceRow: Record<string, unknown>,
   reportKey?: string
 ): Record<string, unknown> {
-  const table = getReportAppsheetTableName();
-  const rowKey = reportKey?.trim() || pickAppsheetRowKey(sourceRow, table);
-  return applyAppsheetRowKey({}, sourceRow, rowKey, table);
+  const table = getReportTableName();
+  const rowKey = reportKey?.trim() || pickRowKey(sourceRow, table);
+  return applyRowKey({}, sourceRow, rowKey, table);
 }
 
 function slugifyGroupLabel(label: string): string {
@@ -407,7 +407,7 @@ function ensureReportGroup(
   return groupKey;
 }
 
-export function mapAppsheetRowsToReportCatalog(rows: Record<string, unknown>[]): ReportCatalog {
+export function mapRowsToReportCatalog(rows: Record<string, unknown>[]): ReportCatalog {
   const reports: Record<string, ReportRecord> = {};
   const blocks: ReportBlockRecord[] = [];
   const groups: ReportGroupRecord[] = [];
@@ -489,7 +489,7 @@ export function mapAppsheetRowsToReportCatalog(rows: Record<string, unknown>[]):
       nguoiGui: pickField(row, ['Người gửi báo cáo', 'Nguoi gui bao cao']),
       nguoiNhan: pickField(row, ['Người nhận báo cáo', 'Nguoi nhan bao cao']),
       luong: pickField(row, ['Luồng báo cáo', 'Luong bao cao']),
-      link: parseAppsheetLink(pickField(row, ['Link báo cáo', 'Link bao cao'])),
+      link: parseReportLink(pickField(row, ['Link báo cáo', 'Link bao cao'])),
       loaiBaoCao: loai || currentBlockLabel,
       blockKey: reportBlockKey,
       blockLabel: formatBlockLabelRomanDot(currentBlockLabel || menuLabel || loai),
@@ -503,6 +503,6 @@ export function mapAppsheetRowsToReportCatalog(rows: Record<string, unknown>[]):
   return { reports, blocks, groups };
 }
 
-export function mapAppsheetRowsToReports(rows: Record<string, unknown>[]): Record<string, ReportRecord> {
-  return mapAppsheetRowsToReportCatalog(rows).reports;
+export function mapRowsToReports(rows: Record<string, unknown>[]): Record<string, ReportRecord> {
+  return mapRowsToReportCatalog(rows).reports;
 }

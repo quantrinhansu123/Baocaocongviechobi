@@ -1,8 +1,8 @@
 import dayjs from 'dayjs';
 import type { TaskRecord } from '../types/task';
 import { normalizeDisplayDate, isTaskOverduePastExtensions, calculateAutomaticStatus } from '../utils/taskDate';
-import { findAppsheetTasks } from './appsheetApi';
-import { listAppsheetTableBindings, mapAppsheetRowsToTasksByDept } from './taskAppsheet';
+import { findDataRows } from './dataApi';
+import { listTaskTableBindings, mapRowsToTasksByDept } from './taskData';
 
 export type DashboardTask = {
   id: string;
@@ -87,15 +87,15 @@ function mapTaskRecordToDashboardTask(
   };
 }
 
-export async function loadDashboardTasksFromAppsheet(): Promise<DashboardTask[]> {
-  const bindings = listAppsheetTableBindings();
+export async function loadDashboardTasks(): Promise<DashboardTask[]> {
+  const bindings = listTaskTableBindings();
   const tasks: DashboardTask[] = [];
 
   await Promise.all(
     bindings.map(async binding => {
       try {
-        const result = await findAppsheetTasks({ table: binding.table });
-        const byDept = mapAppsheetRowsToTasksByDept(result.rows, result.table);
+        const result = await findDataRows({ table: binding.table });
+        const byDept = mapRowsToTasksByDept(result.rows, result.table);
         const bucket = byDept[binding.deptKey] ?? {};
 
         Object.entries(bucket).forEach(([taskKey, task]) => {

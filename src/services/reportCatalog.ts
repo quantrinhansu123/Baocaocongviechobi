@@ -1,5 +1,5 @@
-import { findAppsheetTasks } from './appsheetApi';
-import { getReportAppsheetTableName, mapAppsheetRowsToReportCatalog } from './reportAppsheet';
+import { findDataRows } from './dataApi';
+import { getReportTableName, mapRowsToReportCatalog } from './reportData';
 import type { ReportCatalog } from '../types/report';
 
 let cachedCatalog: ReportCatalog | null = null;
@@ -13,8 +13,8 @@ export async function loadReportCatalog(options?: { force?: boolean }): Promise<
     return cachedCatalog;
   }
 
-  const result = await findAppsheetTasks({ table: getReportAppsheetTableName() });
-  cachedCatalog = mapAppsheetRowsToReportCatalog(result.rows);
+  const result = await findDataRows({ table: getReportTableName() });
+  cachedCatalog = mapRowsToReportCatalog(result.rows);
   catalogCacheVersion = CATALOG_FORMAT_VERSION;
   return cachedCatalog;
 }

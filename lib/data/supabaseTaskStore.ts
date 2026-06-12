@@ -39,7 +39,7 @@ export function parseTtFromSelector(selector?: string): string | null {
   return null;
 }
 
-function dbRowToAppsheet(row: DbTaskRow): Record<string, unknown> {
+function dbRowToRecord(row: DbTaskRow): Record<string, unknown> {
   const tt = row.tt;
   return {
     ...row.data,
@@ -47,7 +47,7 @@ function dbRowToAppsheet(row: DbTaskRow): Record<string, unknown> {
   };
 }
 
-function appsheetRowToDb(row: Record<string, unknown>): DbTaskRow {
+function recordRowToDb(row: Record<string, unknown>): DbTaskRow {
   const tt = pickTt(row);
   if (!tt) {
     throw new Error('Thiếu cột TT để ghi Supabase.');
@@ -58,10 +58,10 @@ function appsheetRowToDb(row: Record<string, unknown>): DbTaskRow {
 }
 
 export async function findSupabaseTaskRows(
-  appsheetTable: string,
+  logicalTable: string,
   options?: { selector?: string }
 ): Promise<{ rows: Record<string, unknown>[]; raw: unknown }> {
-  const table = resolveSupabaseTableName(appsheetTable);
+  const table = resolveSupabaseTableName(logicalTable);
   const supabase = getSupabaseClient();
   const tt = parseTtFromSelector(options?.selector);
 
@@ -75,36 +75,36 @@ export async function findSupabaseTaskRows(
     throwSupabaseError(error.message, table);
   }
 
-  const rows = (data ?? []).map(item => dbRowToAppsheet(item as DbTaskRow));
+  const rows = (data ?? []).map(item => dbRowToRecord(item as DbTaskRow));
   return { rows, raw: data };
 }
 
 export async function addSupabaseTaskRows(
-  appsheetTable: string,
+  logicalTable: string,
   rows: Record<string, unknown>[]
 ): Promise<unknown> {
-  const table = resolveSupabaseTableName(appsheetTable);
+  const table = resolveSupabaseTableName(logicalTable);
   const supabase = getSupabaseClient();
-  const payload = rows.map(appsheetRowToDb);
+  const payload = rows.map(recordRowToDb);
 
   const { data, error } = await supabase.from(table).insert(payload).select('tt,data');
   if (error) {
     throwSupabaseError(error.message, table);
   }
 
-  return (data ?? []).map(item => dbRowToAppsheet(item as DbTaskRow));
+  return (data ?? []).map(item => dbRowToRecord(item as DbTaskRow));
 }
 
 export async function editSupabaseTaskRows(
-  appsheetTable: string,
+  logicalTable: string,
   rows: Record<string, unknown>[]
 ): Promise<unknown> {
-  const table = resolveSupabaseTableName(appsheetTable);
+  const table = resolveSupabaseTableName(logicalTable);
   const supabase = getSupabaseClient();
   const updated: Record<string, unknown>[] = [];
 
   for (const row of rows) {
-    const { tt, data } = appsheetRowToDb(row);
+    const { tt, data } = recordRowToDb(row);
     const { data: saved, error } = await supabase
       .from(table)
       .update({ data })
@@ -118,17 +118,17 @@ export async function editSupabaseTaskRows(
     if (!saved) {
       throw new Error(`Không tìm thấy dòng TT=${tt} trong bảng ${table}.`);
     }
-    updated.push(dbRowToAppsheet(saved as DbTaskRow));
+    updated.push(dbRowToRecord(saved as DbTaskRow));
   }
 
   return updated;
 }
 
 export async function deleteSupabaseTaskRows(
-  appsheetTable: string,
+  logicalTable: string,
   rows: Record<string, unknown>[]
 ): Promise<unknown> {
-  const table = resolveSupabaseTableName(appsheetTable);
+  const table = resolveSupabaseTableName(logicalTable);
   const supabase = getSupabaseClient();
 
   for (const row of rows) {

@@ -27,7 +27,7 @@ import {
   PlusOutlined,
 } from '@ant-design/icons';
 import { useNavigate, useSearchParams } from 'react-router-dom';
-import { addAppsheetTask, deleteAppsheetTask, editAppsheetTask, findAppsheetTasks } from '../services/appsheetApi';
+import { addDataRow, deleteDataRow, editDataRow, findDataRows } from '../services/dataApi';
 import { loadReportCatalog } from '../services/reportCatalog';
 import {
   findReportGroup,
@@ -36,18 +36,18 @@ import {
   parseBlockKeyFromGroupParam,
 } from '../data/reportNavigation';
 import {
-  buildAppsheetReportDeleteRow,
-  buildAppsheetReportEditRow,
-  buildAppsheetReportRow,
+  buildReportDeleteRow,
+  buildReportEditRow,
+  buildReportRow,
   getNextReportRowNumber,
-  getReportAppsheetTableName,
+  getReportTableName,
   kyLabelFromPeriodLabel,
-} from '../services/reportAppsheet';
-import { hasAppsheetRowKey } from '../services/appsheetRowKey';
+} from '../services/reportData';
+import { hasRowKey } from '../services/rowKey';
 import type { ReportCatalog, ReportGroupRecord, ReportRecord } from '../types/report';
 import ReportMobileCards from '../components/ReportMobileCards';
 import { useMobileShell } from '../contexts/MobileShellContext';
-import { formatAppsheetDate, formatTaskDate, normalizeDisplayDate } from '../utils/taskDate';
+import { formatRecordDate, formatTaskDate, normalizeDisplayDate } from '../utils/taskDate';
 
 const { Text } = Typography;
 
@@ -593,15 +593,15 @@ const NavigationHub: React.FC = () => {
       message.error('Không có dữ liệu để xóa. Hãy F5 tải lại.');
       return;
     }
-    const reportTable = getReportAppsheetTableName();
-    if (!hasAppsheetRowKey(report.sourceRow, report.key, reportTable)) {
+    const reportTable = getReportTableName();
+    if (!hasRowKey(report.sourceRow, report.key, reportTable)) {
       message.error('Không có khóa id để xóa.');
       return;
     }
 
     setDeletingReportKey(report.key);
     try {
-      await deleteAppsheetTask(buildAppsheetReportDeleteRow(report.sourceRow, report.key), reportTable);
+      await deleteDataRow(buildReportDeleteRow(report.sourceRow, report.key), reportTable);
       await reloadReports();
       message.success('Đã xóa báo cáo.');
       if (reportId === report.key) {
@@ -643,7 +643,7 @@ const NavigationHub: React.FC = () => {
           return;
         }
 
-        const reportTable = getReportAppsheetTableName();
+        const reportTable = getReportTableName();
         setSavingReport(true);
 
         try {
@@ -652,13 +652,13 @@ const NavigationHub: React.FC = () => {
               message.error('Không có dữ liệu để sửa.');
               return;
             }
-            if (!hasAppsheetRowKey(editingReport.sourceRow, editingReport.key, reportTable)) {
+            if (!hasRowKey(editingReport.sourceRow, editingReport.key, reportTable)) {
               message.error('Không có khóa id để cập nhật.');
               return;
             }
 
-            await editAppsheetTask(
-              buildAppsheetReportEditRow(
+            await editDataRow(
+              buildReportEditRow(
                 editingReport.sourceRow,
                 {
                   loaiBaoCao,
@@ -683,9 +683,9 @@ const NavigationHub: React.FC = () => {
               return;
             }
 
-            const findResult = await findAppsheetTasks({ table: reportTable });
-            await addAppsheetTask(
-              buildAppsheetReportRow({
+            const findResult = await findDataRows({ table: reportTable });
+            await addDataRow(
+              buildReportRow({
                 ma: activeBlock.ma,
                 blockKey: activeBlock.blockKey,
                 loaiBaoCao,

@@ -3,7 +3,7 @@ import dotenv from 'dotenv';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import type { IncomingMessage, ServerResponse } from 'node:http';
-import { handleAppsheetRoute } from '../../server/appsheetRoute';
+import { handleDataRoute } from '../../server/dataRoute';
 import { isSupabaseConfigured } from '../../server/supabaseConfig';
 
 const projectRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..');
@@ -22,7 +22,7 @@ function sendJsonError(res: ServerResponse, error: unknown) {
   res.end(JSON.stringify({ message }));
 }
 
-export function appsheetApiPlugin(): Plugin {
+export function dataApiPlugin(): Plugin {
   return {
     name: 'data-api',
     configureServer(server) {
@@ -30,19 +30,19 @@ export function appsheetApiPlugin(): Plugin {
 
       if (!isSupabaseConfigured()) {
         server.config.logger.warn(
-          '[data] Thiếu SUPABASE_URL hoặc SUPABASE_ANON_KEY trong .env — API /api/appsheet/* trả 503.'
+          '[data] Thiếu SUPABASE_URL hoặc SUPABASE_ANON_KEY trong .env — API /api/data/* trả 503.'
         );
       }
 
       server.middlewares.use(async (req, res, next) => {
-        if (!(req as IncomingMessage).url?.startsWith('/api/appsheet')) {
+        if (!(req as IncomingMessage).url?.startsWith('/api/data')) {
           next();
           return;
         }
 
         syncDataEnv();
         try {
-          const handled = await handleAppsheetRoute(req as IncomingMessage, res as ServerResponse);
+          const handled = await handleDataRoute(req as IncomingMessage, res as ServerResponse);
           if (!handled) {
             sendJsonError(res as ServerResponse, new Error('Không tìm thấy endpoint API.'));
           }

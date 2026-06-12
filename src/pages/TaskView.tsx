@@ -40,20 +40,20 @@ import {
   type TaskDueDatesInput,
   calculateAutomaticStatus,
 } from '../utils/taskDate';
-import { addAppsheetTask, deleteAppsheetTask, editAppsheetTask, findAppsheetTasks } from '../services/appsheetApi';
+import { addDataRow, deleteDataRow, editDataRow, findDataRows } from '../services/dataApi';
 import {
-  buildAppsheetCompleteTaskRow,
-  hasAppsheetRowKey,
-  hydrateSourceRowAppsheetKey,
+  buildCompleteTaskRow,
+  hasRowKey,
+  hydrateSourceRowKey,
   mergeTaskCompletion,
-  buildAppsheetDeleteRow,
-  buildAppsheetEditRow,
-  buildAppsheetTaskRow,
-  buildAppsheetTienDoEditRow,
+  buildTaskDeleteRow,
+  buildTaskEditRow,
+  buildTaskRow,
+  buildTienDoEditRow,
   isTaskRecordCompleted,
-  mapAppsheetRowsToTasksByDept,
-  resolveAppsheetTableName,
-} from '../services/taskAppsheet';
+  mapRowsToTasksByDept,
+  resolveTaskTableName,
+} from '../services/taskData';
 import { TASK_COMPLETED_STATUS_LABEL } from '../utils/taskDate';
 
 const { Text } = Typography;
@@ -182,7 +182,7 @@ const STATUS_CFG: Record<string, { color: string }> = {
   'Chưa bắt đầu': { color: 'default' },
 };
 
-/** Giá trị TIẾN ĐỘ AppSheet chấp nhận khi ghi qua API. */
+/** Giá trị TIẾN ĐỘ khi ghi qua API. */
 const TIEN_DO_EDIT_OPTIONS = [
   { value: 'Đang làm', label: 'Đang làm' },
   { value: 'Hoàn thành', label: 'Hoàn thành' },
@@ -325,35 +325,35 @@ const TaskView: React.FC = () => {
   const [completingTaskKey, setCompletingTaskKey] = useState<string | null>(null);
   const [savingTienDoKey, setSavingTienDoKey] = useState<string | null>(null);
   const [tienDoDraft, setTienDoDraft] = useState('Chưa bắt đầu');
-  const [appsheetConnected, setAppsheetConnected] = useState<boolean | null>(null);
+  const [supabaseConnected, setSupabaseConnected] = useState<boolean | null>(null);
   const [form] = Form.useForm();
   const [detailForm] = Form.useForm();
 
-  const appsheetTable = useMemo(
-    () => resolveAppsheetTableName(blockKeyParam, deptKeyParam),
+  const taskTable = useMemo(
+    () => resolveTaskTableName(blockKeyParam, deptKeyParam),
     [blockKeyParam, deptKeyParam]
   );
 
   useEffect(() => {
     let cancelled = false;
 
-    async function loadAppsheetTasks() {
-      if (!appsheetTable) {
-        setAppsheetConnected(null);
+    async function loadTasks() {
+      if (!taskTable) {
+        setSupabaseConnected(null);
         setTasksByDept(createEmptyTasksByDept());
         return;
       }
 
       setTaskLoading(true);
       try {
-        const result = await findAppsheetTasks({ table: appsheetTable });
+        const result = await findDataRows({ table: taskTable });
         if (cancelled) return;
 
-        setAppsheetConnected(true);
-        setTasksByDept(cloneTasksMap(mapAppsheetRowsToTasksByDept(result.rows, result.table)));
+        setSupabaseConnected(true);
+        setTasksByDept(cloneTasksMap(mapRowsToTasksByDept(result.rows, result.table)));
       } catch (error) {
         if (!cancelled) {
-          setAppsheetConnected(false);
+          setSupabaseConnected(false);
           setTasksByDept(createEmptyTasksByDept());
           message.error(error instanceof Error ? error.message : 'Không thể tải dữ liệu từ Supabase.');
         }
@@ -364,12 +364,12 @@ const TaskView: React.FC = () => {
       }
     }
 
-    void loadAppsheetTasks();
+    void loadTasks();
 
     return () => {
       cancelled = true;
     };
-  }, [appsheetTable]);
+  }, [taskTable]);
 
   useEffect(() => {
     if (!blockKeyParam) {
@@ -419,16 +419,16 @@ const TaskView: React.FC = () => {
     });
   }, [detailTask, detailForm]);
 
-  const reloadAppsheetTasks = useCallback(async () => {
-    if (!appsheetTable) {
+  const reloadTasks = useCallback(async () => {
+    if (!taskTable) {
       return null;
     }
 
-    const result = await findAppsheetTasks({ table: appsheetTable });
-    const mapped = mapAppsheetRowsToTasksByDept(result.rows, result.table);
+    const result = await findDataRows({ table: taskTable });
+    const mapped = mapRowsToTasksByDept(result.rows, result.table);
     setTasksByDept(cloneTasksMap(mapped));
     return mapped;
-  }, [appsheetTable]);
+  }, [taskTable]);
 
   const collectRowsForScope = useCallback(
     (scope: ListScope): TableRow[] => {
@@ -537,7 +537,7 @@ const TaskView: React.FC = () => {
     setCreateOpen(true);
   };
 
-  const canCreateTask = Boolean(appsheetTable && appsheetConnected);
+  const canCreateTask = Boolean(taskTable && supabaseConnected);
 
   const addTaskButton = (options?: { size?: 'small' | 'middle' | 'large'; block?: boolean }) => (
     <Button
@@ -568,12 +568,12 @@ const TaskView: React.FC = () => {
           return;
         }
 
-        if (!appsheetTable) {
+        if (!taskTable) {
           message.error('Chọn phòng ban trên URL để thêm dòng Supabase.');
           return;
         }
 
-        if (!appsheetConnected) {
+        if (!supabaseConnected) {
           message.error('Chưa kết nối Supabase.');
           return;
         }
@@ -583,8 +583,8 @@ const TaskView: React.FC = () => {
 
         setCreatingTask(true);
         try {
-          await addAppsheetTask(
-            buildAppsheetTaskRow({
+          await addDataRow(
+            buildTaskRow({
               deptKey: dk,
               congViec: values.congViec as string,
               nguoiPhuTrach: values.nguoiPhuTrach as string,
@@ -596,9 +596,9 @@ const TaskView: React.FC = () => {
               stt: nextStt,
               linkKQ: values.linkKQ as string | undefined,
             }),
-            appsheetTable
+            taskTable
           );
-          await reloadAppsheetTasks();
+          await reloadTasks();
           message.success('Đã thêm công việc mới vào Supabase.');
           setCreateOpen(false);
           form.resetFields();
@@ -615,7 +615,7 @@ const TaskView: React.FC = () => {
     detailForm
       .validateFields()
       .then(async values => {
-        if (!detailTask || !appsheetTable || !appsheetConnected) {
+        if (!detailTask || !taskTable || !supabaseConnected) {
           message.error('Chưa kết nối Supabase.');
           return;
         }
@@ -644,21 +644,21 @@ const TaskView: React.FC = () => {
 
         setSavingDetail(true);
         try {
-          const sourceRow = await hydrateSourceRowAppsheetKey(detailTask.sourceRow, appsheetTable);
-          if (!hasAppsheetRowKey(sourceRow, detailTask.appsheetRowKey, appsheetTable)) {
+          const sourceRow = await hydrateSourceRowKey(detailTask.sourceRow, taskTable);
+          if (!hasRowKey(sourceRow, detailTask.rowKey, taskTable)) {
             message.error('Không tìm thấy khóa TT trên Supabase. F5 tải lại danh sách.');
             return;
           }
 
-          const editRow = buildAppsheetEditRow(
-            { ...updatedTask, sourceRow, appsheetRowKey: detailTask.appsheetRowKey },
+          const editRow = buildTaskEditRow(
+            { ...updatedTask, sourceRow, rowKey: detailTask.rowKey },
             sourceRow,
-            appsheetTable
+            taskTable
           );
 
-          await editAppsheetTask(editRow, appsheetTable);
-          const result = await findAppsheetTasks({ table: appsheetTable });
-          const mapped = mapAppsheetRowsToTasksByDept(result.rows, result.table);
+          await editDataRow(editRow, taskTable);
+          const result = await findDataRows({ table: taskTable });
+          const mapped = mapRowsToTasksByDept(result.rows, result.table);
           setTasksByDept(cloneTasksMap(mapped));
           const refreshed = mapped[detailTask.deptKey]?.[detailTask.key];
           if (refreshed) {
@@ -687,7 +687,7 @@ const TaskView: React.FC = () => {
 
   const updateTaskTienDo = useCallback(
     async (taskKey: string, deptKey: string, tienDo: string) => {
-      if (!appsheetTable || !appsheetConnected) {
+      if (!taskTable || !supabaseConnected) {
         message.error('Chưa kết nối Supabase.');
         return false;
       }
@@ -698,8 +698,8 @@ const TaskView: React.FC = () => {
         return false;
       }
 
-      const sourceRow = await hydrateSourceRowAppsheetKey(task.sourceRow, appsheetTable);
-      if (!hasAppsheetRowKey(sourceRow, task.appsheetRowKey, appsheetTable)) {
+      const sourceRow = await hydrateSourceRowKey(task.sourceRow, taskTable);
+      if (!hasRowKey(sourceRow, task.rowKey, taskTable)) {
         message.error('Không tìm thấy khóa TT trên Supabase. F5 tải lại danh sách.');
         return false;
       }
@@ -708,12 +708,12 @@ const TaskView: React.FC = () => {
         return true;
       }
 
-      const editRow = buildAppsheetTienDoEditRow(
+      const editRow = buildTienDoEditRow(
         tienDo,
         sourceRow,
         new Date(),
-        task.appsheetRowKey,
-        appsheetTable
+        task.rowKey,
+        taskTable
       );
       const tienDoWritten = Object.values(editRow).some(
         value => value === 'Hoàn thành' || value === 'Đang thực hiện' || value === 'Quá hạn'
@@ -725,8 +725,8 @@ const TaskView: React.FC = () => {
 
       setSavingTienDoKey(taskKey);
       try {
-        await editAppsheetTask(editRow, appsheetTable);
-        const mapped = await reloadAppsheetTasks();
+        await editDataRow(editRow, taskTable);
+        const mapped = await reloadTasks();
         const refreshed = mapped?.[deptKey]?.[taskKey];
         if (refreshed && detailTask?.key === taskKey && detailTask.deptKey === deptKey) {
           setDetailTask({ ...refreshed, key: taskKey, deptKey });
@@ -741,7 +741,7 @@ const TaskView: React.FC = () => {
         setSavingTienDoKey(null);
       }
     },
-    [appsheetTable, appsheetConnected, tasksByDept, detailTask, detailForm, reloadAppsheetTasks, message]
+    [taskTable, supabaseConnected, tasksByDept, detailTask, detailForm, reloadTasks, message]
   );
 
   const handleSaveTienDo = async () => {
@@ -768,7 +768,7 @@ const TaskView: React.FC = () => {
   };
 
   const handleMarkComplete = async (taskKey: string, deptKey: string) => {
-    if (!appsheetTable || !appsheetConnected) {
+    if (!taskTable || !supabaseConnected) {
       message.error('Chưa kết nối Supabase.');
       return;
     }
@@ -785,17 +785,17 @@ const TaskView: React.FC = () => {
     }
 
     const completedAt = new Date();
-    const sourceRow = await hydrateSourceRowAppsheetKey(task.sourceRow, appsheetTable);
-    if (!hasAppsheetRowKey(sourceRow, task.appsheetRowKey, appsheetTable)) {
+    const sourceRow = await hydrateSourceRowKey(task.sourceRow, taskTable);
+    if (!hasRowKey(sourceRow, task.rowKey, taskTable)) {
       message.error('Không tìm thấy khóa TT trên Supabase. F5 tải lại danh sách.');
       return;
     }
 
-    const editRow = buildAppsheetCompleteTaskRow(
+    const editRow = buildCompleteTaskRow(
       sourceRow,
       completedAt,
-      task.appsheetRowKey,
-      appsheetTable
+      task.rowKey,
+      taskTable
     );
 
     setCompletingTaskKey(taskKey);
@@ -809,8 +809,8 @@ const TaskView: React.FC = () => {
         return next;
       });
 
-      await editAppsheetTask(editRow, appsheetTable);
-      const mapped = await reloadAppsheetTasks();
+      await editDataRow(editRow, taskTable);
+      const mapped = await reloadTasks();
       const refreshed = mapped?.[deptKey]?.[taskKey];
       if (refreshed && detailTask?.key === taskKey && detailTask.deptKey === deptKey) {
         setDetailTask({ ...refreshed, key: taskKey, deptKey });
@@ -830,24 +830,24 @@ const TaskView: React.FC = () => {
       return;
     }
 
-    if (!appsheetTable || !appsheetConnected) {
+    if (!taskTable || !supabaseConnected) {
       message.error('Chưa kết nối Supabase.');
       return;
     }
 
-    const sourceRow = await hydrateSourceRowAppsheetKey(task.sourceRow, appsheetTable);
-    if (!hasAppsheetRowKey(sourceRow, task.appsheetRowKey, appsheetTable)) {
+    const sourceRow = await hydrateSourceRowKey(task.sourceRow, taskTable);
+    if (!hasRowKey(sourceRow, task.rowKey, taskTable)) {
       message.error('Không tìm thấy khóa TT trên Supabase. F5 tải lại danh sách.');
       return;
     }
 
     setDeletingTaskKey(taskKey);
     try {
-      await deleteAppsheetTask(
-        buildAppsheetDeleteRow(sourceRow, task.appsheetRowKey, appsheetTable),
-        appsheetTable
+      await deleteDataRow(
+        buildTaskDeleteRow(sourceRow, task.rowKey, taskTable),
+        taskTable
       );
-      await reloadAppsheetTasks();
+      await reloadTasks();
       if (detailTask?.key === taskKey) {
         setDetailTask(null);
       }
@@ -994,7 +994,7 @@ const TaskView: React.FC = () => {
                 placeholder={display}
                 title={display}
                 loading={savingTienDoKey === record.key}
-                disabled={!appsheetConnected}
+                disabled={!supabaseConnected}
                 options={TIEN_DO_EDIT_OPTIONS}
                 popupMatchSelectWidth={120}
                 onChange={nextValue => void updateTaskTienDo(record.key, record.deptKey, nextValue)}
@@ -1038,7 +1038,7 @@ const TaskView: React.FC = () => {
                 okText="Xác nhận"
                 cancelText="Huỷ"
                 onConfirm={() => void handleMarkComplete(record.key, record.deptKey)}
-                disabled={!appsheetConnected}
+                disabled={!supabaseConnected}
               >
                 <Button
                   type="text"
@@ -1047,7 +1047,7 @@ const TaskView: React.FC = () => {
                   icon={<CheckCircleOutlined />}
                   title="Đã hoàn thành"
                   loading={completingTaskKey === record.key}
-                  disabled={!appsheetConnected}
+                  disabled={!supabaseConnected}
                 />
               </Popconfirm>
             ) : null}
@@ -1065,7 +1065,7 @@ const TaskView: React.FC = () => {
               cancelText="Huỷ"
               okButtonProps={{ danger: true, loading: deletingTaskKey === record.key }}
               onConfirm={() => void handleDeleteTask(record.key, record.deptKey)}
-              disabled={!appsheetConnected}
+              disabled={!supabaseConnected}
             >
               <Button
                 type="text"
@@ -1075,7 +1075,7 @@ const TaskView: React.FC = () => {
                 icon={<DeleteOutlined />}
                 title="Xóa"
                 loading={deletingTaskKey === record.key}
-                disabled={!appsheetConnected}
+                disabled={!supabaseConnected}
               />
             </Popconfirm>
           </div>
@@ -1085,7 +1085,7 @@ const TaskView: React.FC = () => {
     );
 
     return columns;
-  }, [showDeptColumn, appsheetConnected, completingTaskKey, deletingTaskKey, savingTienDoKey, updateTaskTienDo]);
+  }, [showDeptColumn, supabaseConnected, completingTaskKey, deletingTaskKey, savingTienDoKey, updateTaskTienDo]);
 
   const selected = detailTask;
 
@@ -1109,9 +1109,9 @@ const TaskView: React.FC = () => {
             size="middle"
             className="w-full md:w-64"
           />
-          {appsheetConnected === true ? (
+          {supabaseConnected === true ? (
             <Tag color="success">Supabase</Tag>
-          ) : appsheetConnected === false ? (
+          ) : supabaseConnected === false ? (
             <Tag color="error">Không kết nối Supabase</Tag>
           ) : null}
         </div>
@@ -1326,7 +1326,7 @@ const TaskView: React.FC = () => {
                               okText="Xác nhận"
                               cancelText="Huỷ"
                               onConfirm={() => void handleMarkComplete(row.key, row.deptKey)}
-                              disabled={!appsheetConnected}
+                              disabled={!supabaseConnected}
                             >
                               <Button
                                 size="small"
@@ -1334,7 +1334,7 @@ const TaskView: React.FC = () => {
                                 className="bg-green-600 border-green-600"
                                 icon={<CheckCircleOutlined />}
                                 loading={completingTaskKey === row.key}
-                                disabled={!appsheetConnected}
+                                disabled={!supabaseConnected}
                               >
                                 Đã hoàn thành
                               </Button>
@@ -1349,14 +1349,14 @@ const TaskView: React.FC = () => {
                             cancelText="Huỷ"
                             okButtonProps={{ danger: true, loading: deletingTaskKey === row.key }}
                             onConfirm={() => void handleDeleteTask(row.key, row.deptKey)}
-                            disabled={!appsheetConnected}
+                            disabled={!supabaseConnected}
                           >
                             <Button
                               size="small"
                               danger
                               icon={<DeleteOutlined />}
                               loading={deletingTaskKey === row.key}
-                              disabled={!appsheetConnected}
+                              disabled={!supabaseConnected}
                             >
                               Xoá
                             </Button>
@@ -1400,14 +1400,14 @@ const TaskView: React.FC = () => {
                       okText="Xác nhận"
                       cancelText="Huỷ"
                       onConfirm={() => void handleMarkComplete(selected.key, selected.deptKey)}
-                      disabled={!appsheetConnected}
+                      disabled={!supabaseConnected}
                     >
                       <Button
                         type="primary"
                         className="bg-green-600 border-green-600 hover:!bg-green-700 hover:!border-green-700"
                         icon={<CheckCircleOutlined />}
                         loading={completingTaskKey === selected.key}
-                        disabled={!appsheetConnected}
+                        disabled={!supabaseConnected}
                       >
                         Đã hoàn thành
                       </Button>

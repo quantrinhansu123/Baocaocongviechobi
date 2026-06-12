@@ -1,15 +1,15 @@
-import { findAppsheetTasks } from './appsheetApi';
+import { findDataRows } from './dataApi';
 import {
-  applyAppsheetRowKey,
-  getAppsheetRowKeyColumn,
-  hasAppsheetRowKey,
-  pickAppsheetRowKey,
+  applyRowKey,
+  getRowKeyColumn,
+  hasRowKey,
+  pickRowKey,
   TASK_ROW_KEY_COLUMN,
-} from './appsheetRowKey';
+} from './rowKey';
 import { ORG_BLOCKS } from '../data/orgBlocks';
 import type { TaskRecord } from '../types/task';
 import {
-  formatAppsheetDate,
+  formatRecordDate,
   formatUnknownAsDisplayDate,
   normalizeDisplayDateTime,
   TASK_COMPLETED_STATUS_LABEL,
@@ -44,7 +44,7 @@ ORG_BLOCKS.forEach((block, blockIndex) => {
   });
 });
 
-export function listAppsheetTableBindings(): Array<{ table: string; deptKey: string; department: string }> {
+export function listTaskTableBindings(): Array<{ table: string; deptKey: string; department: string }> {
   return ORG_BLOCKS.flatMap((block, blockIndex) =>
     block.depts.map((dept, deptIndex) => ({
       table: `${ROMAN[blockIndex]}.${deptIndex + 1}`,
@@ -54,7 +54,7 @@ export function listAppsheetTableBindings(): Array<{ table: string; deptKey: str
   );
 }
 
-export function resolveAppsheetTableName(blockKey?: string, deptKey?: string): string | null {
+export function resolveTaskTableName(blockKey?: string, deptKey?: string): string | null {
   if (!blockKey || !deptKey) {
     return null;
   }
@@ -72,7 +72,7 @@ export function resolveAppsheetTableName(blockKey?: string, deptKey?: string): s
   return `${ROMAN[blockIndex]}.${deptIndex + 1}`;
 }
 
-export function resolveDeptKeyFromAppsheetTable(tableName?: string): string | null {
+export function resolveDeptKeyFromTable(tableName?: string): string | null {
   if (!tableName) {
     return null;
   }
@@ -95,16 +95,16 @@ function pickFormattedDate(row: Record<string, unknown>, keys: string[]): string
   return '';
 }
 
-/** Tên cột AppSheet (xác nhận bởi người dùng). */
-export const APPSHEET_NGAY_HOAN_THANH_COLUMN = 'Ngày hoàn thành';
-export const APPSHEET_TIEN_DO_COLUMN = 'TIẾN ĐỘ';
-export const APPSHEET_LINK_KQ_COLUMN = 'LINK KQ';
+/** Tên cột dữ liệu (xác nhận bởi người dùng). */
+export const COL_NGAY_HOAN_THANH = 'Ngày hoàn thành';
+export const COL_TIEN_DO = 'TIẾN ĐỘ';
+export const COL_LINK_KQ = 'LINK KQ';
 
 const LINK_KQ_KEYS = ['LINK KQ', 'Link KQ', 'LinkKQ', 'linkKQ', 'Link'];
 
-export { hasAppsheetRowKey, pickAppsheetRowKey, TASK_ROW_KEY_COLUMN } from './appsheetRowKey';
+export { hasRowKey, pickRowKey, TASK_ROW_KEY_COLUMN } from './rowKey';
 
-function parseAppsheetUrlField(value: string): string {
+function parseUrlField(value: string): string {
   const trimmed = value.trim();
   if (!trimmed) {
     return '';
@@ -125,8 +125,8 @@ function parseAppsheetUrlField(value: string): string {
   return trimmed;
 }
 
-/** AppSheet cột Url (LINK KQ) nhận chuỗi https://... — không gửi JSON {Url, LinkText}. */
-export function formatAppsheetUrlValue(value: string): string {
+/** Cột Url (LINK KQ) nhận chuỗi https://... — không gửi JSON {Url, LinkText}. */
+export function formatUrlValue(value: string): string {
   const trimmed = value.trim();
   if (!trimmed) {
     return '';
@@ -155,17 +155,17 @@ function pickLinkKQRawValue(row: Record<string, unknown>): string {
   return pickField(row, LINK_KQ_KEYS);
 }
 
-function resolveAppsheetLinkKQ(value: string | undefined): string | null {
+function resolveLinkKQ(value: string | undefined): string | null {
   if (value === undefined || !value.trim()) {
     return null;
   }
-  return formatAppsheetUrlValue(value) || null;
+  return formatUrlValue(value) || null;
 }
 
 function applyLinkKQToRow(row: Record<string, unknown>, explicitLink?: string): void {
-  const resolved = resolveAppsheetLinkKQ(explicitLink);
+  const resolved = resolveLinkKQ(explicitLink);
   if (resolved) {
-    row[APPSHEET_LINK_KQ_COLUMN] = resolved;
+    row[COL_LINK_KQ] = resolved;
   }
 }
 
@@ -188,8 +188,8 @@ function mergeHydratedRow(
   refreshed: Record<string, unknown>,
   tableName: string
 ): Record<string, unknown> {
-  const column = getAppsheetRowKeyColumn(tableName);
-  const rowKey = pickAppsheetRowKey(refreshed, tableName);
+  const column = getRowKeyColumn(tableName);
+  const rowKey = pickRowKey(refreshed, tableName);
   if (!rowKey) {
     return sourceRow;
   }
@@ -201,14 +201,14 @@ function mergeHydratedRow(
   };
 }
 
-/** Tải lại cột id từ AppSheet khi bản ghi trong bộ nhớ thiếu khóa dòng. */
-export async function hydrateSourceRowAppsheetKey(
+/** Tải lại cột id khi bản ghi trong bộ nhớ thiếu khóa dòng. */
+export async function hydrateSourceRowKey(
   sourceRow: Record<string, unknown>,
   tableName: string
 ): Promise<Record<string, unknown>> {
-  const existingKey = pickAppsheetRowKey(sourceRow, tableName);
+  const existingKey = pickRowKey(sourceRow, tableName);
   if (existingKey) {
-    return { ...sourceRow, [getAppsheetRowKeyColumn(tableName)]: existingKey };
+    return { ...sourceRow, [getRowKeyColumn(tableName)]: existingKey };
   }
 
   const tt = pickField(sourceRow, ['TT', 'STT', 'Stt', 'stt']);
@@ -217,14 +217,14 @@ export async function hydrateSourceRowAppsheetKey(
   }
 
   try {
-    const selectorResult = await findAppsheetTasks({ table: tableName, selector: buildTtSelector(tt) });
+    const selectorResult = await findDataRows({ table: tableName, selector: buildTtSelector(tt) });
     const fromSelector =
       selectorResult.rows.find(row => matchRowByTt(row, tt)) ?? selectorResult.rows[0];
-    if (fromSelector && pickAppsheetRowKey(fromSelector)) {
+    if (fromSelector && pickRowKey(fromSelector)) {
       return mergeHydratedRow(sourceRow, fromSelector, tableName);
     }
 
-    const fullResult = await findAppsheetTasks({ table: tableName });
+    const fullResult = await findDataRows({ table: tableName });
     const fromFull = fullResult.rows.find(row => matchRowByTt(row, tt));
     if (fromFull) {
       return mergeHydratedRow(sourceRow, fromFull, tableName);
@@ -239,16 +239,16 @@ export async function hydrateSourceRowAppsheetKey(
 function resolveTienDoColumnKey(row: Record<string, unknown>): string {
   return resolveRowColumnKey(
     row,
-    [APPSHEET_TIEN_DO_COLUMN, 'Tiến độ', 'Tien do', 'TienDo', 'tienDo'],
-    APPSHEET_TIEN_DO_COLUMN
+    [COL_TIEN_DO, 'Tiến độ', 'Tien do', 'TienDo', 'tienDo'],
+    COL_TIEN_DO
   );
 }
 
 function resolveNgayHoanThanhColumnKey(row: Record<string, unknown>): string {
   return resolveRowColumnKey(
     row,
-    [APPSHEET_NGAY_HOAN_THANH_COLUMN, 'NGÀY HOÀN THÀNH', 'Ngay hoan thanh'],
-    APPSHEET_NGAY_HOAN_THANH_COLUMN
+    [COL_NGAY_HOAN_THANH, 'NGÀY HOÀN THÀNH', 'Ngay hoan thanh'],
+    COL_NGAY_HOAN_THANH
   );
 }
 
@@ -347,9 +347,9 @@ function pickNumber(row: Record<string, unknown>, keys: string[], fallback = 1):
   return Number.isFinite(parsed) ? parsed : fallback;
 }
 
-const APPSHEET_TIEN_DO_VALUES = new Set(['Đang thực hiện', 'Hoàn thành', 'Quá hạn']);
+const VALID_TIEN_DO_VALUES = new Set(['Đang thực hiện', 'Hoàn thành', 'Quá hạn']);
 
-export function normalizeAppsheetTienDo(value: string): string {
+export function normalizeTienDo(value: string): string {
   const trimmed = value.trim();
   if (!trimmed) {
     return 'Chưa bắt đầu';
@@ -366,7 +366,7 @@ export function normalizeAppsheetTienDo(value: string): string {
   return 'Chưa bắt đầu';
 }
 
-export function serializeAppsheetTienDo(value: string | undefined): string | undefined {
+export function serializeTienDo(value: string | undefined): string | undefined {
   const trimmed = (value ?? '').trim();
   if (!trimmed || trimmed === 'Chưa bắt đầu') {
     return undefined;
@@ -376,7 +376,7 @@ export function serializeAppsheetTienDo(value: string | undefined): string | und
     return 'Đang thực hiện';
   }
 
-  if (APPSHEET_TIEN_DO_VALUES.has(trimmed)) {
+  if (VALID_TIEN_DO_VALUES.has(trimmed)) {
     return trimmed;
   }
 
@@ -419,10 +419,10 @@ function resolveTaskKey(row: Record<string, unknown>, index: number, deptKey: st
   if (explicit) {
     return `${deptKey}-${explicit}`;
   }
-  return `${deptKey}-appsheet-${index + 1}`;
+  return `${deptKey}-row-${index + 1}`;
 }
 
-export function mapAppsheetRowToTaskRecord(
+export function mapRowToTaskRecord(
   row: Record<string, unknown>,
   index: number,
   tableName?: string
@@ -448,7 +448,7 @@ export function mapAppsheetRowToTaskRecord(
   const effectiveDue = getEffectiveDueDate(dueDatesInput);
   const effectiveDeadlineStr = effectiveDue ? effectiveDue.format('DD/MM/YYYY') : deadlineVal;
 
-  const tienDoVal = normalizeAppsheetTienDo(
+  const tienDoVal = normalizeTienDo(
     pickField(row, ['TIẾN ĐỘ', 'Tiến độ', 'Tien do', 'TienDo', 'tienDo'])
   );
   const trangThaiVal = pickField(row, [
@@ -508,27 +508,27 @@ export function mapAppsheetRowToTaskRecord(
       giaHan2: pickFormattedDate(row, ['GIA HẠN 2', 'Gia hạn 2', 'Gia han 2', 'GiaHan2', 'giaHan2']),
       giaHan3: pickFormattedDate(row, ['GIA HẠN 3', 'Gia hạn 3', 'Gia han 3', 'GiaHan3', 'giaHan3']),
       ketQua: pickField(row, ['KẾT QUẢ', 'Kết quả', 'Ket qua', 'KetQua', 'ketQua', 'Result']),
-      linkKQ: parseAppsheetUrlField(pickLinkKQRawValue(row)),
+      linkKQ: parseUrlField(pickLinkKQRawValue(row)),
       tienDo: tienDoVal,
       trangThai: trangThaiVal,
       ngayGioHoanThanh,
       vuongMac: pickField(row, ['VƯỚNG MẮC', 'Vướng mắc', 'Vuong mac', 'VuongMac', 'vuongMac']),
       canLD: pickField(row, ['CẦN LĐ TÁC ĐỘNG', 'Cần LD', 'Can LD', 'CanLD', 'canLD']) || 'Không',
       anhHuong: pickNumber(row, ['MỨC ẢNH HƯỞNG', 'Ảnh hưởng', 'Anh huong', 'AnhHuong', 'anhHuong', 'Priority'], 1),
-      appsheetRowKey: pickAppsheetRowKey(row, tableName),
+      rowKey: pickRowKey(row, tableName),
       sourceRow: { ...row },
     },
   };
 }
 
-export function mapAppsheetRowsToTasksByDept(
+export function mapRowsToTasksByDept(
   rows: Record<string, unknown>[],
   tableName?: string
 ): Record<string, Record<string, TaskRecord>> {
   const tasksByDept: Record<string, Record<string, TaskRecord>> = {};
 
   rows.forEach((row, index) => {
-    const mapped = mapAppsheetRowToTaskRecord(row, index, tableName);
+    const mapped = mapRowToTaskRecord(row, index, tableName);
     if (!tasksByDept[mapped.deptKey]) {
       tasksByDept[mapped.deptKey] = {};
     }
@@ -538,7 +538,7 @@ export function mapAppsheetRowsToTasksByDept(
   return tasksByDept;
 }
 
-export function buildAppsheetTaskRow(input: {
+export function buildTaskRow(input: {
   deptKey: string;
   congViec: string;
   nguoiPhuTrach: string;
@@ -555,11 +555,11 @@ export function buildAppsheetTaskRow(input: {
     TT: input.stt != null ? String(input.stt) : '',
     'CÔNG VIỆC': input.congViec,
     'NGƯỜI ĐƯỢC GIAO': input.nguoiPhuTrach,
-    'NGÀY GIAO': formatAppsheetDate(new Date().toLocaleDateString('vi-VN')),
-    'Y/C XONG': formatAppsheetDate(input.deadline),
-    'GIA HẠN 1': formatAppsheetDate(input.giaHan1 ?? ''),
-    'GIA HẠN 2': formatAppsheetDate(input.giaHan2 ?? ''),
-    'GIA HẠN 3': formatAppsheetDate(input.giaHan3 ?? ''),
+    'NGÀY GIAO': formatRecordDate(new Date().toLocaleDateString('vi-VN')),
+    'Y/C XONG': formatRecordDate(input.deadline),
+    'GIA HẠN 1': formatRecordDate(input.giaHan1 ?? ''),
+    'GIA HẠN 2': formatRecordDate(input.giaHan2 ?? ''),
+    'GIA HẠN 3': formatRecordDate(input.giaHan3 ?? ''),
     'CẦN LĐ TÁC ĐỘNG': 'Không',
     'MỨC ẢNH HƯỞNG': String(input.anhHuong),
   };
@@ -567,7 +567,7 @@ export function buildAppsheetTaskRow(input: {
   return row;
 }
 
-export function buildAppsheetEditRow(
+export function buildTaskEditRow(
   task: TaskRecord,
   sourceRow: Record<string, unknown>,
   tableName: string
@@ -576,23 +576,23 @@ export function buildAppsheetEditRow(
 
   row['CÔNG VIỆC'] = task.congViec;
   row['NGƯỜI ĐƯỢC GIAO'] = task.nguoiGiao;
-  row['NGÀY GIAO'] = formatAppsheetDate(task.ngayGiao);
-  row['Y/C XONG'] = formatAppsheetDate(task.ycXong);
-  row['GIA HẠN 1'] = formatAppsheetDate(task.giaHan1);
-  row['GIA HẠN 2'] = formatAppsheetDate(task.giaHan2);
-  row['GIA HẠN 3'] = formatAppsheetDate(task.giaHan3);
+  row['NGÀY GIAO'] = formatRecordDate(task.ngayGiao);
+  row['Y/C XONG'] = formatRecordDate(task.ycXong);
+  row['GIA HẠN 1'] = formatRecordDate(task.giaHan1);
+  row['GIA HẠN 2'] = formatRecordDate(task.giaHan2);
+  row['GIA HẠN 3'] = formatRecordDate(task.giaHan3);
   row['KẾT QUẢ'] = task.ketQua;
   applyLinkKQToRow(row, task.linkKQ);
   row['VƯỚNG MẮC'] = task.vuongMac;
   row['CẦN LĐ TÁC ĐỘNG'] = task.canLD.trim() || 'Không';
   row['MỨC ẢNH HƯỞNG'] = String(task.anhHuong);
 
-  const tienDo = serializeAppsheetTienDo(task.tienDo);
+  const tienDo = serializeTienDo(task.tienDo);
   if (tienDo) {
     row['TIẾN ĐỘ'] = tienDo;
   }
 
-  return applyAppsheetRowKey(row, sourceRow, task.appsheetRowKey, tableName);
+  return applyRowKey(row, sourceRow, task.rowKey, tableName);
 }
 
 export function mergeTaskCompletion(
@@ -602,20 +602,20 @@ export function mergeTaskCompletion(
 ): TaskRecord {
   const mergedSource = { ...(task.sourceRow ?? {}), ...editRow };
   const ngayHoanThanh =
-    pickNgayHoanThanhFromRow(mergedSource) || formatAppsheetDate(completedAt);
+    pickNgayHoanThanhFromRow(mergedSource) || formatRecordDate(completedAt);
 
   return {
     ...task,
     tienDo: 'Hoàn thành',
     trangThai: '',
     ngayGioHoanThanh: ngayHoanThanh,
-    appsheetRowKey: pickAppsheetRowKey(mergedSource) ?? task.appsheetRowKey,
+    rowKey: pickRowKey(mergedSource) ?? task.rowKey,
     sourceRow: mergedSource,
   };
 }
 
-/** Chỉ gửi các cột có thật trên AppSheet: TT, TIẾN ĐỘ, Ngày hoàn thành. */
-export function buildAppsheetCompleteTaskRow(
+/** Chỉ gửi các cột: TT, TIẾN ĐỘ, Ngày hoàn thành. */
+export function buildCompleteTaskRow(
   sourceRow: Record<string, unknown>,
   completedAt: Date = new Date(),
   explicitRowKey?: string | null,
@@ -623,14 +623,14 @@ export function buildAppsheetCompleteTaskRow(
 ): Record<string, unknown> {
   const row: Record<string, unknown> = {};
 
-  const tienDoValue = serializeAppsheetTienDo('Hoàn thành') ?? 'Hoàn thành';
-  row[APPSHEET_TIEN_DO_COLUMN] = tienDoValue;
-  row[APPSHEET_NGAY_HOAN_THANH_COLUMN] = formatAppsheetDate(completedAt);
+  const tienDoValue = serializeTienDo('Hoàn thành') ?? 'Hoàn thành';
+  row[COL_TIEN_DO] = tienDoValue;
+  row[COL_NGAY_HOAN_THANH] = formatRecordDate(completedAt);
 
-  return applyAppsheetRowKey(row, sourceRow, explicitRowKey, tableName);
+  return applyRowKey(row, sourceRow, explicitRowKey, tableName);
 }
 
-export function buildAppsheetTienDoEditRow(
+export function buildTienDoEditRow(
   tienDo: string,
   sourceRow: Record<string, unknown>,
   completedAt: Date = new Date(),
@@ -639,22 +639,22 @@ export function buildAppsheetTienDoEditRow(
 ): Record<string, unknown> {
   const row: Record<string, unknown> = {};
 
-  const serialized = serializeAppsheetTienDo(tienDo);
+  const serialized = serializeTienDo(tienDo);
   if (serialized) {
-    row[APPSHEET_TIEN_DO_COLUMN] = serialized;
+    row[COL_TIEN_DO] = serialized;
   }
 
   if (tienDo.trim() === 'Hoàn thành' && !pickNgayHoanThanhFromRow(sourceRow)) {
-    row[APPSHEET_NGAY_HOAN_THANH_COLUMN] = formatAppsheetDate(completedAt);
+    row[COL_NGAY_HOAN_THANH] = formatRecordDate(completedAt);
   }
 
-  return applyAppsheetRowKey(row, sourceRow, explicitRowKey, tableName);
+  return applyRowKey(row, sourceRow, explicitRowKey, tableName);
 }
 
-export function buildAppsheetDeleteRow(
+export function buildTaskDeleteRow(
   sourceRow: Record<string, unknown>,
   explicitRowKey?: string | null,
   tableName?: string
 ): Record<string, unknown> {
-  return applyAppsheetRowKey({}, sourceRow, explicitRowKey, tableName);
+  return applyRowKey({}, sourceRow, explicitRowKey, tableName);
 }

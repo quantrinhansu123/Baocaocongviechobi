@@ -32,7 +32,7 @@ import {
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, Legend, ResponsiveContainer, LabelList } from 'recharts';
 import { X, User, Calendar, MessageSquare, Star } from 'lucide-react';
 import { ORG_BLOCKS } from '../data/orgBlocks';
-import { loadDashboardTasksFromAppsheet, type DashboardTask } from '../services/dashboardAppsheet';
+import { loadDashboardTasks, type DashboardTask } from '../services/dashboardData';
 
 const { Title, Text } = Typography;
 
@@ -66,7 +66,7 @@ const Dashboard: React.FC = () => {
     async function loadTasks() {
       setTasksLoading(true);
       try {
-        const tasks = await loadDashboardTasksFromAppsheet();
+        const tasks = await loadDashboardTasks();
         if (!cancelled) {
           setAllTasks(tasks);
         }

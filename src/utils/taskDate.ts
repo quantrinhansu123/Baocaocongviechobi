@@ -145,11 +145,11 @@ export function normalizeDisplayDate(value: string | number | Date | null | unde
     return '';
   }
 
-  const formatted = formatAppsheetDate(value);
+  const formatted = formatRecordDate(value);
   return formatted || trimmed;
 }
 
-export function formatAppsheetDate(value: string | number | Date): string {
+export function formatRecordDate(value: string | number | Date): string {
   if (value instanceof Date) {
     const parsed = dayjs(value);
     return parsed.isValid() ? parsed.format('DD/MM/YYYY') : '';
@@ -215,7 +215,7 @@ export function formatTaskDate(value: unknown): string {
   }
 
   if (typeof value === 'number' && Number.isFinite(value)) {
-    return formatAppsheetDate(value);
+    return formatRecordDate(value);
   }
 
   if (typeof value === 'string') {
@@ -225,8 +225,8 @@ export function formatTaskDate(value: unknown): string {
   return '';
 }
 
-/** Ghi/đọc ngày giờ hoàn thành AppSheet → dd/mm/yyyy HH:mm:ss */
-export function formatAppsheetDateTime(value: string | number | Date = new Date()): string {
+/** Ghi/đọc ngày giờ hoàn thành → dd/mm/yyyy HH:mm:ss */
+export function formatRecordDateTime(value: string | number | Date = new Date()): string {
   if (value instanceof Date) {
     const parsed = dayjs(value);
     return parsed.isValid() ? parsed.format(DISPLAY_DATETIME_FORMAT) : '';
@@ -247,7 +247,7 @@ export function formatAppsheetDateTime(value: string | number | Date = new Date(
     return withTime.format(DISPLAY_DATETIME_FORMAT);
   }
 
-  const dateOnly = formatAppsheetDate(trimmed);
+  const dateOnly = formatRecordDate(trimmed);
   if (dateOnly) {
     return `${dateOnly} 00:00:00`;
   }
@@ -261,11 +261,11 @@ export function normalizeDisplayDateTime(value: string | number | Date | null | 
     return '';
   }
 
-  const formatted = formatAppsheetDateTime(value instanceof Date ? value : String(value));
+  const formatted = formatRecordDateTime(value instanceof Date ? value : String(value));
   return formatted || String(value).trim();
 }
 
-/** Đọc cột ngày từ dòng AppSheet → dd/mm/yyyy */
+/** Đọc cột ngày từ dòng dữ liệu → dd/mm/yyyy */
 export function formatUnknownAsDisplayDate(value: unknown): string {
   if (value === null || value === undefined) {
     return '';

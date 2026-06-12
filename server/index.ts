@@ -2,7 +2,7 @@ import express from 'express';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import dotenv from 'dotenv';
-import { handleAppsheetRoute } from './appsheetRoute';
+import { handleDataRoute } from './dataRoute';
 import { isSupabaseConfigured } from './supabaseConfig';
 
 dotenv.config({ path: '.env', override: true });
@@ -17,7 +17,7 @@ const port = Number(process.env.PORT ?? 3001);
 app.use(express.json({ limit: '2mb' }));
 
 app.use(async (req, res, next) => {
-  const handled = await handleAppsheetRoute(req, res);
+  const handled = await handleDataRoute(req, res);
   if (!handled) {
     next();
   }
@@ -33,7 +33,7 @@ app.listen(port, '0.0.0.0', () => {
   console.log(`Server listening on http://localhost:${port}`);
   if (!isSupabaseConfigured()) {
     console.warn(
-      '[supabase] Thiếu SUPABASE_URL hoặc SUPABASE_ANON_KEY trong .env — API /api/appsheet/* trả 503.'
+      '[supabase] Thiếu SUPABASE_URL hoặc SUPABASE_ANON_KEY trong .env — API /api/data/* trả 503.'
     );
   }
 });

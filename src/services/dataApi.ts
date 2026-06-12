@@ -1,26 +1,20 @@
-import {
-  assertAppsheetEditRow,
-  applyAppsheetRowKey,
-  getAppsheetRowKeyColumn,
-  hasAppsheetRowKey,
-  pickAppsheetRowKey,
-} from './appsheetRowKey';
+import { assertEditRow, applyRowKey, getRowKeyColumn, hasRowKey, pickRowKey } from './rowKey';
 
-export type AppsheetStatus = {
+export type DataApiStatus = {
   configured: boolean;
   connected: boolean;
-  appId?: string;
   table?: string;
   rowCount?: number;
-  deploymentId?: string | null;
   message?: string;
 };
 
-export type AppsheetFindResponse = {
+export type DataFindResponse = {
   table: string;
   rows: Record<string, unknown>[];
   raw: unknown;
 };
+
+const API_BASE = '/api/data';
 
 async function readResponseText(response: Response): Promise<string> {
   return (await response.text()).trim();
@@ -33,7 +27,7 @@ function parseJsonText<T>(text: string, fallbackMessage: string): T {
   try {
     return JSON.parse(text) as T;
   } catch {
-    throw new Error(parseAppsheetErrorMessage(text, fallbackMessage));
+    throw new Error(parseApiErrorMessage(text, fallbackMessage));
   }
 }
 
@@ -42,7 +36,7 @@ async function parseJson<T>(response: Response, fallbackMessage = 'Phản hồi 
   return parseJsonText<T>(text, fallbackMessage);
 }
 
-function parseAppsheetErrorMessage(text: string, fallback: string): string {
+function parseApiErrorMessage(text: string, fallback: string): string {
   const trimmed = text.trim();
   if (!trimmed) {
     return fallback;
@@ -71,29 +65,25 @@ function parseAppsheetErrorMessage(text: string, fallback: string): string {
   return trimmed || fallback;
 }
 
-function prepareWriteRow(
-  row: Record<string, unknown>,
-  table?: string
-): Record<string, unknown> {
+function prepareWriteRow(row: Record<string, unknown>, table?: string): Record<string, unknown> {
   const payload = { ...row };
-  const rowKey = pickAppsheetRowKey(payload, table);
+  const rowKey = pickRowKey(payload, table);
   if (!rowKey) {
-    const label = getAppsheetRowKeyColumn(table);
+    const label = getRowKeyColumn(table);
     throw new Error(`Không có khóa ${label} trong dữ liệu gửi Supabase. Hãy F5 tải lại danh sách.`);
   }
-  return applyAppsheetRowKey(payload, payload, rowKey, table);
+  return applyRowKey(payload, payload, rowKey, table);
 }
 
-export async function fetchAppsheetStatus(): Promise<AppsheetStatus> {
-  const response = await fetch('/api/appsheet/status');
-  return parseJson<AppsheetStatus>(response);
+export async function fetchDataStatus(): Promise<DataApiStatus> {
+  const response = await fetch(`${API_BASE}/status`);
+  return parseJson<DataApiStatus>(response);
 }
 
-export async function findAppsheetTasks(options?: {
+export async function findDataRows(options?: {
   table?: string;
   selector?: string;
-  rows?: Record<string, unknown>[];
-}): Promise<AppsheetFindResponse> {
+}): Promise<DataFindResponse> {
   const params = new URLSearchParams();
   if (options?.table) {
     params.set('table', options.table);
@@ -102,7 +92,7 @@ export async function findAppsheetTasks(options?: {
     params.set('selector', options.selector);
   }
 
-  const response = await fetch(`/api/appsheet/find${params.size ? `?${params}` : ''}`, {
+  const response = await fetch(`${API_BASE}/find${params.size ? `?${params}` : ''}`, {
     cache: 'no-store',
   });
 
@@ -115,14 +105,11 @@ export async function findAppsheetTasks(options?: {
     throw new Error(payload.message ?? `Tải dữ liệu thất bại (HTTP ${response.status}).`);
   }
 
-  return parseJsonText<AppsheetFindResponse>(text, 'Phản hồi find không phải JSON.');
+  return parseJsonText<DataFindResponse>(text, 'Phản hồi find không phải JSON.');
 }
 
-export async function addAppsheetTask(
-  row: Record<string, unknown>,
-  table?: string
-): Promise<unknown> {
-  const response = await fetch('/api/appsheet/add', {
+export async function addDataRow(row: Record<string, unknown>, table?: string): Promise<unknown> {
+  const response = await fetch(`${API_BASE}/add`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ table, rows: [row] }),
@@ -140,13 +127,10 @@ export async function addAppsheetTask(
   return parseJsonText(text, 'Phản hồi add không phải JSON.');
 }
 
-export async function editAppsheetTask(
-  row: Record<string, unknown>,
-  table?: string
-): Promise<unknown> {
+export async function editDataRow(row: Record<string, unknown>, table?: string): Promise<unknown> {
   const payload = prepareWriteRow(row, table);
-  assertAppsheetEditRow(payload, table);
-  const response = await fetch('/api/appsheet/edit', {
+  assertEditRow(payload, table);
+  const response = await fetch(`${API_BASE}/edit`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ table, rows: [payload] }),
@@ -154,18 +138,15 @@ export async function editAppsheetTask(
 
   const text = await readResponseText(response);
   if (!response.ok) {
-    throw new Error(parseAppsheetErrorMessage(text, `Cập nhật thất bại (HTTP ${response.status}).`));
+    throw new Error(parseApiErrorMessage(text, `Cập nhật thất bại (HTTP ${response.status}).`));
   }
 
   return parseJsonText(text, 'Phản hồi edit không phải JSON.');
 }
 
-export async function deleteAppsheetTask(
-  row: Record<string, unknown>,
-  table?: string
-): Promise<unknown> {
+export async function deleteDataRow(row: Record<string, unknown>, table?: string): Promise<unknown> {
   const payload = prepareWriteRow(row, table);
-  const response = await fetch('/api/appsheet/delete', {
+  const response = await fetch(`${API_BASE}/delete`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ table, rows: [payload] }),
@@ -182,3 +163,5 @@ export async function deleteAppsheetTask(
 
   return parseJsonText(text, 'Phản hồi delete không phải JSON.');
 }
+
+export { hasRowKey, pickRowKey };

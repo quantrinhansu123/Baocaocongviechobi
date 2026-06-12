@@ -10,6 +10,7 @@ import {
 
 type JsonRecord = Record<string, unknown>;
 
+const API_PREFIX = '/api/data';
 const DEFAULT_TABLE = 'I.1';
 
 function sendJson(res: ServerResponse, status: number, payload: unknown) {
@@ -61,10 +62,9 @@ function assertTableSupported(tableName: string): string | null {
   return supabaseConfigError();
 }
 
-/** API /api/appsheet/* — backend Supabase (giữ path cũ cho frontend). */
-export async function handleAppsheetRoute(req: IncomingMessage, res: ServerResponse): Promise<boolean> {
+export async function handleDataRoute(req: IncomingMessage, res: ServerResponse): Promise<boolean> {
   const pathname = getPathname(req.url ?? '');
-  if (!pathname.startsWith('/api/appsheet')) {
+  if (!pathname.startsWith(API_PREFIX)) {
     return false;
   }
 
@@ -75,7 +75,7 @@ export async function handleAppsheetRoute(req: IncomingMessage, res: ServerRespo
 
   if (!isSupabaseConfigured()) {
     const message = supabaseConfigError() ?? 'Chưa cấu hình Supabase.';
-    if (req.method === 'GET' && pathname === '/api/appsheet/status') {
+    if (req.method === 'GET' && pathname === `${API_PREFIX}/status`) {
       sendJson(res, 503, { configured: false, connected: false, backend: 'supabase', message });
       return true;
     }
@@ -83,7 +83,7 @@ export async function handleAppsheetRoute(req: IncomingMessage, res: ServerRespo
     return true;
   }
 
-  if (req.method === 'GET' && pathname === '/api/appsheet/status') {
+  if (req.method === 'GET' && pathname === `${API_PREFIX}/status`) {
     const tableName = getQueryValue(req, 'table') ?? DEFAULT_TABLE;
     const tableError = assertTableSupported(tableName);
     if (tableError) {
@@ -117,7 +117,7 @@ export async function handleAppsheetRoute(req: IncomingMessage, res: ServerRespo
     return true;
   }
 
-  if (req.method === 'GET' && pathname === '/api/appsheet/find') {
+  if (req.method === 'GET' && pathname === `${API_PREFIX}/find`) {
     const tableName = getQueryValue(req, 'table') ?? DEFAULT_TABLE;
     const tableError = assertTableSupported(tableName);
     if (tableError) {
@@ -144,7 +144,7 @@ export async function handleAppsheetRoute(req: IncomingMessage, res: ServerRespo
   }
 
   try {
-    if (pathname === '/api/appsheet/find') {
+    if (pathname === `${API_PREFIX}/find`) {
       const body = await readJsonBody(req);
       const tableName = String(body.table ?? DEFAULT_TABLE);
       const tableError = assertTableSupported(tableName);
@@ -160,7 +160,7 @@ export async function handleAppsheetRoute(req: IncomingMessage, res: ServerRespo
       return true;
     }
 
-    if (pathname === '/api/appsheet/add') {
+    if (pathname === `${API_PREFIX}/add`) {
       const body = await readJsonBody(req);
       const tableName = String(body.table ?? DEFAULT_TABLE);
       const tableError = assertTableSupported(tableName);
@@ -175,7 +175,7 @@ export async function handleAppsheetRoute(req: IncomingMessage, res: ServerRespo
       return true;
     }
 
-    if (pathname === '/api/appsheet/edit') {
+    if (pathname === `${API_PREFIX}/edit`) {
       const body = await readJsonBody(req);
       const tableName = String(body.table ?? DEFAULT_TABLE);
       const tableError = assertTableSupported(tableName);
@@ -190,7 +190,7 @@ export async function handleAppsheetRoute(req: IncomingMessage, res: ServerRespo
       return true;
     }
 
-    if (pathname === '/api/appsheet/delete') {
+    if (pathname === `${API_PREFIX}/delete`) {
       const body = await readJsonBody(req);
       const tableName = String(body.table ?? DEFAULT_TABLE);
       const tableError = assertTableSupported(tableName);
