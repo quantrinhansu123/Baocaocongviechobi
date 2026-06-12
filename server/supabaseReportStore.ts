@@ -1,1 +1,1 @@
-export * from '../lib/data/supabaseReportStore';
+export * from '../api/_lib/data/supabaseReportStore';

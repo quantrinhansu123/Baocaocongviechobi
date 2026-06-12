@@ -11,7 +11,9 @@ function readEnv(): NodeJS.ProcessEnv {
   if (url && key) {
     return process.env;
   }
-  dotenv.config({ path: path.join(process.cwd(), '.env'), override: true });
+  if (!process.env.VERCEL) {
+    dotenv.config({ path: path.join(process.cwd(), '.env'), override: true });
+  }
   return process.env;
 }
 

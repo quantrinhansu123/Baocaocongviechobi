@@ -1,4 +1,4 @@
-import { isSupabaseConfigured } from '../../lib/data/supabaseConfig';
+import { isSupabaseConfigured } from '../_lib/data/supabaseConfig';
 import { withJsonApiHandler } from '../_lib/dataHandlers';
 
 function sendJson(

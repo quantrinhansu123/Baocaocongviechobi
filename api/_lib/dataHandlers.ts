@@ -1,11 +1,11 @@
-import { describeSupabaseConfiguration, isSupabaseConfigured } from '../../lib/data/supabaseConfig';
+import { describeSupabaseConfiguration, isSupabaseConfigured } from './data/supabaseConfig';
 import {
   addSupabaseRows,
   deleteSupabaseRows,
   editSupabaseRows,
   findSupabaseRows,
   isKnownDataTable,
-} from '../../lib/data/supabaseDataStore';
+} from './data/supabaseDataStore';
 
 const DEFAULT_TABLE = 'I.1';
 

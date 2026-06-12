@@ -1,9 +1,4 @@
 {
-  "functions": {
-    "api/**/*.ts": {
-      "includeFiles": "lib/data/**"
-    }
-  },
   "rewrites": [
     {
       "source": "/api/:path*",

@@ -1,1 +1,1 @@
-export * from '../lib/data/taskTables';
+export * from '../api/_lib/data/taskTables';

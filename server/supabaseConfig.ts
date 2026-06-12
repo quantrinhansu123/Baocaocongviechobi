@@ -1,1 +1,1 @@
-export * from '../lib/data/supabaseConfig';
+export * from '../api/_lib/data/supabaseConfig';

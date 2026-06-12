@@ -1,1 +1,1 @@
-export * from '../lib/data/supabaseErrors';
+export * from '../api/_lib/data/supabaseErrors';
