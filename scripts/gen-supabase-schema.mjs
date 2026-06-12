@@ -1,5 +1,5 @@
 import { writeFileSync } from 'node:fs';
-import { listTaskTableNames, taskTableToSupabaseName } from '../server/taskTables.ts';
+import { listTaskTableNames, taskTableToSupabaseName } from '../lib/data/taskTables.ts';
 
 const taskTables = listTaskTableNames().map(taskTableToSupabaseName);
 const reportTable = 'bc_dinh_ky';
