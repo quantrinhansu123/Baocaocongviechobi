@@ -4,20 +4,24 @@ import { fileURLToPath } from 'node:url';
 import * as esbuild from 'esbuild';
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
+const routes = ['find', 'add', 'edit', 'delete', 'status', 'debug'];
 const outDir = path.join(root, 'api', 'data');
-const outfile = path.join(outDir, '[...path].cjs');
 
 await rm(outDir, { recursive: true, force: true });
 await mkdir(outDir, { recursive: true });
 
 await esbuild.build({
-  entryPoints: [path.join(root, 'api-src', 'dataHandler.ts')],
+  entryPoints: routes.map(name => path.join(root, 'api-src', 'routes', `${name}.ts`)),
   bundle: true,
   platform: 'node',
   format: 'cjs',
   target: 'node18',
-  outfile,
+  outdir: outDir,
+  entryNames: '[name]',
+  outExtension: { '.js': '.cjs' },
   logLevel: 'info',
 });
 
-console.log(`Built Vercel API → ${path.relative(root, outfile)}`);
+for (const name of routes) {
+  console.log(`Built /api/data/${name} → api/data/${name}.cjs`);
+}
