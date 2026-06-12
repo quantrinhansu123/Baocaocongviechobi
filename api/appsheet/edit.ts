@@ -1,8 +1,5 @@
-import { handleDataEdit } from '../_lib/dataHandlers';
+import { handleDataEdit, withJsonApiHandler } from '../_lib/dataHandlers';
 
-export default async function handler(
-  req: { on: (e: string, h: (c: Buffer) => void) => void },
-  res: Parameters<typeof handleDataEdit>[1]
-) {
-  await handleDataEdit(req, res);
-}
+export default withJsonApiHandler(async (req, res) => {
+  await handleDataEdit(req as { on: (e: string, h: (c: Buffer) => void) => void }, res);
+});

@@ -1,12 +1,10 @@
-import { handleDataFindGet, handleDataFindPost } from '../_lib/dataHandlers';
+import { handleDataFindGet, handleDataFindPost, withJsonApiHandler } from '../_lib/dataHandlers';
 
-export default async function handler(
-  req: { method?: string; url?: string; on: (e: string, h: (c: Buffer) => void) => void },
-  res: Parameters<typeof handleDataFindGet>[1]
-) {
-  if (req.method === 'POST') {
-    await handleDataFindPost(req, res);
+export default withJsonApiHandler(async (req, res) => {
+  const request = req as { method?: string; url?: string; on: (e: string, h: (c: Buffer) => void) => void };
+  if (request.method === 'POST') {
+    await handleDataFindPost(request, res);
     return;
   }
-  await handleDataFindGet(req, res);
-}
+  await handleDataFindGet(request, res);
+});

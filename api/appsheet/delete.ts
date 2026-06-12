@@ -1,8 +1,5 @@
-import { handleDataDelete } from '../_lib/dataHandlers';
+import { handleDataDelete, withJsonApiHandler } from '../_lib/dataHandlers';
 
-export default async function handler(
-  req: { on: (e: string, h: (c: Buffer) => void) => void },
-  res: Parameters<typeof handleDataDelete>[1]
-) {
-  await handleDataDelete(req, res);
-}
+export default withJsonApiHandler(async (req, res) => {
+  await handleDataDelete(req as { on: (e: string, h: (c: Buffer) => void) => void }, res);
+});

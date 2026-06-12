@@ -9,10 +9,34 @@ import {
 
 const DEFAULT_TABLE = 'I.1';
 
-function sendJson(res: { statusCode: number; setHeader: (k: string, v: string) => void; end: (b: string) => void }, status: number, payload: unknown) {
+type ApiResponse = {
+  statusCode: number;
+  headersSent?: boolean;
+  setHeader: (k: string, v: string) => void;
+  end: (b: string) => void;
+};
+
+function sendJson(res: ApiResponse, status: number, payload: unknown) {
+  if (res.headersSent) {
+    return;
+  }
   res.statusCode = status;
   res.setHeader('Content-Type', 'application/json; charset=utf-8');
   res.end(JSON.stringify(payload));
+}
+
+export function withJsonApiHandler(
+  handler: (req: unknown, res: ApiResponse) => Promise<void>
+): (req: unknown, res: ApiResponse) => Promise<void> {
+  return async (req, res) => {
+    try {
+      await handler(req, res);
+    } catch (error) {
+      sendJson(res, 500, {
+        message: error instanceof Error ? error.message : 'Lỗi server khi gọi API dữ liệu.',
+      });
+    }
+  };
 }
 
 function tableError(tableName: string): string | null {

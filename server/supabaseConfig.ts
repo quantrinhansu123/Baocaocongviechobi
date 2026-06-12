@@ -1,11 +1,15 @@
 import dotenv from 'dotenv';
+import path from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { isTaskTableName, listTaskTableNames, taskTableToSupabaseName } from './taskTables';
 
 export const REPORT_TABLE_LOGICAL = 'BC định kỳ';
 export const REPORT_TABLE_SUPABASE = 'bc_dinh_ky';
 
+const projectRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
+
 function readEnv(): NodeJS.ProcessEnv {
-  dotenv.config({ path: '.env', override: true });
+  dotenv.config({ path: path.join(projectRoot, '.env'), override: true });
   return process.env;
 }
 

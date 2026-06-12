@@ -1,8 +1,5 @@
-import { handleDataAdd } from '../_lib/dataHandlers';
+import { handleDataAdd, withJsonApiHandler } from '../_lib/dataHandlers';
 
-export default async function handler(
-  req: { on: (e: string, h: (c: Buffer) => void) => void },
-  res: Parameters<typeof handleDataAdd>[1]
-) {
-  await handleDataAdd(req, res);
-}
+export default withJsonApiHandler(async (req, res) => {
+  await handleDataAdd(req as { on: (e: string, h: (c: Buffer) => void) => void }, res);
+});

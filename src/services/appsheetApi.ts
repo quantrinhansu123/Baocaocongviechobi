@@ -22,12 +22,24 @@ export type AppsheetFindResponse = {
   raw: unknown;
 };
 
-async function parseJson<T>(response: Response): Promise<T> {
-  const text = await response.text();
+async function readResponseText(response: Response): Promise<string> {
+  return (await response.text()).trim();
+}
+
+function parseJsonText<T>(text: string, fallbackMessage: string): T {
   if (!text) {
     return {} as T;
   }
-  return JSON.parse(text) as T;
+  try {
+    return JSON.parse(text) as T;
+  } catch {
+    throw new Error(parseAppsheetErrorMessage(text, fallbackMessage));
+  }
+}
+
+async function parseJson<T>(response: Response, fallbackMessage = 'Phản hồi API không hợp lệ.'): Promise<T> {
+  const text = await readResponseText(response);
+  return parseJsonText<T>(text, fallbackMessage);
 }
 
 function parseAppsheetErrorMessage(text: string, fallback: string): string {
@@ -94,12 +106,16 @@ export async function findAppsheetTasks(options?: {
     cache: 'no-store',
   });
 
+  const text = await readResponseText(response);
   if (!response.ok) {
-    const payload = await parseJson<{ message?: string }>(response);
+    const payload = parseJsonText<{ message?: string }>(
+      text,
+      `Tải dữ liệu thất bại (HTTP ${response.status}).`
+    );
     throw new Error(payload.message ?? `Tải dữ liệu thất bại (HTTP ${response.status}).`);
   }
 
-  return parseJson<AppsheetFindResponse>(response);
+  return parseJsonText<AppsheetFindResponse>(text, 'Phản hồi find không phải JSON.');
 }
 
 export async function addAppsheetTask(
@@ -112,12 +128,16 @@ export async function addAppsheetTask(
     body: JSON.stringify({ table, rows: [row] }),
   });
 
+  const text = await readResponseText(response);
   if (!response.ok) {
-    const payload = await parseJson<{ message?: string }>(response);
+    const payload = parseJsonText<{ message?: string }>(
+      text,
+      `Thêm dữ liệu thất bại (HTTP ${response.status}).`
+    );
     throw new Error(payload.message ?? `Thêm dữ liệu thất bại (HTTP ${response.status}).`);
   }
 
-  return parseJson(response);
+  return parseJsonText(text, 'Phản hồi add không phải JSON.');
 }
 
 export async function editAppsheetTask(
@@ -132,12 +152,12 @@ export async function editAppsheetTask(
     body: JSON.stringify({ table, rows: [payload] }),
   });
 
+  const text = await readResponseText(response);
   if (!response.ok) {
-    const text = await response.text();
     throw new Error(parseAppsheetErrorMessage(text, `Cập nhật thất bại (HTTP ${response.status}).`));
   }
 
-  return parseJson(response);
+  return parseJsonText(text, 'Phản hồi edit không phải JSON.');
 }
 
 export async function deleteAppsheetTask(
@@ -151,10 +171,14 @@ export async function deleteAppsheetTask(
     body: JSON.stringify({ table, rows: [payload] }),
   });
 
+  const text = await readResponseText(response);
   if (!response.ok) {
-    const payload = await parseJson<{ message?: string }>(response);
+    const payload = parseJsonText<{ message?: string }>(
+      text,
+      `Xóa thất bại (HTTP ${response.status}).`
+    );
     throw new Error(payload.message ?? `Xóa thất bại (HTTP ${response.status}).`);
   }
 
-  return parseJson(response);
+  return parseJsonText(text, 'Phản hồi delete không phải JSON.');
 }

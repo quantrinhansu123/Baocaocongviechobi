@@ -1,10 +1,25 @@
 import type { Plugin } from 'vite';
 import dotenv from 'dotenv';
+import path from 'node:path';
+import { fileURLToPath } from 'node:url';
+import type { IncomingMessage, ServerResponse } from 'node:http';
 import { handleAppsheetRoute } from '../../server/appsheetRoute';
 import { isSupabaseConfigured } from '../../server/supabaseConfig';
 
+const projectRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..');
+
 function syncDataEnv() {
-  dotenv.config({ path: '.env', override: true });
+  dotenv.config({ path: path.join(projectRoot, '.env'), override: true });
+}
+
+function sendJsonError(res: ServerResponse, error: unknown) {
+  if (res.headersSent) {
+    return;
+  }
+  const message = error instanceof Error ? error.message : 'Lỗi server khi gọi API dữ liệu.';
+  res.statusCode = 500;
+  res.setHeader('Content-Type', 'application/json; charset=utf-8');
+  res.end(JSON.stringify({ message }));
 }
 
 export function appsheetApiPlugin(): Plugin {
@@ -20,14 +35,19 @@ export function appsheetApiPlugin(): Plugin {
       }
 
       server.middlewares.use(async (req, res, next) => {
+        if (!(req as IncomingMessage).url?.startsWith('/api/appsheet')) {
+          next();
+          return;
+        }
+
         syncDataEnv();
         try {
-          const handled = await handleAppsheetRoute(req, res);
+          const handled = await handleAppsheetRoute(req as IncomingMessage, res as ServerResponse);
           if (!handled) {
-            next();
+            sendJsonError(res as ServerResponse, new Error('Không tìm thấy endpoint API.'));
           }
         } catch (error) {
-          next(error);
+          sendJsonError(res as ServerResponse, error);
         }
       });
     },
