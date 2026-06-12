@@ -264,7 +264,6 @@ export function buildAppsheetReportRow(input: {
   // Gắn số thứ tự dòng (_RowNumber) vào id: sid1.45 hoặc "45" nếu không có khối sid.
   const defaultId = blockRoot ? `${blockRoot}.${rowNumber}` : String(rowNumber);
   const row: Record<string, unknown> = {
-    _RowNumber: rowNumber,
     id: (input.id?.trim() || defaultId).trim(),
     Mã: input.ma.trim() || resolvedMa,
     'Loại báo cáo': input.loaiBaoCao.trim(),

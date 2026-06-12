@@ -787,7 +787,7 @@ const Dashboard: React.FC = () => {
   );
 
   return (
-    <Spin spinning={tasksLoading} tip="Đang tải dữ liệu AppSheet...">
+    <Spin spinning={tasksLoading} tip="Đang tải dữ liệu Supabase...">
       <div className="dashboard-container space-y-4 md:space-y-6 bg-gray-50 min-h-screen p-3 md:p-6 relative">
       
       {/* ─── HIỂN THỊ DESKTOP ─── */}

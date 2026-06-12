@@ -31,7 +31,7 @@ type ReportMobileCardsProps = {
   selectedKey?: string;
   onSelect: (report: ReportRecord) => void;
   showRowActions?: boolean;
-  appsheetConnected?: boolean;
+  supabaseConnected?: boolean;
   deletingKey?: string | null;
   onEdit?: (report: ReportRecord) => void;
   onDelete?: (report: ReportRecord) => void;
@@ -42,7 +42,7 @@ const ReportMobileCards: React.FC<ReportMobileCardsProps> = ({
   selectedKey,
   onSelect,
   showRowActions,
-  appsheetConnected,
+  supabaseConnected,
   deletingKey,
   onEdit,
   onDelete,
@@ -166,18 +166,18 @@ const ReportMobileCards: React.FC<ReportMobileCardsProps> = ({
                     size="small"
                     icon={<EditOutlined />}
                     className="flex-1 min-w-[100px] rounded-lg font-medium h-9"
-                    disabled={!appsheetConnected || !report.sourceRow}
+                    disabled={!supabaseConnected || !report.sourceRow}
                     onClick={() => onEdit?.(report)}
                   >
                     Sửa
                   </Button>
                   <Popconfirm
-                    title="Xoá báo cáo này trên AppSheet?"
+                    title="Xoá báo cáo này?"
                     okText="Xoá"
                     cancelText="Huỷ"
                     okButtonProps={{ danger: true, loading: deletingKey === report.key }}
                     onConfirm={() => onDelete?.(report)}
-                    disabled={!appsheetConnected || !report.sourceRow}
+                    disabled={!supabaseConnected || !report.sourceRow}
                   >
                     <Button
                       type="default"
@@ -186,7 +186,7 @@ const ReportMobileCards: React.FC<ReportMobileCardsProps> = ({
                       icon={<DeleteOutlined />}
                       className="flex-1 min-w-[100px] rounded-lg font-medium h-9"
                       loading={deletingKey === report.key}
-                      disabled={!appsheetConnected || !report.sourceRow}
+                      disabled={!supabaseConnected || !report.sourceRow}
                     >
                       Xóa
                     </Button>

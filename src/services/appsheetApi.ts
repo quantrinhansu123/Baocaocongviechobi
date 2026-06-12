@@ -67,7 +67,7 @@ function prepareWriteRow(
   const rowKey = pickAppsheetRowKey(payload, table);
   if (!rowKey) {
     const label = getAppsheetRowKeyColumn(table);
-    throw new Error(`Không có khóa ${label} trong dữ liệu gửi AppSheet. Hãy F5 tải lại danh sách.`);
+    throw new Error(`Không có khóa ${label} trong dữ liệu gửi Supabase. Hãy F5 tải lại danh sách.`);
   }
   return applyAppsheetRowKey(payload, payload, rowKey, table);
 }
@@ -96,7 +96,7 @@ export async function findAppsheetTasks(options?: {
 
   if (!response.ok) {
     const payload = await parseJson<{ message?: string }>(response);
-    throw new Error(payload.message ?? `AppSheet find failed with HTTP ${response.status}.`);
+    throw new Error(payload.message ?? `Tải dữ liệu thất bại (HTTP ${response.status}).`);
   }
 
   return parseJson<AppsheetFindResponse>(response);
@@ -114,7 +114,7 @@ export async function addAppsheetTask(
 
   if (!response.ok) {
     const payload = await parseJson<{ message?: string }>(response);
-    throw new Error(payload.message ?? `AppSheet add failed with HTTP ${response.status}.`);
+    throw new Error(payload.message ?? `Thêm dữ liệu thất bại (HTTP ${response.status}).`);
   }
 
   return parseJson(response);
@@ -134,7 +134,7 @@ export async function editAppsheetTask(
 
   if (!response.ok) {
     const text = await response.text();
-    throw new Error(parseAppsheetErrorMessage(text, `AppSheet edit failed with HTTP ${response.status}.`));
+    throw new Error(parseAppsheetErrorMessage(text, `Cập nhật thất bại (HTTP ${response.status}).`));
   }
 
   return parseJson(response);
@@ -153,7 +153,7 @@ export async function deleteAppsheetTask(
 
   if (!response.ok) {
     const payload = await parseJson<{ message?: string }>(response);
-    throw new Error(payload.message ?? `AppSheet delete failed with HTTP ${response.status}.`);
+    throw new Error(payload.message ?? `Xóa thất bại (HTTP ${response.status}).`);
   }
 
   return parseJson(response);

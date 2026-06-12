@@ -51,9 +51,6 @@ import { formatAppsheetDate, formatTaskDate, normalizeDisplayDate } from '../uti
 
 const { Text } = Typography;
 
-/** Khối II — bật Sửa / Xóa trên từng dòng báo cáo */
-const REPORT_BLOCK_WITH_ROW_ACTIONS = 'bc-II';
-
 function parseFormDate(value: string): dayjs.Dayjs | undefined {
   if (!value.trim()) {
     return undefined;
@@ -111,7 +108,7 @@ type ReportTableProps = {
   onRowClick: (report: ReportRecord) => void;
   emptyExtra?: React.ReactNode;
   showRowActions?: boolean;
-  appsheetConnected?: boolean;
+  supabaseConnected?: boolean;
   deletingKey?: string | null;
   onEdit?: (report: ReportRecord) => void;
   onDelete?: (report: ReportRecord) => void;
@@ -123,7 +120,7 @@ function ReportTable({
   onRowClick,
   emptyExtra,
   showRowActions,
-  appsheetConnected,
+  supabaseConnected,
   deletingKey,
   onEdit,
   onDelete,
@@ -241,16 +238,16 @@ function ReportTable({
                         className="!px-1"
                         icon={<EditOutlined />}
                         title="Sửa"
-                        disabled={!appsheetConnected || !report.sourceRow}
+                        disabled={!supabaseConnected || !report.sourceRow}
                         onClick={() => onEdit?.(report)}
                       />
                       <Popconfirm
-                        title="Xoá báo cáo này trên AppSheet?"
+                        title="Xoá báo cáo này?"
                         okText="Xoá"
                         cancelText="Huỷ"
                         okButtonProps={{ danger: true, loading: deletingKey === report.key }}
                         onConfirm={() => onDelete?.(report)}
-                        disabled={!appsheetConnected || !report.sourceRow}
+                        disabled={!supabaseConnected || !report.sourceRow}
                       >
                         <Button
                           type="text"
@@ -260,7 +257,7 @@ function ReportTable({
                           icon={<DeleteOutlined />}
                           title="Xóa"
                           loading={deletingKey === report.key}
-                          disabled={!appsheetConnected || !report.sourceRow}
+                          disabled={!supabaseConnected || !report.sourceRow}
                         />
                       </Popconfirm>
                     </div>
@@ -282,7 +279,7 @@ const NavigationHub: React.FC = () => {
   const [searchParams] = useSearchParams();
   const [catalog, setCatalog] = useState<ReportCatalog>({ reports: {}, blocks: [], groups: [] });
   const [reportsLoading, setReportsLoading] = useState(true);
-  const [appsheetConnected, setAppsheetConnected] = useState<boolean | null>(null);
+  const [supabaseConnected, setSupabaseConnected] = useState<boolean | null>(null);
   const [selectedWeek, setSelectedWeek] = useState('week_16');
   const [searchText, setSearchText] = useState('');
   const [reportFormOpen, setReportFormOpen] = useState(false);
@@ -452,7 +449,7 @@ const NavigationHub: React.FC = () => {
   const reloadReports = async () => {
     const nextCatalog = await loadReportCatalog({ force: true });
     setCatalog(nextCatalog);
-    setAppsheetConnected(true);
+    setSupabaseConnected(true);
   };
 
   useEffect(() => {
@@ -464,13 +461,13 @@ const NavigationHub: React.FC = () => {
         const nextCatalog = await loadReportCatalog({ force: true });
         if (!cancelled) {
           setCatalog(nextCatalog);
-          setAppsheetConnected(true);
+          setSupabaseConnected(true);
         }
       } catch (error) {
         if (!cancelled) {
           setCatalog({ reports: {}, blocks: [], groups: [] });
-          setAppsheetConnected(false);
-          message.error(error instanceof Error ? error.message : 'Không thể tải bảng BC định kỳ từ AppSheet.');
+          setSupabaseConnected(false);
+          message.error(error instanceof Error ? error.message : 'Không thể tải bảng BC định kỳ từ Supabase.');
         }
       } finally {
         if (!cancelled) {
@@ -554,10 +551,8 @@ const NavigationHub: React.FC = () => {
   const mobileTitle = stripLeadingIndex(pageTitle);
   const breadcrumbParent = activeBlock ? breadcrumbBlockLabel(activeBlock.blockLabel) : 'Báo cáo định kỳ';
 
-  const canCreateReport = Boolean(showContent && activeBlock?.ma && appsheetConnected);
-  const canManageReports = Boolean(
-    showContent && activeBlockKey === REPORT_BLOCK_WITH_ROW_ACTIONS && appsheetConnected
-  );
+  const canCreateReport = Boolean(showContent && activeBlock?.ma && supabaseConnected);
+  const canManageReports = Boolean(showContent && supabaseConnected);
 
   const openCreateModal = () => {
     setReportFormMode('create');
@@ -574,7 +569,7 @@ const NavigationHub: React.FC = () => {
 
   const openEditModal = (report: ReportRecord) => {
     if (!report.sourceRow) {
-      message.error('Không có dữ liệu AppSheet cho báo cáo này. Hãy F5 tải lại.');
+      message.error('Không có dữ liệu báo cáo. Hãy F5 tải lại.');
       return;
     }
     setReportFormMode('edit');
@@ -595,12 +590,12 @@ const NavigationHub: React.FC = () => {
 
   const handleDeleteReport = async (report: ReportRecord) => {
     if (!report.sourceRow) {
-      message.error('Không có dữ liệu AppSheet để xóa. Hãy F5 tải lại.');
+      message.error('Không có dữ liệu để xóa. Hãy F5 tải lại.');
       return;
     }
     const reportTable = getReportAppsheetTableName();
     if (!hasAppsheetRowKey(report.sourceRow, report.key, reportTable)) {
-      message.error('Không có khóa id để xóa trên AppSheet.');
+      message.error('Không có khóa id để xóa.');
       return;
     }
 
@@ -608,12 +603,12 @@ const NavigationHub: React.FC = () => {
     try {
       await deleteAppsheetTask(buildAppsheetReportDeleteRow(report.sourceRow, report.key), reportTable);
       await reloadReports();
-      message.success('Đã xóa báo cáo trên AppSheet.');
+      message.success('Đã xóa báo cáo.');
       if (reportId === report.key) {
         navigate(`/navigation?${buildNavigationParams({ reportKey: null }).toString()}`);
       }
     } catch (error) {
-      message.error(error instanceof Error ? error.message : 'Không thể xóa báo cáo trên AppSheet.');
+      message.error(error instanceof Error ? error.message : 'Không thể xóa báo cáo.');
     } finally {
       setDeletingReportKey(null);
     }
@@ -637,8 +632,8 @@ const NavigationHub: React.FC = () => {
     form
       .validateFields()
       .then(async values => {
-        if (!appsheetConnected) {
-          message.error('Chưa kết nối AppSheet API.');
+        if (!supabaseConnected) {
+          message.error('Chưa kết nối Supabase.');
           return;
         }
 
@@ -654,11 +649,11 @@ const NavigationHub: React.FC = () => {
         try {
           if (reportFormMode === 'edit') {
             if (!editingReport?.sourceRow) {
-              message.error('Không có dữ liệu AppSheet để sửa.');
+              message.error('Không có dữ liệu để sửa.');
               return;
             }
             if (!hasAppsheetRowKey(editingReport.sourceRow, editingReport.key, reportTable)) {
-              message.error('Không có khóa id để cập nhật AppSheet.');
+              message.error('Không có khóa id để cập nhật.');
               return;
             }
 
@@ -681,7 +676,7 @@ const NavigationHub: React.FC = () => {
               reportTable
             );
             await reloadReports();
-            message.success('Đã cập nhật báo cáo trên AppSheet.');
+            message.success('Đã cập nhật báo cáo.');
           } else {
             if (!activeBlock?.ma) {
               message.error('Chọn phòng ban trên menu để thêm báo cáo.');
@@ -708,7 +703,7 @@ const NavigationHub: React.FC = () => {
               reportTable
             );
             await reloadReports();
-            message.success('Đã thêm báo cáo vào AppSheet.');
+            message.success('Đã thêm báo cáo.');
           }
 
           setReportFormOpen(false);
@@ -719,8 +714,8 @@ const NavigationHub: React.FC = () => {
             error instanceof Error
               ? error.message
               : reportFormMode === 'edit'
-                ? 'Không thể cập nhật báo cáo trên AppSheet.'
-                : 'Không thể thêm báo cáo trên AppSheet.'
+                ? 'Không thể cập nhật báo cáo.'
+                : 'Không thể thêm báo cáo.'
           );
         } finally {
           setSavingReport(false);
@@ -797,11 +792,11 @@ const NavigationHub: React.FC = () => {
                 className="min-w-[200px]"
               />
             </div>
-            {appsheetConnected === true ? (
+            {supabaseConnected === true ? (
               <Tag className="m-0 px-3 py-1 rounded-md border border-gray-200 bg-white text-gray-700 font-medium">
-                AppSheet
+                Supabase
               </Tag>
-            ) : appsheetConnected === false ? (
+            ) : supabaseConnected === false ? (
               <Tag color="error">Không kết nối</Tag>
             ) : null}
           </div>
@@ -830,7 +825,7 @@ const NavigationHub: React.FC = () => {
             selectedKey={selectedReport?.key}
             onRowClick={handleReportSelect}
             showRowActions={canManageReports}
-            appsheetConnected={appsheetConnected === true}
+            supabaseConnected={supabaseConnected === true}
             deletingKey={deletingReportKey}
             onEdit={openEditModal}
             onDelete={report => void handleDeleteReport(report)}
@@ -878,11 +873,11 @@ const NavigationHub: React.FC = () => {
             disabled={weekIndex < 0 || weekIndex >= WEEK_OPTIONS.length - 1}
             className="!text-white hover:!bg-white/10 disabled:!text-white/30"
           />
-          {appsheetConnected === true ? (
+          {supabaseConnected === true ? (
             <Tag className="m-0 rounded-full border-0 bg-[#5b7cff]/30 text-white text-xs px-3 py-0.5 font-medium">
-              AppSheet
+              Supabase
             </Tag>
-          ) : appsheetConnected === false ? (
+          ) : supabaseConnected === false ? (
             <Tag color="error" className="m-0 rounded-full text-xs">
               Lỗi
             </Tag>
@@ -926,7 +921,7 @@ const NavigationHub: React.FC = () => {
           selectedKey={selectedReport?.key}
           onSelect={handleReportSelect}
           showRowActions={canManageReports}
-          appsheetConnected={appsheetConnected === true}
+          supabaseConnected={supabaseConnected === true}
           deletingKey={deletingReportKey}
           onEdit={openEditModal}
           onDelete={report => void handleDeleteReport(report)}
@@ -1011,7 +1006,7 @@ const NavigationHub: React.FC = () => {
         </Form>
       </Modal>
 
-      <Spin spinning={reportsLoading} tip="Đang tải BC định kỳ từ AppSheet...">
+      <Spin spinning={reportsLoading} tip="Đang tải BC định kỳ từ Supabase...">
         <div className="hidden md:flex flex-col min-h-[calc(100vh-80px)]">{desktopContent}</div>
         <div className="md:hidden flex flex-col min-h-full">{mobileContent}</div>
       </Spin>

@@ -1,8 +1,16 @@
 import type { IncomingMessage, ServerResponse } from 'node:http';
-import { addAppsheetRows, deleteAppsheetRows, editAppsheetRows, findAppsheetRows } from './appsheetClient';
-import { describeAppsheetConfiguration, isAppsheetConfigured, loadAppsheetConfig } from './appsheetConfig';
+import { describeSupabaseConfiguration, isSupabaseConfigured } from './supabaseConfig';
+import {
+  addSupabaseRows,
+  deleteSupabaseRows,
+  editSupabaseRows,
+  findSupabaseRows,
+  isKnownDataTable,
+} from './supabaseDataStore';
 
 type JsonRecord = Record<string, unknown>;
+
+const DEFAULT_TABLE = 'I.1';
 
 function sendJson(res: ServerResponse, status: number, payload: unknown) {
   res.statusCode = status;
@@ -42,6 +50,18 @@ function getPathname(url: string): string {
   return url.split('?')[0] ?? url;
 }
 
+function supabaseConfigError(): string | null {
+  return describeSupabaseConfiguration();
+}
+
+function assertTableSupported(tableName: string): string | null {
+  if (!isKnownDataTable(tableName)) {
+    return `Bảng không hỗ trợ: ${tableName}`;
+  }
+  return supabaseConfigError();
+}
+
+/** API /api/appsheet/* — backend Supabase (giữ path cũ cho frontend). */
 export async function handleAppsheetRoute(req: IncomingMessage, res: ServerResponse): Promise<boolean> {
   const pathname = getPathname(req.url ?? '');
   if (!pathname.startsWith('/api/appsheet')) {
@@ -53,56 +73,66 @@ export async function handleAppsheetRoute(req: IncomingMessage, res: ServerRespo
     return true;
   }
 
+  if (!isSupabaseConfigured()) {
+    const message = supabaseConfigError() ?? 'Chưa cấu hình Supabase.';
+    if (req.method === 'GET' && pathname === '/api/appsheet/status') {
+      sendJson(res, 503, { configured: false, connected: false, backend: 'supabase', message });
+      return true;
+    }
+    sendJson(res, 503, { message });
+    return true;
+  }
+
   if (req.method === 'GET' && pathname === '/api/appsheet/status') {
-    const configError = describeAppsheetConfiguration();
-    if (configError) {
-      sendJson(res, 503, {
-        configured: false,
-        connected: false,
-        message: configError,
-      });
+    const tableName = getQueryValue(req, 'table') ?? DEFAULT_TABLE;
+    const tableError = assertTableSupported(tableName);
+    if (tableError) {
+      sendJson(res, 400, { configured: true, connected: false, backend: 'supabase', message: tableError });
       return true;
     }
 
     try {
-      const config = loadAppsheetConfig();
-      const result = await findAppsheetRows(config, config.defaultTable);
+      const result = await findSupabaseRows(tableName);
       sendJson(res, 200, {
         configured: true,
         connected: true,
-        appId: config.appId,
-        appName: config.appName ?? null,
-        table: config.defaultTable,
+        table: tableName,
         rowCount: result.rows.length,
-        deploymentId: config.deploymentId ?? null,
+        backend: 'supabase',
       });
     } catch (error) {
-      sendJson(res, 502, {
+      const message = error instanceof Error ? error.message : 'Không thể kết nối Supabase.';
+      const needsSetup =
+        message.includes('schema cache') ||
+        message.includes('Could not find the table') ||
+        message.includes('chưa có trên Supabase');
+      sendJson(res, needsSetup ? 503 : 502, {
         configured: true,
         connected: false,
-        message: error instanceof Error ? error.message : 'Không thể kết nối AppSheet API.',
+        backend: 'supabase',
+        needsSetup,
+        message,
       });
     }
     return true;
   }
 
   if (req.method === 'GET' && pathname === '/api/appsheet/find') {
-    const configError = describeAppsheetConfiguration();
-    if (configError) {
-      sendJson(res, 503, { message: configError });
+    const tableName = getQueryValue(req, 'table') ?? DEFAULT_TABLE;
+    const tableError = assertTableSupported(tableName);
+    if (tableError) {
+      sendJson(res, 400, { table: tableName, message: tableError });
       return true;
     }
 
-    const config = loadAppsheetConfig();
-    const tableName = getQueryValue(req, 'table') ?? config.defaultTable;
     try {
       const selector = getQueryValue(req, 'selector');
-      const result = await findAppsheetRows(config, tableName, { selector });
+      const result = await findSupabaseRows(tableName, { selector });
       sendJson(res, 200, { table: tableName, rows: result.rows, raw: result.raw });
     } catch (error) {
       sendJson(res, 502, {
         table: tableName,
-        message: error instanceof Error ? error.message : 'Gọi AppSheet API thất bại.',
+        message: error instanceof Error ? error.message : 'Gọi Supabase thất bại.',
       });
     }
     return true;
@@ -113,26 +143,18 @@ export async function handleAppsheetRoute(req: IncomingMessage, res: ServerRespo
     return true;
   }
 
-  if (!isAppsheetConfigured()) {
-    sendJson(res, 503, {
-      message: describeAppsheetConfiguration() ?? 'Chưa cấu hình AppSheet API.',
-    });
-    return true;
-  }
-
-  const config = loadAppsheetConfig();
-
   try {
     if (pathname === '/api/appsheet/find') {
       const body = await readJsonBody(req);
-      const tableName = String(body.table ?? config.defaultTable);
-      const result = await findAppsheetRows(config, tableName, {
+      const tableName = String(body.table ?? DEFAULT_TABLE);
+      const tableError = assertTableSupported(tableName);
+      if (tableError) {
+        sendJson(res, 400, { table: tableName, message: tableError });
+        return true;
+      }
+
+      const result = await findSupabaseRows(tableName, {
         selector: typeof body.selector === 'string' ? body.selector : undefined,
-        rows: Array.isArray(body.rows) ? (body.rows as Record<string, unknown>[]) : undefined,
-        properties:
-          body.properties && typeof body.properties === 'object'
-            ? (body.properties as Record<string, unknown>)
-            : undefined,
       });
       sendJson(res, 200, { table: tableName, rows: result.rows, raw: result.raw });
       return true;
@@ -140,36 +162,54 @@ export async function handleAppsheetRoute(req: IncomingMessage, res: ServerRespo
 
     if (pathname === '/api/appsheet/add') {
       const body = await readJsonBody(req);
-      const tableName = String(body.table ?? config.defaultTable);
+      const tableName = String(body.table ?? DEFAULT_TABLE);
+      const tableError = assertTableSupported(tableName);
+      if (tableError) {
+        sendJson(res, 400, { table: tableName, message: tableError });
+        return true;
+      }
+
       const rows = Array.isArray(body.rows) ? (body.rows as Record<string, unknown>[]) : [];
-      const raw = await addAppsheetRows(config, tableName, rows);
+      const raw = await addSupabaseRows(tableName, rows);
       sendJson(res, 200, { table: tableName, raw });
       return true;
     }
 
     if (pathname === '/api/appsheet/edit') {
       const body = await readJsonBody(req);
-      const tableName = String(body.table ?? config.defaultTable);
+      const tableName = String(body.table ?? DEFAULT_TABLE);
+      const tableError = assertTableSupported(tableName);
+      if (tableError) {
+        sendJson(res, 400, { table: tableName, message: tableError });
+        return true;
+      }
+
       const rows = Array.isArray(body.rows) ? (body.rows as Record<string, unknown>[]) : [];
-      const raw = await editAppsheetRows(config, tableName, rows);
+      const raw = await editSupabaseRows(tableName, rows);
       sendJson(res, 200, { table: tableName, raw });
       return true;
     }
 
     if (pathname === '/api/appsheet/delete') {
       const body = await readJsonBody(req);
-      const tableName = String(body.table ?? config.defaultTable);
+      const tableName = String(body.table ?? DEFAULT_TABLE);
+      const tableError = assertTableSupported(tableName);
+      if (tableError) {
+        sendJson(res, 400, { table: tableName, message: tableError });
+        return true;
+      }
+
       const rows = Array.isArray(body.rows) ? (body.rows as Record<string, unknown>[]) : [];
-      const raw = await deleteAppsheetRows(config, tableName, rows);
+      const raw = await deleteSupabaseRows(tableName, rows);
       sendJson(res, 200, { table: tableName, raw });
       return true;
     }
 
-    sendJson(res, 404, { message: 'Không tìm thấy endpoint AppSheet.' });
+    sendJson(res, 404, { message: 'Không tìm thấy endpoint.' });
     return true;
   } catch (error) {
     sendJson(res, 502, {
-      message: error instanceof Error ? error.message : 'Gọi AppSheet API thất bại.',
+      message: error instanceof Error ? error.message : 'Gọi Supabase thất bại.',
     });
     return true;
   }

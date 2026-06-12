@@ -355,7 +355,7 @@ const TaskView: React.FC = () => {
         if (!cancelled) {
           setAppsheetConnected(false);
           setTasksByDept(createEmptyTasksByDept());
-          message.error(error instanceof Error ? error.message : 'Không thể tải dữ liệu AppSheet.');
+          message.error(error instanceof Error ? error.message : 'Không thể tải dữ liệu từ Supabase.');
         }
       } finally {
         if (!cancelled) {
@@ -569,12 +569,12 @@ const TaskView: React.FC = () => {
         }
 
         if (!appsheetTable) {
-          message.error('Chọn phòng ban trên URL để thêm dòng AppSheet.');
+          message.error('Chọn phòng ban trên URL để thêm dòng Supabase.');
           return;
         }
 
         if (!appsheetConnected) {
-          message.error('Chưa kết nối AppSheet API.');
+          message.error('Chưa kết nối Supabase.');
           return;
         }
 
@@ -599,11 +599,11 @@ const TaskView: React.FC = () => {
             appsheetTable
           );
           await reloadAppsheetTasks();
-          message.success('Đã thêm công việc mới vào AppSheet.');
+          message.success('Đã thêm công việc mới vào Supabase.');
           setCreateOpen(false);
           form.resetFields();
         } catch (error) {
-          message.error(error instanceof Error ? error.message : 'Không thể thêm dòng trên AppSheet.');
+          message.error(error instanceof Error ? error.message : 'Không thể thêm dòng trên Supabase.');
         } finally {
           setCreatingTask(false);
         }
@@ -616,12 +616,12 @@ const TaskView: React.FC = () => {
       .validateFields()
       .then(async values => {
         if (!detailTask || !appsheetTable || !appsheetConnected) {
-          message.error('Chưa kết nối AppSheet API.');
+          message.error('Chưa kết nối Supabase.');
           return;
         }
 
         if (!detailTask.sourceRow) {
-          message.error('Không tìm thấy khóa bản ghi AppSheet để cập nhật.');
+          message.error('Không tìm thấy khóa bản ghi (TT) để cập nhật.');
           return;
         }
 
@@ -646,7 +646,7 @@ const TaskView: React.FC = () => {
         try {
           const sourceRow = await hydrateSourceRowAppsheetKey(detailTask.sourceRow, appsheetTable);
           if (!hasAppsheetRowKey(sourceRow, detailTask.appsheetRowKey, appsheetTable)) {
-            message.error('Không tìm thấy khóa TT trên AppSheet. F5 tải lại danh sách.');
+            message.error('Không tìm thấy khóa TT trên Supabase. F5 tải lại danh sách.');
             return;
           }
 
@@ -664,9 +664,9 @@ const TaskView: React.FC = () => {
           if (refreshed) {
             setDetailTask({ ...refreshed, key: detailTask.key, deptKey: detailTask.deptKey });
           }
-          message.success('Đã cập nhật AppSheet.');
+          message.success('Đã cập nhật Supabase.');
         } catch (error) {
-          message.error(error instanceof Error ? error.message : 'Không thể cập nhật AppSheet.');
+          message.error(error instanceof Error ? error.message : 'Không thể cập nhật Supabase.');
         } finally {
           setSavingDetail(false);
         }
@@ -688,19 +688,19 @@ const TaskView: React.FC = () => {
   const updateTaskTienDo = useCallback(
     async (taskKey: string, deptKey: string, tienDo: string) => {
       if (!appsheetTable || !appsheetConnected) {
-        message.error('Chưa kết nối AppSheet API.');
+        message.error('Chưa kết nối Supabase.');
         return false;
       }
 
       const task = tasksByDept[deptKey]?.[taskKey];
       if (!task?.sourceRow) {
-        message.error('Không tìm thấy bản ghi AppSheet để cập nhật.');
+        message.error('Không tìm thấy bản ghi để cập nhật.');
         return false;
       }
 
       const sourceRow = await hydrateSourceRowAppsheetKey(task.sourceRow, appsheetTable);
       if (!hasAppsheetRowKey(sourceRow, task.appsheetRowKey, appsheetTable)) {
-        message.error('Không tìm thấy khóa TT trên AppSheet. F5 tải lại danh sách.');
+        message.error('Không tìm thấy khóa TT trên Supabase. F5 tải lại danh sách.');
         return false;
       }
 
@@ -732,10 +732,10 @@ const TaskView: React.FC = () => {
           setDetailTask({ ...refreshed, key: taskKey, deptKey });
           detailForm.setFieldsValue({ tienDo: refreshed.tienDo });
         }
-        message.success('Đã cập nhật TIẾN ĐỘ trên AppSheet.');
+        message.success('Đã cập nhật TIẾN ĐỘ trên Supabase.');
         return true;
       } catch (error) {
-        message.error(error instanceof Error ? error.message : 'Không thể cập nhật TIẾN ĐỘ trên AppSheet.');
+        message.error(error instanceof Error ? error.message : 'Không thể cập nhật TIẾN ĐỘ trên Supabase.');
         return false;
       } finally {
         setSavingTienDoKey(null);
@@ -769,13 +769,13 @@ const TaskView: React.FC = () => {
 
   const handleMarkComplete = async (taskKey: string, deptKey: string) => {
     if (!appsheetTable || !appsheetConnected) {
-      message.error('Chưa kết nối AppSheet API.');
+      message.error('Chưa kết nối Supabase.');
       return;
     }
 
     const task = tasksByDept[deptKey]?.[taskKey];
     if (!task?.sourceRow) {
-      message.error('Không tìm thấy bản ghi AppSheet để cập nhật.');
+      message.error('Không tìm thấy bản ghi để cập nhật.');
       return;
     }
 
@@ -787,7 +787,7 @@ const TaskView: React.FC = () => {
     const completedAt = new Date();
     const sourceRow = await hydrateSourceRowAppsheetKey(task.sourceRow, appsheetTable);
     if (!hasAppsheetRowKey(sourceRow, task.appsheetRowKey, appsheetTable)) {
-      message.error('Không tìm thấy khóa TT trên AppSheet. F5 tải lại danh sách.');
+      message.error('Không tìm thấy khóa TT trên Supabase. F5 tải lại danh sách.');
       return;
     }
 
@@ -815,9 +815,9 @@ const TaskView: React.FC = () => {
       if (refreshed && detailTask?.key === taskKey && detailTask.deptKey === deptKey) {
         setDetailTask({ ...refreshed, key: taskKey, deptKey });
       }
-      message.success('Đã đánh dấu hoàn thành trên AppSheet.');
+      message.success('Đã đánh dấu hoàn thành trên Supabase.');
     } catch (error) {
-      message.error(error instanceof Error ? error.message : 'Không thể đánh dấu hoàn thành trên AppSheet.');
+      message.error(error instanceof Error ? error.message : 'Không thể đánh dấu hoàn thành trên Supabase.');
     } finally {
       setCompletingTaskKey(null);
     }
@@ -826,18 +826,18 @@ const TaskView: React.FC = () => {
   const handleDeleteTask = async (taskKey: string, deptKey: string) => {
     const task = tasksByDept[deptKey]?.[taskKey];
     if (!task?.sourceRow) {
-      message.error('Không tìm thấy khóa bản ghi AppSheet để xoá.');
+      message.error('Không tìm thấy khóa bản ghi (TT) để xoá.');
       return;
     }
 
     if (!appsheetTable || !appsheetConnected) {
-      message.error('Chưa kết nối AppSheet API.');
+      message.error('Chưa kết nối Supabase.');
       return;
     }
 
     const sourceRow = await hydrateSourceRowAppsheetKey(task.sourceRow, appsheetTable);
     if (!hasAppsheetRowKey(sourceRow, task.appsheetRowKey, appsheetTable)) {
-      message.error('Không tìm thấy khóa TT trên AppSheet. F5 tải lại danh sách.');
+      message.error('Không tìm thấy khóa TT trên Supabase. F5 tải lại danh sách.');
       return;
     }
 
@@ -851,9 +851,9 @@ const TaskView: React.FC = () => {
       if (detailTask?.key === taskKey) {
         setDetailTask(null);
       }
-      message.success('Đã xoá công việc trên AppSheet.');
+      message.success('Đã xoá công việc trên Supabase.');
     } catch (error) {
-      message.error(error instanceof Error ? error.message : 'Không thể xoá dòng trên AppSheet.');
+      message.error(error instanceof Error ? error.message : 'Không thể xoá dòng trên Supabase.');
     } finally {
       setDeletingTaskKey(null);
     }
@@ -1060,7 +1060,7 @@ const TaskView: React.FC = () => {
               onClick={() => openDetail(record.key, record.deptKey)}
             />
             <Popconfirm
-              title="Xoá công việc này trên AppSheet?"
+              title="Xoá công việc này trên Supabase?"
               okText="Xoá"
               cancelText="Huỷ"
               okButtonProps={{ danger: true, loading: deletingTaskKey === record.key }}
@@ -1110,9 +1110,9 @@ const TaskView: React.FC = () => {
             className="w-full md:w-64"
           />
           {appsheetConnected === true ? (
-            <Tag color="success">AppSheet</Tag>
+            <Tag color="success">Supabase</Tag>
           ) : appsheetConnected === false ? (
-            <Tag color="error">Không kết nối AppSheet</Tag>
+            <Tag color="error">Không kết nối Supabase</Tag>
           ) : null}
         </div>
       </div>
@@ -1202,7 +1202,7 @@ const TaskView: React.FC = () => {
       >
         <div className="mt-2">
           <Text type="secondary" className="block mb-2">
-            Giá trị sẽ ghi vào cột TIẾN ĐỘ trên AppSheet.
+            Giá trị sẽ ghi vào cột TIẾN ĐỘ trên Supabase.
           </Text>
           <Select
             className="w-full"
@@ -1344,7 +1344,7 @@ const TaskView: React.FC = () => {
                             Sửa
                           </Button>
                           <Popconfirm
-                            title="Xoá công việc này trên AppSheet?"
+                            title="Xoá công việc này trên Supabase?"
                             okText="Xoá"
                             cancelText="Huỷ"
                             okButtonProps={{ danger: true, loading: deletingTaskKey === row.key }}
@@ -1419,7 +1419,7 @@ const TaskView: React.FC = () => {
                     loading={savingDetail}
                     onClick={handleDetailSave}
                   >
-                    Lưu AppSheet
+                    Lưu
                   </Button>
                 </div>
               </div>

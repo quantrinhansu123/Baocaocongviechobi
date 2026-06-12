@@ -3,7 +3,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import dotenv from 'dotenv';
 import { handleAppsheetRoute } from './appsheetRoute';
-import { isAppsheetConfigured } from './appsheetConfig';
+import { isSupabaseConfigured } from './supabaseConfig';
 
 dotenv.config({ path: '.env', override: true });
 
@@ -31,9 +31,9 @@ app.get('*', (_req, res) => {
 
 app.listen(port, '0.0.0.0', () => {
   console.log(`Server listening on http://localhost:${port}`);
-  if (!isAppsheetConfigured()) {
+  if (!isSupabaseConfigured()) {
     console.warn(
-      '[appsheet] Thiếu APPSHEET_APP_ID hoặc APPSHEET_ACCESS_KEY trong .env — API /api/appsheet/* trả 503.'
+      '[supabase] Thiếu SUPABASE_URL hoặc SUPABASE_ANON_KEY trong .env — API /api/appsheet/* trả 503.'
     );
   }
 });

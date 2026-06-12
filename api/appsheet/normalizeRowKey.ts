@@ -33,7 +33,7 @@ export function normalizeRowsForKeyAction(
     const rowKey = pickKey(row, keys);
     if (!rowKey) {
       throw new Error(
-        `Không có giá trị cột ${column} cho thao tác ${action}. Tải lại danh sách hoặc kiểm tra AppSheet.`
+        `Không có giá trị cột ${column} cho thao tác ${action}. Tải lại danh sách.`
       );
     }
     return { ...row, [column]: rowKey };

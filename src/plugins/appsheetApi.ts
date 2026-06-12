@@ -1,26 +1,26 @@
 import type { Plugin } from 'vite';
 import dotenv from 'dotenv';
 import { handleAppsheetRoute } from '../../server/appsheetRoute';
-import { isAppsheetConfigured } from '../../server/appsheetConfig';
+import { isSupabaseConfigured } from '../../server/supabaseConfig';
 
-function syncAppsheetEnv() {
+function syncDataEnv() {
   dotenv.config({ path: '.env', override: true });
 }
 
 export function appsheetApiPlugin(): Plugin {
   return {
-    name: 'appsheet-api',
+    name: 'data-api',
     configureServer(server) {
-      syncAppsheetEnv();
+      syncDataEnv();
 
-      if (!isAppsheetConfigured()) {
+      if (!isSupabaseConfigured()) {
         server.config.logger.warn(
-          '[appsheet] Thiếu APPSHEET_APP_ID hoặc APPSHEET_ACCESS_KEY trong .env — API /api/appsheet/* trả 503.'
+          '[data] Thiếu SUPABASE_URL hoặc SUPABASE_ANON_KEY trong .env — API /api/appsheet/* trả 503.'
         );
       }
 
       server.middlewares.use(async (req, res, next) => {
-        syncAppsheetEnv();
+        syncDataEnv();
         try {
           const handled = await handleAppsheetRoute(req, res);
           if (!handled) {
