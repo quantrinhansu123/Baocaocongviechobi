@@ -1,4 +1,4 @@
-import { isSupabaseConfigured } from '../_lib/data/supabaseConfig';
+import { isSupabaseConfigured } from '../../api/_lib/data/supabaseConfig';
 import {
   handleDataAdd,
   handleDataDelete,
@@ -7,7 +7,7 @@ import {
   handleDataFindPost,
   handleDataStatus,
   withJsonApiHandler,
-} from '../_lib/dataHandlers';
+} from '../../api/_lib/dataHandlers';
 
 type ApiRequest = {
   method?: string;
