@@ -1,11 +1,6 @@
 {
   "buildCommand": "npm run build",
   "outputDirectory": "dist",
-  "functions": {
-    "api/data/*.js": {
-      "maxDuration": 10
-    }
-  },
   "rewrites": [
     {
       "source": "/((?!api/).*)",
