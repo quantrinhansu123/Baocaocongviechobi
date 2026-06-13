@@ -13,15 +13,15 @@ await mkdir(outDir, { recursive: true });
 await esbuild.build({
   entryPoints: routes.map(name => path.join(root, 'api-src', 'routes', `${name}.ts`)),
   bundle: true,
+  packages: 'external',
   platform: 'node',
-  format: 'cjs',
+  format: 'esm',
   target: 'node18',
   outdir: outDir,
   entryNames: '[name]',
-  outExtension: { '.js': '.cjs' },
   logLevel: 'info',
 });
 
 for (const name of routes) {
-  console.log(`Built /api/data/${name} → api/data/${name}.cjs`);
+  console.log(`Built /api/data/${name} → api/data/${name}.js`);
 }
