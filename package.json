@@ -10,7 +10,8 @@
     "start": "tsx server/index.ts",
     "clean": "rm -rf dist",
     "lint": "tsc --noEmit",
-    "db:check": "node scripts/check-supabase-tables.mjs"
+    "db:check": "node scripts/check-supabase-tables.mjs",
+    "db:seed": "node scripts/seed-auxiliary.mjs"
   },
   "dependencies": {
     "@ant-design/icons": "^6.1.1",

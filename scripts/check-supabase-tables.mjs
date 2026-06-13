@@ -33,6 +33,17 @@ for (const block of ['i', 'ii', 'iii', 'iv']) {
     taskTables.push(`${block}_${n}`);
   }
 }
+const auxiliaryTables = [
+  'bc_dinh_ky',
+  'cong_no',
+  'lich_bao_cao',
+  'nguoi_dung',
+  'mau_bao_cao',
+  'thu_muc',
+  'phan_quyen',
+  'bc_chi_tiet',
+  'canh_bao',
+];
 const reportTable = clean(process.env.SUPABASE_TABLE_BC_DINH_KY) || 'bc_dinh_ky';
 
 const supabase = createClient(url, key, { auth: { persistSession: false, autoRefreshToken: false } });
@@ -57,18 +68,28 @@ for (const table of taskTables) {
   else missing.push(table);
 }
 
+for (const table of auxiliaryTables) {
+  if (table === reportTable) {
+    continue;
+  }
+  if (await probe(table, 'id')) ok.push(table);
+  else missing.push(table);
+}
+
 if (await probe(reportTable, 'id')) ok.push(reportTable);
 else missing.push(reportTable);
 
+const total = taskTables.length + auxiliaryTables.length;
 console.log(`Project: ${url.replace(/https?:\/\//, '')}`);
-console.log(`OK: ${ok.length}/${taskTables.length + 1}`);
+console.log(`OK: ${ok.length}/${total}`);
 
 if (missing.length) {
   console.log('\nChưa có bảng trên Supabase. Làm theo các bước sau:');
   console.log('  1. Mở Supabase Dashboard → SQL Editor');
   console.log('  2. Copy toàn bộ file supabase/schema.sql → Run');
-  console.log('  3. node scripts/check-supabase-tables.mjs  (chạy lại để xác nhận)');
-  console.log('  4. Restart npm run dev → F5 trang web\n');
+  console.log('  3. node scripts/seed-auxiliary.mjs  (tùy chọn — dữ liệu mẫu)');
+  console.log('  4. node scripts/check-supabase-tables.mjs  (chạy lại để xác nhận)');
+  console.log('  5. Restart npm run dev → F5 trang web\n');
   console.log('Thiếu:');
   for (const t of missing) console.log(`  - public.${t}`);
   process.exit(1);

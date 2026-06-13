@@ -1,5 +1,11 @@
-import { isReportTable } from './supabaseConfig';
+import { isAuxiliaryTable, isReportTable } from './supabaseConfig';
 import { isTaskTableName } from './taskTables';
+import {
+  addSupabaseAuxiliaryRows,
+  deleteSupabaseAuxiliaryRows,
+  editSupabaseAuxiliaryRows,
+  findSupabaseAuxiliaryRows,
+} from './supabaseAuxiliaryStore';
 import {
   addSupabaseReportRows,
   deleteSupabaseReportRows,
@@ -14,7 +20,7 @@ import {
 } from './supabaseTaskStore';
 
 export function isKnownDataTable(tableName: string): boolean {
-  return isTaskTableName(tableName) || isReportTable(tableName);
+  return isTaskTableName(tableName) || isReportTable(tableName) || isAuxiliaryTable(tableName);
 }
 
 export async function findSupabaseRows(
@@ -23,6 +29,9 @@ export async function findSupabaseRows(
 ): Promise<{ rows: Record<string, unknown>[]; raw: unknown }> {
   if (isReportTable(tableName)) {
     return findSupabaseReportRows(tableName);
+  }
+  if (isAuxiliaryTable(tableName)) {
+    return findSupabaseAuxiliaryRows(tableName);
   }
   if (isTaskTableName(tableName)) {
     return findSupabaseTaskRows(tableName, options);
@@ -37,6 +46,9 @@ export async function addSupabaseRows(
   if (isReportTable(tableName)) {
     return addSupabaseReportRows(tableName, rows);
   }
+  if (isAuxiliaryTable(tableName)) {
+    return addSupabaseAuxiliaryRows(tableName, rows);
+  }
   if (isTaskTableName(tableName)) {
     return addSupabaseTaskRows(tableName, rows);
   }
@@ -50,6 +62,9 @@ export async function editSupabaseRows(
   if (isReportTable(tableName)) {
     return editSupabaseReportRows(tableName, rows);
   }
+  if (isAuxiliaryTable(tableName)) {
+    return editSupabaseAuxiliaryRows(tableName, rows);
+  }
   if (isTaskTableName(tableName)) {
     return editSupabaseTaskRows(tableName, rows);
   }
@@ -62,6 +77,9 @@ export async function deleteSupabaseRows(
 ): Promise<unknown> {
   if (isReportTable(tableName)) {
     return deleteSupabaseReportRows(tableName, rows);
+  }
+  if (isAuxiliaryTable(tableName)) {
+    return deleteSupabaseAuxiliaryRows(tableName, rows);
   }
   if (isTaskTableName(tableName)) {
     return deleteSupabaseTaskRows(tableName, rows);

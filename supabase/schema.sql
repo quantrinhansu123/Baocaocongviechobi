@@ -240,3 +240,134 @@ create policy "anon_delete_bc_dinh_ky" on public.bc_dinh_ky for delete to anon u
 
 -- Làm mới cache API sau khi tạo bảng (tránh lỗi "schema cache")
 notify pgrst, 'reload schema';
+
+-- Bảng phụ trợ (Smart View, Admin, Lịch, BC chi tiết, …)
+create table if not exists public.cong_no (
+  id text primary key,
+  data jsonb not null default '{}'::jsonb,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
+);
+alter table public.cong_no enable row level security;
+drop policy if exists "anon_select_cong_no" on public.cong_no;
+drop policy if exists "anon_insert_cong_no" on public.cong_no;
+drop policy if exists "anon_update_cong_no" on public.cong_no;
+drop policy if exists "anon_delete_cong_no" on public.cong_no;
+create policy "anon_select_cong_no" on public.cong_no for select to anon using (true);
+create policy "anon_insert_cong_no" on public.cong_no for insert to anon with check (true);
+create policy "anon_update_cong_no" on public.cong_no for update to anon using (true) with check (true);
+create policy "anon_delete_cong_no" on public.cong_no for delete to anon using (true);
+
+create table if not exists public.lich_bao_cao (
+  id text primary key,
+  data jsonb not null default '{}'::jsonb,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
+);
+alter table public.lich_bao_cao enable row level security;
+drop policy if exists "anon_select_lich_bao_cao" on public.lich_bao_cao;
+drop policy if exists "anon_insert_lich_bao_cao" on public.lich_bao_cao;
+drop policy if exists "anon_update_lich_bao_cao" on public.lich_bao_cao;
+drop policy if exists "anon_delete_lich_bao_cao" on public.lich_bao_cao;
+create policy "anon_select_lich_bao_cao" on public.lich_bao_cao for select to anon using (true);
+create policy "anon_insert_lich_bao_cao" on public.lich_bao_cao for insert to anon with check (true);
+create policy "anon_update_lich_bao_cao" on public.lich_bao_cao for update to anon using (true) with check (true);
+create policy "anon_delete_lich_bao_cao" on public.lich_bao_cao for delete to anon using (true);
+
+create table if not exists public.nguoi_dung (
+  id text primary key,
+  data jsonb not null default '{}'::jsonb,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
+);
+alter table public.nguoi_dung enable row level security;
+drop policy if exists "anon_select_nguoi_dung" on public.nguoi_dung;
+drop policy if exists "anon_insert_nguoi_dung" on public.nguoi_dung;
+drop policy if exists "anon_update_nguoi_dung" on public.nguoi_dung;
+drop policy if exists "anon_delete_nguoi_dung" on public.nguoi_dung;
+create policy "anon_select_nguoi_dung" on public.nguoi_dung for select to anon using (true);
+create policy "anon_insert_nguoi_dung" on public.nguoi_dung for insert to anon with check (true);
+create policy "anon_update_nguoi_dung" on public.nguoi_dung for update to anon using (true) with check (true);
+create policy "anon_delete_nguoi_dung" on public.nguoi_dung for delete to anon using (true);
+
+create table if not exists public.mau_bao_cao (
+  id text primary key,
+  data jsonb not null default '{}'::jsonb,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
+);
+alter table public.mau_bao_cao enable row level security;
+drop policy if exists "anon_select_mau_bao_cao" on public.mau_bao_cao;
+drop policy if exists "anon_insert_mau_bao_cao" on public.mau_bao_cao;
+drop policy if exists "anon_update_mau_bao_cao" on public.mau_bao_cao;
+drop policy if exists "anon_delete_mau_bao_cao" on public.mau_bao_cao;
+create policy "anon_select_mau_bao_cao" on public.mau_bao_cao for select to anon using (true);
+create policy "anon_insert_mau_bao_cao" on public.mau_bao_cao for insert to anon with check (true);
+create policy "anon_update_mau_bao_cao" on public.mau_bao_cao for update to anon using (true) with check (true);
+create policy "anon_delete_mau_bao_cao" on public.mau_bao_cao for delete to anon using (true);
+
+create table if not exists public.thu_muc (
+  id text primary key,
+  data jsonb not null default '{}'::jsonb,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
+);
+alter table public.thu_muc enable row level security;
+drop policy if exists "anon_select_thu_muc" on public.thu_muc;
+drop policy if exists "anon_insert_thu_muc" on public.thu_muc;
+drop policy if exists "anon_update_thu_muc" on public.thu_muc;
+drop policy if exists "anon_delete_thu_muc" on public.thu_muc;
+create policy "anon_select_thu_muc" on public.thu_muc for select to anon using (true);
+create policy "anon_insert_thu_muc" on public.thu_muc for insert to anon with check (true);
+create policy "anon_update_thu_muc" on public.thu_muc for update to anon using (true) with check (true);
+create policy "anon_delete_thu_muc" on public.thu_muc for delete to anon using (true);
+
+create table if not exists public.phan_quyen (
+  id text primary key,
+  data jsonb not null default '{}'::jsonb,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
+);
+alter table public.phan_quyen enable row level security;
+drop policy if exists "anon_select_phan_quyen" on public.phan_quyen;
+drop policy if exists "anon_insert_phan_quyen" on public.phan_quyen;
+drop policy if exists "anon_update_phan_quyen" on public.phan_quyen;
+drop policy if exists "anon_delete_phan_quyen" on public.phan_quyen;
+create policy "anon_select_phan_quyen" on public.phan_quyen for select to anon using (true);
+create policy "anon_insert_phan_quyen" on public.phan_quyen for insert to anon with check (true);
+create policy "anon_update_phan_quyen" on public.phan_quyen for update to anon using (true) with check (true);
+create policy "anon_delete_phan_quyen" on public.phan_quyen for delete to anon using (true);
+
+create table if not exists public.bc_chi_tiet (
+  id text primary key,
+  data jsonb not null default '{}'::jsonb,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
+);
+alter table public.bc_chi_tiet enable row level security;
+drop policy if exists "anon_select_bc_chi_tiet" on public.bc_chi_tiet;
+drop policy if exists "anon_insert_bc_chi_tiet" on public.bc_chi_tiet;
+drop policy if exists "anon_update_bc_chi_tiet" on public.bc_chi_tiet;
+drop policy if exists "anon_delete_bc_chi_tiet" on public.bc_chi_tiet;
+create policy "anon_select_bc_chi_tiet" on public.bc_chi_tiet for select to anon using (true);
+create policy "anon_insert_bc_chi_tiet" on public.bc_chi_tiet for insert to anon with check (true);
+create policy "anon_update_bc_chi_tiet" on public.bc_chi_tiet for update to anon using (true) with check (true);
+create policy "anon_delete_bc_chi_tiet" on public.bc_chi_tiet for delete to anon using (true);
+
+create table if not exists public.canh_bao (
+  id text primary key,
+  data jsonb not null default '{}'::jsonb,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
+);
+alter table public.canh_bao enable row level security;
+drop policy if exists "anon_select_canh_bao" on public.canh_bao;
+drop policy if exists "anon_insert_canh_bao" on public.canh_bao;
+drop policy if exists "anon_update_canh_bao" on public.canh_bao;
+drop policy if exists "anon_delete_canh_bao" on public.canh_bao;
+create policy "anon_select_canh_bao" on public.canh_bao for select to anon using (true);
+create policy "anon_insert_canh_bao" on public.canh_bao for insert to anon with check (true);
+create policy "anon_update_canh_bao" on public.canh_bao for update to anon using (true) with check (true);
+create policy "anon_delete_canh_bao" on public.canh_bao for delete to anon using (true);
+
+notify pgrst, 'reload schema';

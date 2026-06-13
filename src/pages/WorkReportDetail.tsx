@@ -1,19 +1,30 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { Edit2, X, Star, Calendar, User, MessageSquare, AlertCircle, ChevronDown } from 'lucide-react';
-
-// --- MOCK DATA ---
-const initialTasks = [
-  { id: 1, name: 'Sản xuất đơn hàng ván sàn A', assignee: 'Anh Tài', deadline: '2026-04-23', status: 'Hoàn thành', impact: 4, desc: 'Sản xuất 500m2 sàn gỗ ngoài trời 2D.', history: 'Đã hoàn tất khâu ép nhiệt.' },
-  { id: 2, name: 'Fix lỗi ván ép lô B', assignee: 'Anh Tuấn', deadline: '2026-04-07', status: 'Trễ hạn', impact: 3, desc: 'Lô B bị lỗi cong vênh 5%, cần kiểm tra lại máy ép.', history: 'Đang đợi linh kiện thay thế từ TQ.' },
-  { id: 3, name: 'Kiểm tra công nợ nhà cung cấp hạt nhựa', assignee: 'Chị Lan', deadline: '2026-04-18', status: 'Đang làm', impact: 2, desc: 'Đối chiếu công nợ quý 1.', history: 'Đã gửi email đối chiếu, chờ phản hồi.' },
-  { id: 4, name: 'Bảo trì máy nghiền gỗ', assignee: 'Chú Hải', deadline: '2026-04-10', status: 'Trễ hạn', impact: 4, desc: 'Bảo trì định kỳ máy số 2.', history: 'Thiếu nhân sự bảo trì.' },
-  { id: 5, name: 'Lên kế hoạch sản xuất tháng 5', assignee: 'Anh Tuyển', deadline: '2026-04-28', status: 'Đang làm', impact: 3, desc: 'Chốt số lượng với mảng OEM và Thương mại.', history: 'Đang tổng hợp số liệu.' },
-];
+import { loadWorkReportTasks, type WorkReportTask } from '../services/auxiliaryData';
 
 export default function ReportDetailScreen() {
-  const [tasks, setTasks] = useState(initialTasks);
+  const [tasks, setTasks] = useState<WorkReportTask[]>([]);
+  const [loading, setLoading] = useState(true);
   const [filterImportant, setFilterImportant] = useState(false);
   const [filterOverdue, setFilterOverdue] = useState(false);
+
+  useEffect(() => {
+    let active = true;
+    void loadWorkReportTasks()
+      .then(data => {
+        if (active) {
+          setTasks(data);
+        }
+      })
+      .finally(() => {
+        if (active) {
+          setLoading(false);
+        }
+      });
+    return () => {
+      active = false;
+    };
+  }, []);
 
   // State cho Inline Edit
   const [editingCell, setEditingCell] = useState({ id: null, field: null });
@@ -93,6 +104,11 @@ export default function ReportDetailScreen() {
 
       {/* 2. Main Data Table */}
       <div className="max-w-6xl mx-auto bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
+        {loading ? (
+          <div className="p-12 text-center text-gray-500">Đang tải từ Supabase...</div>
+        ) : filteredTasks.length === 0 ? (
+          <div className="p-12 text-center text-gray-500">Chưa có dữ liệu (bảng bc_chi_tiet)</div>
+        ) : (
         <table className="w-full text-left border-collapse">
           <thead>
             <tr className="bg-[#1E386B] text-white">
@@ -189,6 +205,7 @@ export default function ReportDetailScreen() {
             ))}
           </tbody>
         </table>
+        )}
       </div>
 
       {/* 3. Popup Detail Modal */}

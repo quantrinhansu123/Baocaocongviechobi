@@ -1,5 +1,6 @@
 import dotenv from 'dotenv';
 import path from 'node:path';
+import { isAuxiliaryTableName, auxiliaryTableToSupabaseName } from './auxiliaryTables';
 import { isTaskTableName, listTaskTableNames, taskTableToSupabaseName } from './taskTables';
 
 export const REPORT_TABLE_LOGICAL = 'BC định kỳ';
@@ -32,12 +33,16 @@ function cleanEnvValue(value: string | undefined): string | undefined {
   return trimmed;
 }
 
+export function isAuxiliaryTable(tableName: string): boolean {
+  return isAuxiliaryTableName(tableName);
+}
+
 export function isReportTable(tableName: string): boolean {
   return tableName.trim() === REPORT_TABLE_LOGICAL;
 }
 
 export function isSupabaseTable(tableName: string): boolean {
-  return isTaskTableName(tableName) || isReportTable(tableName);
+  return isTaskTableName(tableName) || isReportTable(tableName) || isAuxiliaryTable(tableName);
 }
 
 /** @deprecated */
@@ -54,6 +59,11 @@ export function resolveSupabaseTableName(logicalTable: string): string {
 
   if (isReportTable(normalized)) {
     return cleanEnvValue(readEnv().SUPABASE_TABLE_BC_DINH_KY) ?? REPORT_TABLE_SUPABASE;
+  }
+
+  if (isAuxiliaryTable(normalized)) {
+    const envKey = `SUPABASE_TABLE_${auxiliaryTableToSupabaseName(normalized).toUpperCase()}`;
+    return cleanEnvValue(readEnv()[envKey]) ?? auxiliaryTableToSupabaseName(normalized);
   }
 
   const envKey = `SUPABASE_TABLE_${normalized.replace('.', '_').toUpperCase()}`;

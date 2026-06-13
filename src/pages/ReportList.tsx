@@ -1,22 +1,47 @@
-import React from 'react';
-import { Table, Breadcrumb, Button, Input, Space, Tag, Avatar, Typography } from 'antd';
+import React, { useEffect, useState } from 'react';
+import { Table, Breadcrumb, Button, Input, Space, Tag, Avatar, Typography, Spin, Empty } from 'antd';
 import * as Antd from 'antd';
 const Card = Antd.Card as any;
 import { SearchOutlined, PlusOutlined, FilterOutlined, UserOutlined } from '@ant-design/icons';
 import { useNavigate } from 'react-router-dom';
-import { REPORT_LIST } from '../mockData';
+import { loadReportListItems, type ReportListItem } from '../services/reportListData';
 
 const { Title, Text } = Typography;
 
 const ReportList: React.FC = () => {
   const navigate = useNavigate();
+  const [items, setItems] = useState<ReportListItem[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [search, setSearch] = useState('');
+
+  useEffect(() => {
+    let active = true;
+    void loadReportListItems()
+      .then(data => {
+        if (active) {
+          setItems(data);
+        }
+      })
+      .finally(() => {
+        if (active) {
+          setLoading(false);
+        }
+      });
+    return () => {
+      active = false;
+    };
+  }, []);
+
+  const filtered = items.filter(item =>
+    item.name.toLowerCase().includes(search.trim().toLowerCase())
+  );
 
   const columns = [
     {
       title: 'Tên báo cáo',
       dataIndex: 'name',
       key: 'name',
-      render: (text: string, record: any) => (
+      render: (text: string, record: ReportListItem) => (
         <Text
           strong
           className="text-[#1677ff] cursor-pointer hover:underline font-medium"
@@ -46,9 +71,9 @@ const ReportList: React.FC = () => {
       title: 'Hạn nộp',
       dataIndex: 'deadline',
       key: 'deadline',
-      render: (date: string, record: any) => (
+      render: (date: string, record: ReportListItem) => (
         <span className={record.status === 'Trễ' ? 'text-red-500' : ''}>{date}</span>
-      )
+      ),
     },
     {
       title: 'Trạng thái',
@@ -108,36 +133,47 @@ const ReportList: React.FC = () => {
             placeholder="Tìm kiếm tên báo cáo..."
             prefix={<SearchOutlined className="text-gray-400" />}
             className="w-80 rounded-lg"
+            value={search}
+            onChange={event => setSearch(event.target.value)}
           />
-          <Text type="secondary">Hiển thị 4 báo cáo</Text>
+          <Text type="secondary">Hiển thị {filtered.length} báo cáo</Text>
         </div>
-        <div className="hidden md:block">
-          <Table
-            dataSource={REPORT_LIST}
-            columns={columns}
-            pagination={false}
-            className="rounded-lg overflow-hidden"
-          />
-        </div>
-        <div className="block md:hidden space-y-2">
-          {REPORT_LIST.map((item: any) => (
-            <div key={item.key} className="rounded-lg border border-gray-200 p-3 bg-white shadow-sm">
-              <Text
-                strong
-                className="text-[#1677ff] cursor-pointer hover:underline font-medium"
-                onClick={() => navigate(`/reports/${item.key}`)}
-              >
-                {item.name}
-              </Text>
-              <div className="mt-2 text-xs text-gray-600 space-y-1">
-                <p>Chu kỳ: {item.cycle}</p>
-                <p className={item.status === 'Trễ' ? 'text-red-500 font-medium' : ''}>Hạn nộp: {item.deadline}</p>
-                <p>Trạng thái: {item.status}</p>
-                <p>Phụ trách: {item.owner}</p>
+        <Spin spinning={loading}>
+          {!loading && filtered.length === 0 ? (
+            <Empty description="Chưa có báo cáo trên Supabase" />
+          ) : (
+            <>
+              <div className="hidden md:block">
+                <Table
+                  dataSource={filtered}
+                  columns={columns}
+                  pagination={false}
+                  rowKey="key"
+                  className="rounded-lg overflow-hidden"
+                />
               </div>
-            </div>
-          ))}
-        </div>
+              <div className="block md:hidden space-y-2">
+                {filtered.map(item => (
+                  <div key={item.key} className="rounded-lg border border-gray-200 p-3 bg-white shadow-sm">
+                    <Text
+                      strong
+                      className="text-[#1677ff] cursor-pointer hover:underline font-medium"
+                      onClick={() => navigate(`/reports/${item.key}`)}
+                    >
+                      {item.name}
+                    </Text>
+                    <div className="mt-2 text-xs text-gray-600 space-y-1">
+                      <p>Chu kỳ: {item.cycle}</p>
+                      <p className={item.status === 'Trễ' ? 'text-red-500 font-medium' : ''}>Hạn nộp: {item.deadline}</p>
+                      <p>Trạng thái: {item.status}</p>
+                      <p>Phụ trách: {item.owner}</p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </>
+          )}
+        </Spin>
       </Card>
     </div>
   );

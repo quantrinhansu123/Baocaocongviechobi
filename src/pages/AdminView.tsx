@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   Table,
   Tabs,
@@ -11,7 +11,9 @@ import {
   Switch,
   TreeSelect,
   Card,
-  Tree
+  Tree,
+  Spin,
+  Empty,
 } from 'antd';
 import {
   PlusOutlined,
@@ -22,33 +24,51 @@ import {
   SettingOutlined,
   FileTextOutlined,
   UserOutlined,
-  SafetyCertificateOutlined
+  SafetyCertificateOutlined,
 } from '@ant-design/icons';
+import {
+  loadAdminTemplates,
+  loadAdminUsers,
+  loadFolderTree,
+  loadPermissions,
+  type AdminTemplate,
+  type AdminUser,
+  type FolderNode,
+  type PermissionRow,
+} from '../services/auxiliaryData';
 
 const { Title, Text } = Typography;
 const AntCard = Card as React.ComponentType<React.ComponentProps<typeof Card>>;
 
-// --- MOCK DATA ĐỘC LẬP (Không phụ thuộc file ngoài) ---
-const MOCK_USERS = [
-  { key: '1', name: 'Lê Hoàng Tuyển', email: 'tuyenlh@hobiwood.com', department: 'Ban Giám Đốc', role: 'Super Admin' },
-  { key: '2', name: 'Nguyễn Văn Hùng', email: 'hungnv@hobiwood.com', department: 'Nhà máy', role: 'Quản lý' },
-  { key: '3', name: 'Trần Thị Lan', email: 'lantt@hobiwood.com', department: 'Kế toán', role: 'Nhân viên' },
-];
-
-const MOCK_TEMPLATES = [
-  { key: '1', name: 'Mẫu Báo Cáo Sản Xuất Tuần', type: 'Excel', lastUpdate: '10/04/2026', status: 'Active' },
-  { key: '2', name: 'Biểu Mẫu Đánh Giá OEM', type: 'Word', lastUpdate: '05/04/2026', status: 'Active' },
-  { key: '3', name: 'Phiếu Yêu Cầu Vật Tư', type: 'PDF', lastUpdate: '12/03/2026', status: 'Inactive' },
-];
-
-const MOCK_TREE_FOLDERS = [
-  { title: 'Nhà máy (Root)', key: 'nm', children: [{ title: 'Báo cáo định kỳ', key: 'nm-1' }, { title: 'Báo cáo lỗi', key: 'nm-2' }] },
-  { title: 'OEM (Root)', key: 'oem' },
-];
-
 const AdminView: React.FC = () => {
+  const [users, setUsers] = useState<AdminUser[]>([]);
+  const [templates, setTemplates] = useState<AdminTemplate[]>([]);
+  const [folders, setFolders] = useState<FolderNode[]>([]);
+  const [permissions, setPermissions] = useState<PermissionRow[]>([]);
+  const [loading, setLoading] = useState(true);
 
-  // --- CẤU HÌNH CÁC CỘT (COLUMNS) ---
+  useEffect(() => {
+    let active = true;
+    void Promise.all([loadAdminUsers(), loadAdminTemplates(), loadFolderTree(), loadPermissions()])
+      .then(([userRows, templateRows, folderRows, permissionRows]) => {
+        if (!active) {
+          return;
+        }
+        setUsers(userRows);
+        setTemplates(templateRows);
+        setFolders(folderRows);
+        setPermissions(permissionRows);
+      })
+      .finally(() => {
+        if (active) {
+          setLoading(false);
+        }
+      });
+    return () => {
+      active = false;
+    };
+  }, []);
+
   const userColumns = [
     { title: 'Tên người dùng', dataIndex: 'name', key: 'name', render: (text: string) => <Text strong>{text}</Text> },
     { title: 'Phòng ban', dataIndex: 'department', key: 'department' },
@@ -59,7 +79,7 @@ const AdminView: React.FC = () => {
           <Button type="text" icon={<EditOutlined className="text-blue-500" />} />
           <Button type="text" icon={<DeleteOutlined className="text-red-500" />} />
         </Space>
-      )
+      ),
     },
   ];
 
@@ -73,7 +93,7 @@ const AdminView: React.FC = () => {
         <Space>
           <Button size="small">Chỉnh sửa form</Button>
         </Space>
-      )
+      ),
     },
   ];
 
@@ -85,13 +105,6 @@ const AdminView: React.FC = () => {
     { title: 'Phê duyệt', dataIndex: 'approve', key: 'approve', render: (checked: boolean) => <Switch defaultChecked={checked} size="small" /> },
   ];
 
-  const permissionData = [
-    { key: '1', feature: 'Thư mục: Nhà máy', read: true, write: true, delete: false, approve: true },
-    { key: '2', feature: 'Thư mục: OEM', read: true, write: false, delete: false, approve: false },
-    { key: '3', feature: 'Báo cáo Cảnh báo', read: true, write: false, delete: false, approve: false },
-  ];
-
-  // --- CẤU TRÚC 4 TABS CHUẨN ĐẶC TẢ ---
   const adminTabs = [
     {
       key: 'folders',
@@ -101,12 +114,16 @@ const AdminView: React.FC = () => {
           <div className="flex justify-between items-center border-b pb-4">
             <div>
               <Title level={4} className="m-0">Cấu trúc thư mục hệ thống</Title>
-              <Text type="secondary">Tạo, xóa và sắp xếp hệ thống lưu trữ báo cáo</Text>
+              <Text type="secondary">Dữ liệu từ Supabase (bảng thu_muc)</Text>
             </div>
             <Button type="primary" icon={<PlusOutlined />} className="bg-blue-600">Thêm thư mục gốc</Button>
           </div>
           <div className="bg-gray-50 p-4 rounded-lg border border-gray-200">
-            <Tree treeData={MOCK_TREE_FOLDERS} defaultExpandAll className="bg-transparent" />
+            {folders.length === 0 ? (
+              <Empty description="Chưa có thư mục" />
+            ) : (
+              <Tree treeData={folders} defaultExpandAll className="bg-transparent" />
+            )}
           </div>
         </div>
       ),
@@ -119,23 +136,29 @@ const AdminView: React.FC = () => {
           <div className="flex justify-between items-center border-b pb-4">
             <div>
               <Title level={4} className="m-0">Quản lý biểu mẫu (Templates)</Title>
-              <Text type="secondary">Định nghĩa form dữ liệu cho từng loại báo cáo</Text>
+              <Text type="secondary">Dữ liệu từ Supabase (bảng mau_bao_cao)</Text>
             </div>
             <Button type="primary" icon={<PlusOutlined />} className="bg-blue-600">Tạo Template Mới</Button>
           </div>
-          <div className="hidden md:block">
-            <Table columns={templateColumns} dataSource={MOCK_TEMPLATES} pagination={false} size="middle" />
-          </div>
-          <div className="block md:hidden space-y-2">
-            {MOCK_TEMPLATES.map(item => (
-              <div key={item.key} className="rounded-lg border border-gray-200 p-3 bg-white">
-                <p className="font-semibold text-blue-600 text-sm">{item.name}</p>
-                <p className="text-xs text-gray-600 mt-1">Định dạng: {item.type}</p>
-                <p className="text-xs text-gray-600">Cập nhật: {item.lastUpdate}</p>
-                <p className="text-xs mt-1">Trạng thái: <Tag color={item.status === 'Active' ? 'green' : 'default'}>{item.status}</Tag></p>
+          {templates.length === 0 ? (
+            <Empty description="Chưa có template" />
+          ) : (
+            <>
+              <div className="hidden md:block">
+                <Table columns={templateColumns} dataSource={templates} pagination={false} size="middle" rowKey="key" />
               </div>
-            ))}
-          </div>
+              <div className="block md:hidden space-y-2">
+                {templates.map(item => (
+                  <div key={item.key} className="rounded-lg border border-gray-200 p-3 bg-white">
+                    <p className="font-semibold text-blue-600 text-sm">{item.name}</p>
+                    <p className="text-xs text-gray-600 mt-1">Định dạng: {item.type}</p>
+                    <p className="text-xs text-gray-600">Cập nhật: {item.lastUpdate}</p>
+                    <p className="text-xs mt-1">Trạng thái: <Tag color={item.status === 'Active' ? 'green' : 'default'}>{item.status}</Tag></p>
+                  </div>
+                ))}
+              </div>
+            </>
+          )}
         </div>
       ),
     },
@@ -147,26 +170,32 @@ const AdminView: React.FC = () => {
           <div className="flex justify-between items-center border-b pb-4">
             <div>
               <Title level={4} className="m-0">Danh sách tài khoản</Title>
-              <Text type="secondary">Cấp phát tài khoản cho nhân sự Hobiwood</Text>
+              <Text type="secondary">Dữ liệu từ Supabase (bảng nguoi_dung)</Text>
             </div>
             <Space>
               <Input placeholder="Tìm tên/email..." prefix={<SearchOutlined />} className="w-64" />
               <Button type="primary" icon={<PlusOutlined />} className="bg-blue-600">Thêm User</Button>
             </Space>
           </div>
-          <div className="hidden md:block">
-            <Table columns={userColumns} dataSource={MOCK_USERS} pagination={false} size="middle" />
-          </div>
-          <div className="block md:hidden space-y-2">
-            {MOCK_USERS.map(item => (
-              <div key={item.key} className="rounded-lg border border-gray-200 p-3 bg-white">
-                <p className="font-semibold text-sm">{item.name}</p>
-                <p className="text-xs text-gray-600 mt-1">{item.email}</p>
-                <p className="text-xs text-gray-600">Phòng ban: {item.department}</p>
-                <p className="text-xs mt-1">Vai trò: <Tag color={item.role === 'Super Admin' ? 'red' : item.role === 'Quản lý' ? 'green' : 'blue'}>{item.role}</Tag></p>
+          {users.length === 0 ? (
+            <Empty description="Chưa có người dùng" />
+          ) : (
+            <>
+              <div className="hidden md:block">
+                <Table columns={userColumns} dataSource={users} pagination={false} size="middle" rowKey="key" />
               </div>
-            ))}
-          </div>
+              <div className="block md:hidden space-y-2">
+                {users.map(item => (
+                  <div key={item.key} className="rounded-lg border border-gray-200 p-3 bg-white">
+                    <p className="font-semibold text-sm">{item.name}</p>
+                    <p className="text-xs text-gray-600 mt-1">{item.email}</p>
+                    <p className="text-xs text-gray-600">Phòng ban: {item.department}</p>
+                    <p className="text-xs mt-1">Vai trò: <Tag color={item.role === 'Super Admin' ? 'red' : item.role === 'Quản lý' ? 'green' : 'blue'}>{item.role}</Tag></p>
+                  </div>
+                ))}
+              </div>
+            </>
+          )}
         </div>
       ),
     },
@@ -177,61 +206,49 @@ const AdminView: React.FC = () => {
         <div className="space-y-6 px-4">
           <div className="border-b pb-4">
             <Title level={4} className="m-0">Ma trận phân quyền</Title>
-            <Text type="secondary">Thiết lập quyền truy cập cho từng user hoặc phòng ban</Text>
+            <Text type="secondary">Dữ liệu từ Supabase (bảng phan_quyen)</Text>
           </div>
-          <div className="flex items-center gap-4 p-4 bg-blue-50 rounded-lg border border-blue-100">
-            <Text strong>Chọn đối tượng cấp quyền:</Text>
-            <TreeSelect
-              style={{ width: 350 }}
-              placeholder="Chọn User hoặc Nhóm (Vd: Ban Giám Đốc)"
-              treeDefaultExpandAll
-              treeData={[
-                { title: 'Nhóm: Ban Giám Đốc', value: 'bgd', children: [{ title: 'User: Lê Hoàng Tuyển', value: 'tuyenlh' }] },
-                { title: 'Nhóm: Quản lý Nhà máy', value: 'qlnm', children: [{ title: 'User: Nguyễn Văn Hùng', value: 'hungnv' }] },
-              ]}
-            />
-            <Button type="primary" className="bg-green-600 ml-auto">Lưu cấu hình</Button>
-          </div>
-          <div className="hidden md:block">
-            <Table columns={permissionColumns} dataSource={permissionData} pagination={false} size="middle" bordered />
-          </div>
-          <div className="block md:hidden space-y-2">
-            {permissionData.map(item => (
-              <div key={item.key} className="rounded-lg border border-gray-200 p-3 bg-white">
-                <p className="font-semibold text-sm">{item.feature}</p>
-                <div className="mt-2 grid grid-cols-2 gap-2 text-xs text-gray-700">
-                  <p>Xem: {item.read ? 'Bật' : 'Tắt'}</p>
-                  <p>Thêm/Sửa: {item.write ? 'Bật' : 'Tắt'}</p>
-                  <p>Xóa: {item.delete ? 'Bật' : 'Tắt'}</p>
-                  <p>Phê duyệt: {item.approve ? 'Bật' : 'Tắt'}</p>
-                </div>
+          {permissions.length === 0 ? (
+            <Empty description="Chưa có phân quyền" />
+          ) : (
+            <>
+              <div className="hidden md:block">
+                <Table columns={permissionColumns} dataSource={permissions} pagination={false} size="middle" bordered rowKey="key" />
               </div>
-            ))}
-          </div>
+              <div className="block md:hidden space-y-2">
+                {permissions.map(item => (
+                  <div key={item.key} className="rounded-lg border border-gray-200 p-3 bg-white text-xs space-y-1">
+                    <p className="font-semibold">{item.feature}</p>
+                    <p>Xem: {item.read ? 'Có' : 'Không'}</p>
+                    <p>Sửa: {item.write ? 'Có' : 'Không'}</p>
+                    <p>Xóa: {item.delete ? 'Có' : 'Không'}</p>
+                    <p>Phê duyệt: {item.approve ? 'Có' : 'Không'}</p>
+                  </div>
+                ))}
+              </div>
+            </>
+          )}
         </div>
       ),
     },
   ];
 
   return (
-    <div className="p-6 bg-gray-50 min-h-screen">
-      <div className="mb-6 flex items-center">
-        <SettingOutlined className="text-2xl text-gray-700 mr-3" />
+    <div className="space-y-6">
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
-          <Title level={2} className="m-0 text-gray-800">Cấu hình Hệ Thống (F-Solution)</Title>
-          <Text type="secondary">Khu vực dành riêng cho Quản trị viên cấp cao</Text>
+          <Title level={3} className="m-0 flex items-center gap-2">
+            <SettingOutlined className="text-blue-600" />
+            Trang Quản Trị Hệ Thống
+          </Title>
+          <Text type="secondary">Cấu hình người dùng, thư mục, template và phân quyền — Supabase</Text>
         </div>
       </div>
 
-      <AntCard className="shadow-sm rounded-xl overflow-hidden border-gray-200" styles={{ body: { padding: 0 } }}>
-        <Tabs
-          tabPosition="left"
-          defaultActiveKey="folders"
-          items={adminTabs}
-          className="admin-tabs-custom min-h-[600px]"
-          // Custom CSS nhẹ để tab bên trái trông rộng rãi và chuyên nghiệp hơn
-          tabBarStyle={{ width: 250, backgroundColor: '#fff', paddingTop: 16 }}
-        />
+      <AntCard className="shadow-sm rounded-xl">
+        <Spin spinning={loading}>
+          <Tabs defaultActiveKey="folders" items={adminTabs} className="admin-tabs" />
+        </Spin>
       </AntCard>
     </div>
   );

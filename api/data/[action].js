@@ -2,6 +2,25 @@
 import dotenv from "dotenv";
 import path from "node:path";
 
+// api/_lib/data/auxiliaryTables.ts
+var AUXILIARY_TABLE_MAP = {
+  "C\xF4ng n\u1EE3": "cong_no",
+  "L\u1ECBch b\xE1o c\xE1o": "lich_bao_cao",
+  "Ng\u01B0\u1EDDi d\xF9ng": "nguoi_dung",
+  "M\u1EABu b\xE1o c\xE1o": "mau_bao_cao",
+  "Th\u01B0 m\u1EE5c": "thu_muc",
+  "Ph\xE2n quy\u1EC1n": "phan_quyen",
+  "BC chi ti\u1EBFt": "bc_chi_tiet",
+  "C\u1EA3nh b\xE1o": "canh_bao"
+};
+var AUXILIARY_LOGICAL_NAMES = Object.keys(AUXILIARY_TABLE_MAP);
+function isAuxiliaryTableName(tableName) {
+  return tableName.trim() in AUXILIARY_TABLE_MAP;
+}
+function auxiliaryTableToSupabaseName(logicalTable) {
+  return AUXILIARY_TABLE_MAP[logicalTable.trim()] ?? logicalTable.trim().toLowerCase();
+}
+
 // api/_lib/data/taskTables.ts
 var BLOCK_ROMANS = ["I", "II", "III", "IV"];
 var BLOCK_DEPT_COUNTS = [3, 9, 3, 2];
@@ -48,6 +67,9 @@ function cleanEnvValue(value) {
   }
   return trimmed;
 }
+function isAuxiliaryTable(tableName) {
+  return isAuxiliaryTableName(tableName);
+}
 function isReportTable(tableName) {
   return tableName.trim() === REPORT_TABLE_LOGICAL;
 }
@@ -55,6 +77,10 @@ function resolveSupabaseTableName(logicalTable) {
   const normalized = logicalTable.trim();
   if (isReportTable(normalized)) {
     return cleanEnvValue(readEnv().SUPABASE_TABLE_BC_DINH_KY) ?? REPORT_TABLE_SUPABASE;
+  }
+  if (isAuxiliaryTable(normalized)) {
+    const envKey2 = `SUPABASE_TABLE_${auxiliaryTableToSupabaseName(normalized).toUpperCase()}`;
+    return cleanEnvValue(readEnv()[envKey2]) ?? auxiliaryTableToSupabaseName(normalized);
   }
   const envKey = `SUPABASE_TABLE_${normalized.replace(".", "_").toUpperCase()}`;
   const fromEnv = cleanEnvValue(readEnv()[envKey]);
@@ -104,6 +130,90 @@ function throwSupabaseError(message, table) {
     );
   }
   throw new Error(message);
+}
+
+// api/_lib/data/supabaseAuxiliaryStore.ts
+function pickId(row) {
+  for (const key of ["id", "ID", "Id", "key", "Key"]) {
+    const value = row[key];
+    if (value === null || value === void 0) {
+      continue;
+    }
+    const trimmed = String(value).trim();
+    if (trimmed) {
+      return trimmed;
+    }
+  }
+  return "";
+}
+function dbRowToRecord(row) {
+  const id = row.id;
+  return {
+    ...row.data,
+    id: pickId(row.data) || id,
+    key: pickId(row.data) || id
+  };
+}
+function recordToDb(row) {
+  const id = pickId(row);
+  if (!id) {
+    throw new Error("Thi\u1EBFu id \u0111\u1EC3 ghi Supabase.");
+  }
+  const data = { ...row, id, key: id };
+  delete data._RowNumber;
+  return { id, data };
+}
+async function findSupabaseAuxiliaryRows(logicalTable) {
+  const table = auxiliaryTableToSupabaseName(logicalTable);
+  const supabase = getSupabaseClient();
+  const { data, error } = await supabase.from(table).select("id,data").order("id", { ascending: true });
+  if (error) {
+    throwSupabaseError(error.message, table);
+  }
+  const rows = (data ?? []).map((item) => dbRowToRecord(item));
+  return { rows, raw: data };
+}
+async function addSupabaseAuxiliaryRows(logicalTable, rows) {
+  const table = auxiliaryTableToSupabaseName(logicalTable);
+  const supabase = getSupabaseClient();
+  const payload = rows.map(recordToDb);
+  const { data, error } = await supabase.from(table).insert(payload).select("id,data");
+  if (error) {
+    throwSupabaseError(error.message, table);
+  }
+  return (data ?? []).map((item) => dbRowToRecord(item));
+}
+async function editSupabaseAuxiliaryRows(logicalTable, rows) {
+  const table = auxiliaryTableToSupabaseName(logicalTable);
+  const supabase = getSupabaseClient();
+  const updated = [];
+  for (const row of rows) {
+    const { id, data } = recordToDb(row);
+    const { data: saved, error } = await supabase.from(table).update({ data }).eq("id", id).select("id,data").maybeSingle();
+    if (error) {
+      throwSupabaseError(error.message, table);
+    }
+    if (!saved) {
+      throw new Error(`Kh\xF4ng t\xECm th\u1EA5y d\xF2ng id=${id} trong b\u1EA3ng ${table}.`);
+    }
+    updated.push(dbRowToRecord(saved));
+  }
+  return updated;
+}
+async function deleteSupabaseAuxiliaryRows(logicalTable, rows) {
+  const table = auxiliaryTableToSupabaseName(logicalTable);
+  const supabase = getSupabaseClient();
+  for (const row of rows) {
+    const id = pickId(row);
+    if (!id) {
+      throw new Error("Thi\u1EBFu id \u0111\u1EC3 x\xF3a tr\xEAn Supabase.");
+    }
+    const { error } = await supabase.from(table).delete().eq("id", id);
+    if (error) {
+      throwSupabaseError(error.message, table);
+    }
+  }
+  return null;
 }
 
 // api/_lib/data/supabaseReportStore.ts
@@ -217,7 +327,7 @@ function parseTtFromSelector(selector) {
   }
   return null;
 }
-function dbRowToRecord(row) {
+function dbRowToRecord2(row) {
   const tt = row.tt;
   return {
     ...row.data,
@@ -244,7 +354,7 @@ async function findSupabaseTaskRows(logicalTable, options) {
   if (error) {
     throwSupabaseError(error.message, table);
   }
-  const rows = (data ?? []).map((item) => dbRowToRecord(item));
+  const rows = (data ?? []).map((item) => dbRowToRecord2(item));
   return { rows, raw: data };
 }
 async function addSupabaseTaskRows(logicalTable, rows) {
@@ -255,7 +365,7 @@ async function addSupabaseTaskRows(logicalTable, rows) {
   if (error) {
     throwSupabaseError(error.message, table);
   }
-  return (data ?? []).map((item) => dbRowToRecord(item));
+  return (data ?? []).map((item) => dbRowToRecord2(item));
 }
 async function editSupabaseTaskRows(logicalTable, rows) {
   const table = resolveSupabaseTableName(logicalTable);
@@ -270,7 +380,7 @@ async function editSupabaseTaskRows(logicalTable, rows) {
     if (!saved) {
       throw new Error(`Kh\xF4ng t\xECm th\u1EA5y d\xF2ng TT=${tt} trong b\u1EA3ng ${table}.`);
     }
-    updated.push(dbRowToRecord(saved));
+    updated.push(dbRowToRecord2(saved));
   }
   return updated;
 }
@@ -292,11 +402,14 @@ async function deleteSupabaseTaskRows(logicalTable, rows) {
 
 // api/_lib/data/supabaseDataStore.ts
 function isKnownDataTable(tableName) {
-  return isTaskTableName(tableName) || isReportTable(tableName);
+  return isTaskTableName(tableName) || isReportTable(tableName) || isAuxiliaryTable(tableName);
 }
 async function findSupabaseRows(tableName, options) {
   if (isReportTable(tableName)) {
     return findSupabaseReportRows(tableName);
+  }
+  if (isAuxiliaryTable(tableName)) {
+    return findSupabaseAuxiliaryRows(tableName);
   }
   if (isTaskTableName(tableName)) {
     return findSupabaseTaskRows(tableName, options);
@@ -307,6 +420,9 @@ async function addSupabaseRows(tableName, rows) {
   if (isReportTable(tableName)) {
     return addSupabaseReportRows(tableName, rows);
   }
+  if (isAuxiliaryTable(tableName)) {
+    return addSupabaseAuxiliaryRows(tableName, rows);
+  }
   if (isTaskTableName(tableName)) {
     return addSupabaseTaskRows(tableName, rows);
   }
@@ -316,6 +432,9 @@ async function editSupabaseRows(tableName, rows) {
   if (isReportTable(tableName)) {
     return editSupabaseReportRows(tableName, rows);
   }
+  if (isAuxiliaryTable(tableName)) {
+    return editSupabaseAuxiliaryRows(tableName, rows);
+  }
   if (isTaskTableName(tableName)) {
     return editSupabaseTaskRows(tableName, rows);
   }
@@ -324,6 +443,9 @@ async function editSupabaseRows(tableName, rows) {
 async function deleteSupabaseRows(tableName, rows) {
   if (isReportTable(tableName)) {
     return deleteSupabaseReportRows(tableName, rows);
+  }
+  if (isAuxiliaryTable(tableName)) {
+    return deleteSupabaseAuxiliaryRows(tableName, rows);
   }
   if (isTaskTableName(tableName)) {
     return deleteSupabaseTaskRows(tableName, rows);
