@@ -54,6 +54,16 @@ export function listTaskTableBindings(): Array<{ table: string; deptKey: string;
   );
 }
 
+export function resolveTaskTableNameFromDeptKey(deptKey: string): string | null {
+  for (const [blockIndex, block] of ORG_BLOCKS.entries()) {
+    const deptIndex = block.depts.findIndex(dept => dept.key === deptKey);
+    if (deptIndex >= 0) {
+      return `${ROMAN[blockIndex]}.${deptIndex + 1}`;
+    }
+  }
+  return null;
+}
+
 export function resolveTaskTableName(blockKey?: string, deptKey?: string): string | null {
   if (!blockKey || !deptKey) {
     return null;
@@ -81,6 +91,14 @@ export function resolveDeptKeyFromTable(tableName?: string): string | null {
   return deptKey ?? null;
 }
 
+function normalizeColumnKey(key: string): string {
+  return key
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase()
+    .trim();
+}
+
 function pickFormattedDate(row: Record<string, unknown>, keys: string[]): string {
   for (const key of keys) {
     const value = row[key];
@@ -92,6 +110,18 @@ function pickFormattedDate(row: Record<string, unknown>, keys: string[]): string
       return formatted;
     }
   }
+
+  const normalizedTargets = new Set(keys.map(normalizeColumnKey).filter(Boolean));
+  for (const [key, value] of Object.entries(row)) {
+    if (!normalizedTargets.has(normalizeColumnKey(key))) {
+      continue;
+    }
+    const formatted = formatUnknownAsDisplayDate(value);
+    if (formatted) {
+      return formatted;
+    }
+  }
+
   return '';
 }
 
@@ -285,9 +315,9 @@ function resolveRowColumnKey(
     }
   }
 
-  const normalizedTargets = new Map(keys.map(key => [key.toLowerCase(), key]));
+  const normalizedTargets = new Map(keys.map(key => [normalizeColumnKey(key), key]));
   for (const sourceKey of Object.keys(sourceRow)) {
-    const match = normalizedTargets.get(sourceKey.toLowerCase());
+    const match = normalizedTargets.get(normalizeColumnKey(sourceKey));
     if (match) {
       return sourceKey;
     }
@@ -335,6 +365,21 @@ function pickField(row: Record<string, unknown>, keys: string[]): string {
       return text;
     }
   }
+
+  const normalizedTargets = new Set(keys.map(normalizeColumnKey).filter(Boolean));
+  for (const [key, value] of Object.entries(row)) {
+    if (!normalizedTargets.has(normalizeColumnKey(key))) {
+      continue;
+    }
+    if (value === null || value === undefined) {
+      continue;
+    }
+    const text = String(value).trim();
+    if (text) {
+      return text;
+    }
+  }
+
   return '';
 }
 
@@ -614,14 +659,14 @@ export function mergeTaskCompletion(
   };
 }
 
-/** Chỉ gửi các cột: TT, TIẾN ĐỘ, Ngày hoàn thành. */
+/** Cập nhật tiến độ hoàn thành — giữ nguyên các cột hiện có (tên CV, người giao, hạn...). */
 export function buildCompleteTaskRow(
   sourceRow: Record<string, unknown>,
   completedAt: Date = new Date(),
   explicitRowKey?: string | null,
   tableName?: string
 ): Record<string, unknown> {
-  const row: Record<string, unknown> = {};
+  const row: Record<string, unknown> = { ...sourceRow };
 
   const tienDoValue = serializeTienDo('Hoàn thành') ?? 'Hoàn thành';
   row[COL_TIEN_DO] = tienDoValue;
@@ -637,7 +682,7 @@ export function buildTienDoEditRow(
   explicitRowKey?: string | null,
   tableName?: string
 ): Record<string, unknown> {
-  const row: Record<string, unknown> = {};
+  const row: Record<string, unknown> = { ...sourceRow };
 
   const serialized = serializeTienDo(tienDo);
   if (serialized) {

@@ -33,6 +33,7 @@ import {
   openKeysForGroupId,
   openKeysForReportId,
 } from './data/reportNavigation';
+import { buildDefaultReportCatalog } from './services/reportData';
 import { loadReportCatalog } from './services/reportCatalog';
 import type { ReportCatalog } from './types/report';
 import MobileBottomNav from './components/MobileBottomNav';
@@ -140,7 +141,7 @@ const MainLayout: React.FC = () => {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false); // Mobile Menu State
   const [collapsed, setCollapsed] = useState(false); // Desktop Sider State
   const [menuOpenKeys, setMenuOpenKeys] = useState<string[]>(['/navigation']);
-  const [reportCatalog, setReportCatalog] = useState<ReportCatalog>({ reports: {}, blocks: [], groups: [] });
+  const [reportCatalog, setReportCatalog] = useState<ReportCatalog>(() => buildDefaultReportCatalog());
 
   useEffect(() => {
     let cancelled = false;
@@ -153,7 +154,7 @@ const MainLayout: React.FC = () => {
       })
       .catch(() => {
         if (!cancelled) {
-          setReportCatalog({ reports: {}, blocks: [], groups: [] });
+          setReportCatalog(buildDefaultReportCatalog());
         }
       });
 

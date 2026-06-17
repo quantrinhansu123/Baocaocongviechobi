@@ -104,10 +104,25 @@ export async function editSupabaseTaskRows(
   const updated: Record<string, unknown>[] = [];
 
   for (const row of rows) {
-    const { tt, data } = recordRowToDb(row);
+    const { tt, data: patch } = recordRowToDb(row);
+    const { data: existing, error: fetchError } = await supabase
+      .from(table)
+      .select('data')
+      .eq('tt', tt)
+      .maybeSingle();
+
+    if (fetchError) {
+      throwSupabaseError(fetchError.message, table);
+    }
+
+    const mergedData = {
+      ...(existing?.data ?? {}),
+      ...patch,
+    };
+
     const { data: saved, error } = await supabase
       .from(table)
-      .update({ data })
+      .update({ data: mergedData })
       .eq('tt', tt)
       .select('tt,data')
       .maybeSingle();

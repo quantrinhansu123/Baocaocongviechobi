@@ -1,8 +1,11 @@
+import { ORG_BLOCKS } from '../data/orgBlocks';
 import type { ReportBlockRecord, ReportCatalog, ReportGroupRecord, ReportRecord } from '../types/report';
 import { applyRowKey, pickRowKey } from './rowKey';
 import { formatRecordDate, formatUnknownAsDisplayDate, normalizeDisplayDate } from '../utils/taskDate';
 
 const REPORT_TABLE_NAME = 'BC định kỳ';
+const ROMAN_BLOCKS = ['I', 'II', 'III', 'IV'] as const;
+const DEFAULT_PERIOD_LABELS = ['Báo cáo Tuần', 'Báo cáo Tháng', 'Báo cáo Quý'] as const;
 
 function pickField(row: Record<string, unknown>, keys: string[]): string {
   for (const key of keys) {
@@ -372,7 +375,7 @@ function slugifyGroupLabel(label: string): string {
   return normalized || 'nhom';
 }
 
-function buildStableGroupKey(blockKey: string, label: string, groupKeys: Set<string>): string {
+export function buildStableGroupKey(blockKey: string, label: string, groupKeys: Set<string>): string {
   const base = `group-${blockKey}-${slugifyGroupLabel(label)}`;
   let key = base;
   let suffix = 2;
@@ -405,6 +408,56 @@ function ensureReportGroup(
     legacyGroupKeys: legacyGroupKey !== groupKey ? [legacyGroupKey] : undefined,
   });
   return groupKey;
+}
+
+/** Menu báo cáo mặc định theo cây tổ chức — dùng khi bảng bc_dinh_ky chưa có dữ liệu. */
+export function buildDefaultReportCatalog(): ReportCatalog {
+  const blocks: ReportBlockRecord[] = [];
+  const groups: ReportGroupRecord[] = [];
+  const groupKeys = new Set<string>();
+
+  ORG_BLOCKS.forEach((block, blockIndex) => {
+    const ma = ROMAN_BLOCKS[blockIndex];
+    const blockKey = `bc-${ma}`;
+    blocks.push({
+      blockKey,
+      ma,
+      blockLabel: formatBlockLabelRomanDot(`${ma}. ${block.label}`),
+      order: blockIndex + 1,
+    });
+
+    block.depts.forEach((dept, deptIndex) => {
+      const legacyGroupKey = `group-${blockKey}-${deptIndex + 1}`;
+      const groupKey = buildStableGroupKey(blockKey, dept.name, groupKeys);
+      groupKeys.add(groupKey);
+      groups.push({
+        groupKey,
+        blockKey,
+        label: `${deptIndex + 1}. ${dept.name}`,
+        order: deptIndex + 1,
+        legacyGroupKeys: legacyGroupKey !== groupKey ? [legacyGroupKey] : undefined,
+      });
+    });
+  });
+
+  return { reports: {}, blocks, groups };
+}
+
+export function defaultPeriodOptionsForBlock(
+  blockKey: string
+): { periodKey: string; periodLabel: string }[] {
+  return DEFAULT_PERIOD_LABELS.map(periodLabel => ({
+    periodKey: `period-${blockKey}-${periodLabel}`,
+    periodLabel,
+  }));
+}
+
+export function mergeReportCatalogWithDefaults(catalog: ReportCatalog): ReportCatalog {
+  if (catalog.blocks.length > 0 || Object.keys(catalog.reports).length > 0) {
+    return catalog;
+  }
+
+  return buildDefaultReportCatalog();
 }
 
 export function mapRowsToReportCatalog(rows: Record<string, unknown>[]): ReportCatalog {

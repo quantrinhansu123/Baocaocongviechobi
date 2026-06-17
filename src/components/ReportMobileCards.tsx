@@ -49,90 +49,73 @@ const ReportMobileCards: React.FC<ReportMobileCardsProps> = ({
 }) => {
   if (rows.length === 0) {
     return (
-      <div className="py-12 text-center text-gray-400 text-sm px-4">Chưa có báo cáo trong kỳ này.</div>
+      <div className="py-8 text-center text-gray-400 text-sm px-4">Chưa có báo cáo trong kỳ này.</div>
     );
   }
 
   return (
-    <div className="space-y-3 px-4 pb-2">
+    <div className="space-y-2 px-3 pb-2">
       {rows.map((report, index) => {
         const isSelected = selectedKey === report.key;
         const driveUrl = report.link && isDriveLink(report.link) ? report.link : '';
         const viewUrl = report.link || '';
+        const displayDate = normalizeDisplayDate(report.ngay);
+        const createdDate = normalizeDisplayDate(report.ngayTaoBaoCao);
+        const showCreatedDate = createdDate && createdDate !== displayDate;
 
         return (
           <article
             key={report.key}
             onClick={() => onSelect(report)}
-            className={`rounded-2xl border bg-white p-4 shadow-sm transition-all ${
-              isSelected ? 'border-[#fa8c16] ring-2 ring-[#fa8c16]/20' : 'border-gray-100'
+            className={`rounded-xl border bg-white p-2.5 shadow-sm transition-all ${
+              isSelected ? 'border-[#fa8c16] ring-1 ring-[#fa8c16]/25' : 'border-gray-100'
             }`}
           >
-            <div className="flex items-start justify-between gap-2 mb-2">
-              <div className="flex items-start gap-1.5 flex-1 min-w-0">
-                <span className="text-gray-400 font-semibold text-[15px] shrink-0 leading-snug">
-                  {String(index + 1).padStart(2, '0')}
-                </span>
+            <div className="flex items-start gap-2 min-w-0">
+              <span className="text-[11px] text-gray-400 font-semibold shrink-0 pt-0.5 tabular-nums">
+                {String(index + 1).padStart(2, '0')}
+              </span>
+              <div className="flex-1 min-w-0">
                 <h3
-                  className="text-[15px] font-bold text-[#1E386B] leading-snug m-0 line-clamp-2 min-w-0"
+                  className="text-[13px] font-bold text-[#1E386B] leading-snug m-0 line-clamp-2"
                   title={report.name}
                 >
                   {report.name}
                 </h3>
-              </div>
-              <div className="flex flex-wrap gap-1 justify-end shrink-0">
-                {report.ngay ? (
-                  <Tag className="m-0 rounded-md border-0 bg-blue-50 text-blue-700 text-[11px] px-2 py-0">
-                    {normalizeDisplayDate(report.ngay)}
-                  </Tag>
-                ) : null}
-                {report.ky ? (
-                  <Tag className="m-0 rounded-md border-0 bg-violet-50 text-violet-700 text-[11px] px-2 py-0">
-                    {report.ky}
-                  </Tag>
-                ) : null}
-              </div>
-            </div>
-
-            {(report.noidung || report.ngayTaoBaoCao) && (
-              <div className="mb-4">
+                <div className="flex flex-wrap items-center gap-1 mt-1">
+                  {displayDate ? (
+                    <Tag className="m-0 rounded border-0 bg-gray-100 text-gray-600 text-[10px] px-1.5 py-0 leading-5">
+                      {displayDate}
+                    </Tag>
+                  ) : null}
+                  {report.ky ? (
+                    <Tag className="m-0 rounded border-0 bg-violet-50 text-violet-700 text-[10px] px-1.5 py-0 leading-5">
+                      {report.ky}
+                    </Tag>
+                  ) : null}
+                  {showCreatedDate ? (
+                    <span className="text-[10px] text-gray-400">Tạo {createdDate}</span>
+                  ) : null}
+                </div>
                 {report.noidung ? (
-                  <p className="text-[13px] text-gray-600 leading-relaxed m-0 mb-2">{report.noidung}</p>
+                  <p className="text-[11px] text-gray-500 leading-snug m-0 mt-1 line-clamp-1">{report.noidung}</p>
                 ) : null}
-                {report.ngayTaoBaoCao ? (
-                  <p className="text-[12px] text-gray-500 m-0">
-                    <span className="font-semibold text-gray-600">Ngày tạo báo cáo:</span>{' '}
-                    {normalizeDisplayDate(report.ngayTaoBaoCao)}
-                  </p>
-                ) : null}
-              </div>
-            )}
-
-            <div className="flex items-center justify-between gap-2 mb-4 px-1">
-              <div className="flex flex-col items-center min-w-0 flex-1">
-                <Avatar size={40} className="bg-[#F38320] text-xs font-bold mb-1.5">
-                  {initials(report.nguoiGui || '?')}
-                </Avatar>
-                <span className="text-[10px] text-gray-400 uppercase tracking-wide">Người gửi</span>
-                <span className="text-xs font-semibold text-gray-800 text-center truncate w-full">
-                  {report.nguoiGui || '—'}
-                </span>
-              </div>
-
-              <ArrowRightOutlined className="text-gray-300 text-sm shrink-0 mt-2" />
-
-              <div className="flex flex-col items-center min-w-0 flex-1">
-                <Avatar size={40} className="bg-[#4a6fa5] text-xs font-bold mb-1.5">
-                  {initials(report.nguoiNhan || '?')}
-                </Avatar>
-                <span className="text-[10px] text-gray-400 uppercase tracking-wide">Người nhận</span>
-                <span className="text-xs font-semibold text-gray-800 text-center truncate w-full">
-                  {report.nguoiNhan || '—'}
-                </span>
               </div>
             </div>
 
-            <div className="flex flex-wrap gap-2" onClick={event => event.stopPropagation()}>
+            <div className="flex items-center gap-1.5 mt-2 min-w-0 text-[11px]">
+              <Avatar size={22} className="bg-[#F38320] text-[9px] font-bold shrink-0">
+                {initials(report.nguoiGui || '?')}
+              </Avatar>
+              <span className="font-medium text-gray-700 truncate max-w-[38%]">{report.nguoiGui || '—'}</span>
+              <ArrowRightOutlined className="text-gray-300 text-[10px] shrink-0" />
+              <Avatar size={22} className="bg-[#4a6fa5] text-[9px] font-bold shrink-0">
+                {initials(report.nguoiNhan || '?')}
+              </Avatar>
+              <span className="font-medium text-gray-700 truncate max-w-[38%]">{report.nguoiNhan || '—'}</span>
+            </div>
+
+            <div className="flex flex-wrap gap-1.5 mt-2" onClick={event => event.stopPropagation()}>
               {driveUrl ? (
                 <Button
                   type="default"
@@ -141,7 +124,7 @@ const ReportMobileCards: React.FC<ReportMobileCardsProps> = ({
                   href={driveUrl}
                   target="_blank"
                   rel="noreferrer"
-                  className="flex-1 min-w-[100px] rounded-lg border-orange-100 bg-orange-50/80 text-[#1E386B] font-medium h-9"
+                  className="rounded-md text-[#1E386B] text-xs h-7 px-2"
                 >
                   Drive
                 </Button>
@@ -154,7 +137,7 @@ const ReportMobileCards: React.FC<ReportMobileCardsProps> = ({
                   href={viewUrl}
                   target="_blank"
                   rel="noreferrer"
-                  className="flex-1 min-w-[100px] rounded-lg border-orange-100 bg-orange-50/80 text-[#1E386B] font-medium h-9"
+                  className="rounded-md text-[#1E386B] text-xs h-7 px-2"
                 >
                   Xem
                 </Button>
@@ -165,7 +148,7 @@ const ReportMobileCards: React.FC<ReportMobileCardsProps> = ({
                     type="default"
                     size="small"
                     icon={<EditOutlined />}
-                    className="flex-1 min-w-[100px] rounded-lg font-medium h-9"
+                    className="rounded-md text-xs h-7 px-2"
                     disabled={!supabaseConnected || !report.sourceRow}
                     onClick={() => onEdit?.(report)}
                   >
@@ -180,16 +163,15 @@ const ReportMobileCards: React.FC<ReportMobileCardsProps> = ({
                     disabled={!supabaseConnected || !report.sourceRow}
                   >
                     <Button
-                      type="default"
+                      type="text"
                       size="small"
                       danger
                       icon={<DeleteOutlined />}
-                      className="flex-1 min-w-[100px] rounded-lg font-medium h-9"
+                      className="rounded-md h-7 w-7 min-w-7 p-0"
                       loading={deletingKey === report.key}
                       disabled={!supabaseConnected || !report.sourceRow}
-                    >
-                      Xóa
-                    </Button>
+                      aria-label="Xóa"
+                    />
                   </Popconfirm>
                 </>
               ) : null}

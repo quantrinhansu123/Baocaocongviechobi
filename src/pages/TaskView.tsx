@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import { useParams } from 'react-router-dom';
+import { useParams, useNavigate } from 'react-router-dom';
 import {
   App as AntdApp,
   Typography,
@@ -53,6 +53,7 @@ import {
   isTaskRecordCompleted,
   mapRowsToTasksByDept,
   resolveTaskTableName,
+  resolveTaskTableNameFromDeptKey,
 } from '../services/taskData';
 import { TASK_COMPLETED_STATUS_LABEL } from '../utils/taskDate';
 
@@ -307,6 +308,7 @@ function renderMobileDateLine(label: string, value: string, row: TableRow) {
 
 const TaskView: React.FC = () => {
   const { message } = AntdApp.useApp();
+  const navigate = useNavigate();
   const { blockKey: blockKeyParam, deptKey: deptKeyParam } = useParams<{ blockKey?: string; deptKey?: string }>();
 
   const [tasksByDept, setTasksByDept] = useState<Record<string, Record<string, TaskRecord>>>(() =>
@@ -330,17 +332,40 @@ const TaskView: React.FC = () => {
   const [detailForm] = Form.useForm();
 
   const taskTable = useMemo(
-    () => resolveTaskTableName(blockKeyParam, deptKeyParam),
+    () =>
+      resolveTaskTableName(blockKeyParam, deptKeyParam) ??
+      (deptKeyParam ? resolveTaskTableNameFromDeptKey(deptKeyParam) : null),
     [blockKeyParam, deptKeyParam]
   );
 
   useEffect(() => {
     let cancelled = false;
 
+    async function probeSupabase() {
+      try {
+        await findDataRows({ table: 'I.1' });
+        if (!cancelled) {
+          setSupabaseConnected(true);
+        }
+      } catch {
+        if (!cancelled) {
+          setSupabaseConnected(false);
+        }
+      }
+    }
+
+    void probeSupabase();
+
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  useEffect(() => {
+    let cancelled = false;
+
     async function loadTasks() {
       if (!taskTable) {
-        setSupabaseConnected(null);
-        setTasksByDept(createEmptyTasksByDept());
         return;
       }
 
@@ -530,14 +555,17 @@ const TaskView: React.FC = () => {
 
   const openCreateModal = (deptKey?: string) => {
     form.resetFields();
-    const targetDeptKey = deptKey ?? deptKeyParam;
+    const targetDeptKey =
+      deptKey ??
+      deptKeyParam ??
+      (listScope?.kind === 'dept' ? listScope.deptKey : undefined);
     if (targetDeptKey) {
       form.setFieldsValue({ deptKey: targetDeptKey });
     }
     setCreateOpen(true);
   };
 
-  const canCreateTask = Boolean(taskTable && supabaseConnected);
+  const canCreateTask = supabaseConnected === true;
 
   const addTaskButton = (options?: { size?: 'small' | 'middle' | 'large'; block?: boolean }) => (
     <Button
@@ -547,6 +575,8 @@ const TaskView: React.FC = () => {
       icon={<PlusOutlined />}
       className="bg-[#F38320] border-[#F38320] hover:!bg-[#e07518] hover:!border-[#e07518] shadow-sm font-semibold"
       disabled={!canCreateTask}
+      loading={supabaseConnected === null}
+      title={!canCreateTask && supabaseConnected === false ? 'Chưa kết nối Supabase' : undefined}
       onClick={() => openCreateModal()}
     >
       Thêm
@@ -568,8 +598,14 @@ const TaskView: React.FC = () => {
           return;
         }
 
-        if (!taskTable) {
-          message.error('Chọn phòng ban trên URL để thêm dòng Supabase.');
+        if (!dk) {
+          message.error('Chọn phòng ban.');
+          return;
+        }
+
+        const targetTable = taskTable ?? resolveTaskTableNameFromDeptKey(dk);
+        if (!targetTable) {
+          message.error('Không xác định được bảng Supabase cho phòng ban này.');
           return;
         }
 
@@ -596,9 +632,16 @@ const TaskView: React.FC = () => {
               stt: nextStt,
               linkKQ: values.linkKQ as string | undefined,
             }),
-            taskTable
+            targetTable
           );
-          await reloadTasks();
+
+          const deptMeta = findDeptMeta(dk);
+          if (deptMeta && (!blockKeyParam || !deptKeyParam)) {
+            navigate(`/tasks/${deptMeta.blockKey}/${dk}`);
+          } else {
+            await reloadTasks();
+          }
+
           message.success('Đã thêm công việc mới vào Supabase.');
           setCreateOpen(false);
           form.resetFields();
@@ -1502,11 +1545,14 @@ const TaskView: React.FC = () => {
             <div className="flex-1 flex flex-col items-center justify-center text-gray-400 gap-2 md:gap-3 p-6 text-center">
               <CheckSquareOutlined className="text-4xl md:text-6xl text-gray-200" />
               <Text type="secondary" className="text-sm md:text-base max-w-md">
-                <span className="md:hidden">Chọn mục trong menu bên trái để xem danh sách công việc, hoặc chọn một công việc để xem chi tiết.</span>
+                <span className="md:hidden">
+                  Nhấn <strong>Thêm</strong> để tạo công việc mới (chọn phòng ban trong form), hoặc mở menu ☰ để chọn phòng ban.
+                </span>
                 <span className="hidden md:inline">
                   Chọn khối hoặc phòng ban ở sidebar để xem bảng công việc (STT, Phòng ban, Công việc, Người phụ trách, Deadline), hoặc chọn một công việc để xem chi tiết.
                 </span>
               </Text>
+              <div className="md:hidden w-full max-w-xs mt-2">{addTaskButton({ block: true })}</div>
             </div>
           )}
         </div>

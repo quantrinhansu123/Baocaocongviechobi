@@ -42,16 +42,333 @@
   }
 }
 
-/* Ensure padding adjustments on Antd Cards on very small screens */
-@media (max-width: 480px) {
+/* KPI thẻ thống kê — gọn, cân đối mobile & desktop */
+.dashboard-kpi-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.5rem;
+}
+
+@media (min-width: 768px) {
+  .dashboard-kpi-grid {
+    gap: 0.75rem;
+  }
+}
+
+@media (min-width: 1024px) {
+  .dashboard-kpi-grid {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+}
+
+.dashboard-kpi-card {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.5rem 0.625rem;
+  border-radius: 0.5rem;
+  min-height: 3.25rem;
+  border-width: 1px;
+  border-style: solid;
+  cursor: pointer;
+  appearance: none;
+  font: inherit;
+}
+
+.dashboard-kpi-card:hover {
+  transform: translateY(-1px);
+}
+
+.dashboard-kpi-card-active {
+  outline: 2px solid #f38320;
+  outline-offset: 1px;
+  box-shadow: 0 4px 12px rgba(30, 56, 107, 0.12) !important;
+}
+
+@media (min-width: 768px) {
+  .dashboard-kpi-card {
+    flex-direction: column;
+    align-items: flex-start;
+    justify-content: center;
+    gap: 0.25rem;
+    padding: 0.75rem 1rem;
+    min-height: 4.5rem;
+    border-radius: 0.625rem;
+  }
+}
+
+.dashboard-kpi-card .kpi-icon {
+  font-size: 1rem;
+  flex-shrink: 0;
+}
+
+@media (min-width: 768px) {
+  .dashboard-kpi-card .kpi-icon {
+    font-size: 1.25rem;
+  }
+}
+
+.dashboard-kpi-card .kpi-label {
+  font-size: 0.625rem;
+  line-height: 1.2;
+  margin: 0;
+}
+
+@media (min-width: 768px) {
+  .dashboard-kpi-card .kpi-label {
+    font-size: 0.8125rem;
+    margin-bottom: 0.125rem;
+  }
+}
+
+.dashboard-kpi-card .kpi-value {
+  font-size: 0.9375rem;
+  font-weight: 700;
+  line-height: 1;
+}
+
+@media (min-width: 768px) {
+  .dashboard-kpi-card .kpi-value {
+    font-size: 1.375rem;
+  }
+}
+
+.dashboard-kpi-card .kpi-body {
+  min-width: 0;
+  flex: 1;
+}
+
+@media (min-width: 768px) {
+  .dashboard-kpi-card .kpi-body {
+    flex: unset;
+    width: 100%;
+  }
+
+  .dashboard-kpi-card .kpi-value-row {
+    display: flex;
+    align-items: center;
+    gap: 0.375rem;
+  }
+}
+
+/* Thẻ danh sách công việc mobile — dày thông tin */
+.dashboard-mobile-task-card {
+  padding: 0.375rem 0.5rem;
+  border-radius: 0.375rem;
+}
+
+.dashboard-mobile-task-card .task-title {
+  font-size: 0.6875rem;
+  line-height: 1.25;
+  margin-bottom: 0.25rem;
+  font-weight: 600;
+}
+
+.dashboard-mobile-task-card .task-meta-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.375rem;
+  margin-bottom: 0.2rem;
+  min-width: 0;
+}
+
+.dashboard-mobile-task-card .task-tag {
+  margin: 0 !important;
+  border: none !important;
+  background: #f3f4f6 !important;
+  color: #374151 !important;
+  font-size: 0.5625rem !important;
+  line-height: 1.3 !important;
+  padding: 0 0.3rem !important;
+  max-width: 65%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.dashboard-mobile-task-card .task-deadline {
+  font-size: 0.5625rem;
+  color: #6b7280;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.dashboard-mobile-task-card .task-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.25rem;
+  min-width: 0;
+}
+
+.dashboard-mobile-task-card .task-assignee {
+  font-size: 0.5625rem;
+  color: #6b7280;
+  display: flex;
+  align-items: center;
+  gap: 0.2rem;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.dashboard-mobile-task-card .task-status {
+  display: inline-block;
+  font-size: 0.5625rem;
+  font-weight: 600;
+  line-height: 1.2;
+  padding: 0.1rem 0.35rem;
+  border-radius: 9999px;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.dashboard-mobile-task-card .task-status--done {
+  background: #dcfce7;
+  color: #15803d;
+}
+
+.dashboard-mobile-task-card .task-status--overdue {
+  background: #fee2e2;
+  color: #b91c1c;
+}
+
+.dashboard-mobile-task-card .task-status--progress {
+  background: #ffedd5;
+  color: #1e386b;
+}
+
+.dashboard-mobile-task-card .task-impact {
+  display: flex;
+  gap: 0.1rem;
+  margin-top: 0.2rem;
+}
+
+.dashboard-mobile-task-card .task-impact svg {
+  width: 10px;
+  height: 10px;
+}
+
+.dashboard-kpi-list-mobile {
+  display: flex;
+  flex-direction: column;
+  gap: 0.375rem !important;
+}
+
+.dashboard-kpi-list-wrap {
+  padding: 0.5rem !important;
+}
+
+/* Biểu đồ — cột ngang nhóm theo trạng thái */
+.dashboard-chart-card .ant-card-head {
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.dashboard-chart-card .ant-card-extra {
+  margin-inline-start: 0 !important;
+}
+
+.dashboard-chart-scroll {
+  padding-right: 0.25rem;
+}
+
+.dashboard-chart-wrap {
+  width: 100%;
+}
+
+.dashboard-chart-wrap .recharts-legend-item-text {
+  color: #374151 !important;
+}
+
+.dashboard-chart-summary {
+  margin-bottom: 0.75rem;
+}
+
+.dashboard-chart-summary-bar {
+  display: flex;
+  height: 0.625rem;
+  border-radius: 9999px;
+  overflow: hidden;
+  background: #f3f4f6;
+}
+
+.dashboard-chart-summary-seg {
+  display: block;
+  height: 100%;
+  min-width: 2px;
+}
+
+.dashboard-chart-summary-seg--done {
+  background: #10b981;
+}
+
+.dashboard-chart-summary-seg--progress {
+  background: #f38320;
+}
+
+.dashboard-chart-summary-seg--overdue {
+  background: #ef4444;
+}
+
+.dashboard-chart-summary-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem 0.75rem;
+  margin-top: 0.5rem;
+  font-size: 0.6875rem;
+  color: #4b5563;
+}
+
+.dashboard-chart-summary-item strong {
+  font-weight: 700;
+}
+
+.dashboard-chart-summary-item--done strong {
+  color: #047857;
+}
+
+.dashboard-chart-summary-item--progress strong {
+  color: #c2410c;
+}
+
+.dashboard-chart-summary-item--overdue strong {
+  color: #b91c1c;
+}
+
+@media (max-width: 767px) {
+  .dashboard-chart-wrap {
+    min-height: 200px;
+  }
+
+  .dashboard-chart-card .ant-segmented {
+    font-size: 11px;
+  }
+
   .dashboard-container .ant-card-head {
-    padding: 0 12px;
-    font-size: 14px;
-    min-height: 48px;
+    padding: 0 10px;
+    font-size: 13px;
+    min-height: 40px;
   }
 
   .dashboard-container .ant-card-body {
-    padding: 12px;
+    padding: 10px;
+  }
+}
+
+/* Ensure padding adjustments on Antd Cards on very small screens */
+@media (max-width: 480px) {
+  .dashboard-container .ant-card-head {
+    padding: 0 10px;
+    font-size: 12px;
+    min-height: 38px;
+  }
+
+  .dashboard-container .ant-card-body {
+    padding: 8px;
   }
 }
 

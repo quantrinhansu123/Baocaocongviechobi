@@ -36,9 +36,11 @@ import {
   parseBlockKeyFromGroupParam,
 } from '../data/reportNavigation';
 import {
+  buildDefaultReportCatalog,
   buildReportDeleteRow,
   buildReportEditRow,
   buildReportRow,
+  defaultPeriodOptionsForBlock,
   getNextReportRowNumber,
   getReportTableName,
   kyLabelFromPeriodLabel,
@@ -277,7 +279,7 @@ const NavigationHub: React.FC = () => {
   const navigate = useNavigate();
   const { openMenu } = useMobileShell();
   const [searchParams] = useSearchParams();
-  const [catalog, setCatalog] = useState<ReportCatalog>({ reports: {}, blocks: [], groups: [] });
+  const [catalog, setCatalog] = useState<ReportCatalog>(() => buildDefaultReportCatalog());
   const [reportsLoading, setReportsLoading] = useState(true);
   const [supabaseConnected, setSupabaseConnected] = useState<boolean | null>(null);
   const [selectedWeek, setSelectedWeek] = useState('week_16');
@@ -366,13 +368,24 @@ const NavigationHub: React.FC = () => {
 
   const periodOptions = useMemo(() => {
     if (activeGroupKey) {
-      return listPeriodsForGroup(activeGroupKey, catalog.reports);
+      const fromReports = listPeriodsForGroup(activeGroupKey, catalog.reports);
+      if (fromReports.length > 0) {
+        return fromReports;
+      }
+      if (activeBlockKey) {
+        return defaultPeriodOptionsForBlock(activeBlockKey);
+      }
+      return [];
     }
     if (blockKeyParam) {
-      return listPeriodsForBlock(blockKeyParam, catalog.reports);
+      const fromReports = listPeriodsForBlock(blockKeyParam, catalog.reports);
+      if (fromReports.length > 0) {
+        return fromReports;
+      }
+      return defaultPeriodOptionsForBlock(blockKeyParam);
     }
     return [];
-  }, [activeGroupKey, blockKeyParam, catalog.reports]);
+  }, [activeGroupKey, blockKeyParam, activeBlockKey, catalog.reports]);
 
   const activePeriodKey = useMemo(() => {
     if (periodParam && periodOptions.some(period => period.periodKey === periodParam)) {
@@ -450,6 +463,7 @@ const NavigationHub: React.FC = () => {
     const nextCatalog = await loadReportCatalog({ force: true });
     setCatalog(nextCatalog);
     setSupabaseConnected(true);
+    return nextCatalog;
   };
 
   useEffect(() => {
@@ -465,7 +479,7 @@ const NavigationHub: React.FC = () => {
         }
       } catch (error) {
         if (!cancelled) {
-          setCatalog({ reports: {}, blocks: [], groups: [] });
+          setCatalog(buildDefaultReportCatalog());
           setSupabaseConnected(false);
           message.error(error instanceof Error ? error.message : 'Không thể tải bảng BC định kỳ từ Supabase.');
         }
@@ -542,6 +556,29 @@ const NavigationHub: React.FC = () => {
     );
   };
 
+  const reportBlockOptions = useMemo(
+    () =>
+      catalog.blocks.map(block => ({
+        value: block.blockKey,
+        label: `${block.ma}. ${block.blockLabel}`,
+      })),
+    [catalog.blocks]
+  );
+
+  const watchedFormBlockKey = Form.useWatch('blockKey', form);
+
+  const reportGroupOptionsForBlock = useMemo(() => {
+    if (!watchedFormBlockKey) {
+      return [];
+    }
+    return catalog.groups
+      .filter(group => group.blockKey === watchedFormBlockKey)
+      .map(group => ({
+        value: group.groupKey,
+        label: group.label,
+      }));
+  }, [catalog.groups, watchedFormBlockKey]);
+
   const showContent = Boolean(activeGroupKey || blockKeyParam);
   const pageTitle =
     activeGroup?.label ??
@@ -551,7 +588,7 @@ const NavigationHub: React.FC = () => {
   const mobileTitle = stripLeadingIndex(pageTitle);
   const breadcrumbParent = activeBlock ? breadcrumbBlockLabel(activeBlock.blockLabel) : 'Báo cáo định kỳ';
 
-  const canCreateReport = Boolean(showContent && activeBlock?.ma && supabaseConnected);
+  const canCreateReport = supabaseConnected === true;
   const canManageReports = Boolean(showContent && supabaseConnected);
 
   const openCreateModal = () => {
@@ -559,8 +596,10 @@ const NavigationHub: React.FC = () => {
     setEditingReport(null);
     form.resetFields();
     form.setFieldsValue({
+      blockKey: activeBlockKey ?? undefined,
+      groupKey: activeGroupKey ?? undefined,
       loaiBaoCao: activeGroup?.label ?? '',
-      kyBaoCao: kyLabelFromPeriodLabel(activePeriodLabel),
+      kyBaoCao: kyLabelFromPeriodLabel(activePeriodLabel) || 'Tuần',
       ngayBaoCao: dayjs(),
       ngayUpdateLink: dayjs(),
     });
@@ -622,6 +661,8 @@ const NavigationHub: React.FC = () => {
       icon={<PlusOutlined />}
       className="bg-[#F38320] border-[#F38320] hover:!bg-[#e07518] hover:!border-[#e07518] shadow-sm font-semibold"
       disabled={!canCreateReport}
+      loading={supabaseConnected === null}
+      title={!canCreateReport && supabaseConnected === false ? 'Chưa kết nối Supabase' : undefined}
       onClick={openCreateModal}
     >
       Thêm
@@ -637,9 +678,18 @@ const NavigationHub: React.FC = () => {
           return;
         }
 
-        const loaiBaoCao = (values.loaiBaoCao as string)?.trim() || activeGroup?.label || '';
+        const loaiBaoCaoFromForm = (values.loaiBaoCao as string)?.trim();
+        const formGroupKey = (values.groupKey as string)?.trim();
+        const formBlockKey = (values.blockKey as string)?.trim();
+        const selectedGroup =
+          (formGroupKey ? catalog.groups.find(group => group.groupKey === formGroupKey) : null) ??
+          activeGroup;
+        const selectedBlock =
+          (formBlockKey ? catalog.blocks.find(block => block.blockKey === formBlockKey) : null) ??
+          activeBlock;
+        const loaiBaoCao = loaiBaoCaoFromForm || selectedGroup?.label || '';
         if (!loaiBaoCao) {
-          message.error('Nhập loại báo cáo / phòng ban.');
+          message.error('Chọn phòng ban hoặc nhập loại báo cáo.');
           return;
         }
 
@@ -678,16 +728,17 @@ const NavigationHub: React.FC = () => {
             await reloadReports();
             message.success('Đã cập nhật báo cáo.');
           } else {
-            if (!activeBlock?.ma) {
-              message.error('Chọn phòng ban trên menu để thêm báo cáo.');
+            const createMa = selectedBlock?.ma?.trim();
+            if (!createMa) {
+              message.error('Chọn khối / phòng ban trong form.');
               return;
             }
 
             const findResult = await findDataRows({ table: reportTable });
             await addDataRow(
               buildReportRow({
-                ma: activeBlock.ma,
-                blockKey: activeBlock.blockKey,
+                ma: createMa,
+                blockKey: selectedBlock?.blockKey,
                 loaiBaoCao,
                 tenBaoCao: values.tenBaoCao as string,
                 existingRows: findResult.rows,
@@ -702,7 +753,32 @@ const NavigationHub: React.FC = () => {
               }),
               reportTable
             );
-            await reloadReports();
+            const nextCatalog = await reloadReports();
+
+            if (!activeGroupKey && selectedGroup?.groupKey && selectedBlock?.blockKey) {
+              const params = new URLSearchParams();
+              params.set('g', selectedGroup.groupKey);
+              const periodOptionsForGroup = [
+                ...listPeriodsForGroup(selectedGroup.groupKey, nextCatalog.reports),
+                ...defaultPeriodOptionsForBlock(selectedBlock.blockKey),
+              ];
+              const uniquePeriods = periodOptionsForGroup.filter(
+                (period, index, list) => list.findIndex(item => item.periodKey === period.periodKey) === index
+              );
+              const kyValue = (values.kyBaoCao as string | undefined)?.trim() ?? '';
+              const matchedPeriod = uniquePeriods.find(
+                period =>
+                  kyLabelFromPeriodLabel(period.periodLabel) === kyValue ||
+                  period.periodLabel.toLowerCase().includes(kyValue.toLowerCase())
+              );
+              if (matchedPeriod) {
+                params.set('period', matchedPeriod.periodKey);
+              } else if (uniquePeriods[0]) {
+                params.set('period', uniquePeriods[0].periodKey);
+              }
+              navigate(`/navigation?${params.toString()}`);
+            }
+
             message.success('Đã thêm báo cáo.');
           }
 
@@ -730,16 +806,19 @@ const NavigationHub: React.FC = () => {
         <FileTextOutlined className="text-5xl" />
       </div>
       <Text type="secondary" className="text-base max-w-md">
-        Chọn <strong>phòng ban</strong> để xem báo cáo.
+        Nhấn <strong>Thêm</strong> để tạo báo cáo mới, hoặc chọn <strong>phòng ban</strong> trong menu.
       </Text>
-      <Button
-        type="primary"
-        icon={<MenuOutlined />}
-        onClick={openMenu}
-        className="md:hidden mt-2 bg-[#F38320]"
-      >
-        Mở menu phòng ban
-      </Button>
+      <div className="w-full max-w-xs flex flex-col gap-2 mt-1">
+        {addReportButton({ block: true })}
+        <Button
+          type="default"
+          icon={<MenuOutlined />}
+          onClick={openMenu}
+          className="md:hidden"
+        >
+          Mở menu phòng ban
+        </Button>
+      </div>
     </div>
   );
 
@@ -952,20 +1031,59 @@ const NavigationHub: React.FC = () => {
       >
         <Form form={form} layout="vertical" className="mt-2">
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-4">
-            {activeBlock ? (
+            {activeBlock && activeGroupKey ? (
               <Form.Item label="Khối (Mã)" className="sm:col-span-2 mb-2">
                 <Input disabled value={`${activeBlock.ma} — ${activeBlock.blockLabel}`} />
               </Form.Item>
+            ) : reportFormMode === 'create' ? (
+              <>
+                <Form.Item
+                  name="blockKey"
+                  label="Khối"
+                  rules={[{ required: true, message: 'Chọn khối' }]}
+                  className="mb-2"
+                >
+                  <Select
+                    showSearch
+                    optionFilterProp="label"
+                    options={reportBlockOptions}
+                    placeholder="Chọn khối"
+                    onChange={() => {
+                      form.setFieldsValue({ groupKey: undefined, loaiBaoCao: '' });
+                    }}
+                  />
+                </Form.Item>
+                <Form.Item
+                  name="groupKey"
+                  label="Phòng ban"
+                  rules={[{ required: true, message: 'Chọn phòng ban' }]}
+                  className="mb-2"
+                >
+                  <Select
+                    showSearch
+                    optionFilterProp="label"
+                    options={reportGroupOptionsForBlock}
+                    placeholder={watchedFormBlockKey ? 'Chọn phòng ban' : 'Chọn khối trước'}
+                    disabled={!watchedFormBlockKey}
+                    onChange={(groupKey: string) => {
+                      const group = catalog.groups.find(item => item.groupKey === groupKey);
+                      if (group) {
+                        form.setFieldsValue({ loaiBaoCao: group.label });
+                      }
+                    }}
+                  />
+                </Form.Item>
+              </>
             ) : null}
             <Form.Item
               name="loaiBaoCao"
               label="Loại báo cáo / Phòng ban"
               rules={[{ required: true, message: 'Nhập loại báo cáo' }]}
-              className="mb-2"
+              className="mb-2 sm:col-span-2"
             >
               <Input
                 placeholder="VD: 1. PHÒNG HCNS"
-                disabled={Boolean(activeGroup) && reportFormMode === 'create'}
+                disabled={Boolean(activeGroupKey) && reportFormMode === 'create'}
               />
             </Form.Item>
             <Form.Item
