@@ -1072,27 +1072,16 @@ const TaskView: React.FC = () => {
             onClick={event => event.stopPropagation()}
           >
             {!completed ? (
-              <Popconfirm
-                title={
-                  overdue
-                    ? 'Công việc đang quá hạn. Xác nhận đánh dấu đã hoàn thành?'
-                    : 'Đánh dấu công việc đã hoàn thành?'
-                }
-                okText="Xác nhận"
-                cancelText="Huỷ"
-                onConfirm={() => void handleMarkComplete(record.key, record.deptKey)}
+              <Button
+                type="text"
+                size="small"
+                className="!px-1 !text-green-700 hover:!text-green-800"
+                icon={<CheckCircleOutlined />}
+                title="Đã hoàn thành"
+                loading={completingTaskKey === record.key}
                 disabled={!supabaseConnected}
-              >
-                <Button
-                  type="text"
-                  size="small"
-                  className="!px-1 !text-green-700 hover:!text-green-800"
-                  icon={<CheckCircleOutlined />}
-                  title="Đã hoàn thành"
-                  loading={completingTaskKey === record.key}
-                  disabled={!supabaseConnected}
-                />
-              </Popconfirm>
+                onClick={() => void handleMarkComplete(record.key, record.deptKey)}
+              />
             ) : null}
             <Button
               type="text"
@@ -1260,7 +1249,7 @@ const TaskView: React.FC = () => {
         <div className="flex-1 flex flex-col overflow-hidden">
           {listScope && !detailTask ? (
             <div className="flex-1 flex flex-col overflow-hidden p-4 md:p-6 min-w-0">
-              <div className="flex-1 flex flex-col overflow-hidden max-w-7xl w-full mx-auto min-w-0">
+              <div className="flex-1 flex flex-col overflow-hidden w-full min-w-0">
               <div className="bg-[#F38320] text-white px-4 md:px-5 py-3 rounded-t-lg flex-shrink-0 flex items-start justify-between gap-3">
                 <div className="min-w-0 flex-1">
                   <p className="text-[10px] uppercase tracking-widest text-white/70 m-0 mb-1">Danh sách công việc</p>
@@ -1364,24 +1353,17 @@ const TaskView: React.FC = () => {
                         </button>
                         <div className="mt-3 flex flex-wrap items-center gap-2 border-t border-gray-100 pt-3" data-task-action>
                           {!isTaskRecordCompleted(row) ? (
-                            <Popconfirm
-                              title="Đánh dấu công việc đã hoàn thành?"
-                              okText="Xác nhận"
-                              cancelText="Huỷ"
-                              onConfirm={() => void handleMarkComplete(row.key, row.deptKey)}
+                            <Button
+                              size="small"
+                              type="primary"
+                              className="bg-green-600 border-green-600"
+                              icon={<CheckCircleOutlined />}
+                              loading={completingTaskKey === row.key}
                               disabled={!supabaseConnected}
+                              onClick={() => void handleMarkComplete(row.key, row.deptKey)}
                             >
-                              <Button
-                                size="small"
-                                type="primary"
-                                className="bg-green-600 border-green-600"
-                                icon={<CheckCircleOutlined />}
-                                loading={completingTaskKey === row.key}
-                                disabled={!supabaseConnected}
-                              >
-                                Đã hoàn thành
-                              </Button>
-                            </Popconfirm>
+                              Đã hoàn thành
+                            </Button>
                           ) : null}
                           <Button size="small" icon={<EditOutlined />} onClick={() => openDetail(row.key, row.deptKey)}>
                             Sửa
@@ -1438,23 +1420,16 @@ const TaskView: React.FC = () => {
                 </div>
                 <div className="flex flex-wrap items-center justify-end gap-2 shrink-0">
                   {!isTaskRecordCompleted(selected) ? (
-                    <Popconfirm
-                      title="Đánh dấu công việc đã hoàn thành?"
-                      okText="Xác nhận"
-                      cancelText="Huỷ"
-                      onConfirm={() => void handleMarkComplete(selected.key, selected.deptKey)}
+                    <Button
+                      type="primary"
+                      className="bg-green-600 border-green-600 hover:!bg-green-700 hover:!border-green-700"
+                      icon={<CheckCircleOutlined />}
+                      loading={completingTaskKey === selected.key}
                       disabled={!supabaseConnected}
+                      onClick={() => void handleMarkComplete(selected.key, selected.deptKey)}
                     >
-                      <Button
-                        type="primary"
-                        className="bg-green-600 border-green-600 hover:!bg-green-700 hover:!border-green-700"
-                        icon={<CheckCircleOutlined />}
-                        loading={completingTaskKey === selected.key}
-                        disabled={!supabaseConnected}
-                      >
-                        Đã hoàn thành
-                      </Button>
-                    </Popconfirm>
+                      Đã hoàn thành
+                    </Button>
                   ) : null}
                   <Button
                     type="primary"

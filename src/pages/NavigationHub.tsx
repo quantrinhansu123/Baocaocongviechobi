@@ -883,7 +883,7 @@ const NavigationHub: React.FC = () => {
       </div>
 
       <div className="flex-1 p-4 md:p-6 overflow-auto">
-        <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden max-w-[1600px] mx-auto">
+        <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden w-full">
           <div className="bg-[#F38320] px-4 md:px-5 py-3 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
             <span className="text-white font-bold text-sm tracking-wide uppercase">Thông tin chi tiết</span>
             <div className="flex flex-wrap items-center gap-2 w-full sm:w-auto sm:justify-end">

@@ -22,20 +22,55 @@ import {
   Pagination,
   Button,
   Segmented,
+  message,
+  Popconfirm,
+  Form,
+  Input,
+  DatePicker,
+  InputNumber,
 } from 'antd';
 import {
   CheckCircleOutlined,
   CheckOutlined,
   ClockCircleOutlined,
+  DeleteOutlined,
+  EditOutlined,
   FireOutlined,
   FileTextOutlined,
 } from '@ant-design/icons';
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, Legend, ResponsiveContainer, LabelList } from 'recharts';
-import { X, User, Calendar, MessageSquare, Star } from 'lucide-react';
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, ResponsiveContainer, LabelList } from 'recharts';
+import { X, User, Star } from 'lucide-react';
 import { ORG_BLOCKS } from '../data/orgBlocks';
-import { buildDashboardBlockChartData, buildDashboardChartData, buildDashboardStatusSummary, loadDashboardTasks, type DashboardChartRow, type DashboardTask } from '../services/dashboardData';
-
+import {
+  buildDashboardBlockChartData,
+  buildDashboardChartData,
+  buildDashboardStatusSummary,
+  loadDashboardTasks,
+  normalizeDashboardChartStatus,
+  type DashboardChartRow,
+  type DashboardChartStatus,
+  type DashboardTask,
+} from '../services/dashboardData';
+import { deleteDataRow, editDataRow, fetchDataStatus } from '../services/dataApi';
+import {
+  buildCompleteTaskRow,
+  buildTaskDeleteRow,
+  buildTaskEditRow,
+  hasRowKey,
+  hydrateSourceRowKey,
+} from '../services/taskData';
+import type { TaskRecord } from '../types/task';
+import { formatTaskDate, parseTaskDate } from '../utils/taskDate';
 const { Title, Text } = Typography;
+
+type ChartGroupPopup = {
+  groupKey: string;
+  groupName: string;
+};
+
+type ChartDrillDown = ChartGroupPopup & {
+  status: DashboardChartStatus;
+};
 
 type StackBarLabelProps = {
   x?: number;
@@ -140,10 +175,257 @@ const Dashboard: React.FC = () => {
   const [tasksLoading, setTasksLoading] = useState(true);
   const [selectedTask, setSelectedTask] = useState<DashboardTask | null>(null);
   const [resolvedIssues, setResolvedIssues] = useState<Set<string>>(new Set());
+  const [chartGroupPopup, setChartGroupPopup] = useState<ChartGroupPopup | null>(null);
+  const [chartDrillDown, setChartDrillDown] = useState<ChartDrillDown | null>(null);
+  const [chartDrillPage, setChartDrillPage] = useState(1);
+  const [supabaseConnected, setSupabaseConnected] = useState<boolean | null>(null);
+  const [completingTaskId, setCompletingTaskId] = useState<string | null>(null);
+  const [deletingTaskId, setDeletingTaskId] = useState<string | null>(null);
+  const [savingDetail, setSavingDetail] = useState(false);
+  const [detailForm] = Form.useForm();
 
   const handleRowClick = (record: DashboardTask) => {
     setSelectedTask(record);
   };
+
+  const openTaskEdit = (task: DashboardTask) => {
+    // Giữ modal danh sách mở phía dưới; mở form sửa trực tiếp
+    setSelectedTask(task);
+  };
+
+  useEffect(() => {
+    if (!selectedTask) {
+      detailForm.resetFields();
+      return;
+    }
+    detailForm.setFieldsValue({
+      congViec: selectedTask.name,
+      nguoiGiao: selectedTask.assignee === '—' ? '' : selectedTask.assignee,
+      ngayGiao: selectedTask.ngayGiao || undefined,
+      ycXong: parseTaskDate(selectedTask.ycXong) ?? undefined,
+      giaHan1: parseTaskDate(selectedTask.giaHan1) ?? undefined,
+      giaHan2: parseTaskDate(selectedTask.giaHan2) ?? undefined,
+      giaHan3: parseTaskDate(selectedTask.giaHan3) ?? undefined,
+      ketQua: selectedTask.ketQua || selectedTask.desc,
+      linkKQ: selectedTask.linkKQ,
+      vuongMac: selectedTask.vuongMac || selectedTask.history,
+      canLD: selectedTask.canLD || 'Không',
+      anhHuong: selectedTask.impact || 1,
+    });
+  }, [selectedTask, detailForm]);
+
+  const reloadDashboardTasks = async () => {
+    const tasks = await loadDashboardTasks();
+    setAllTasks(tasks);
+    return tasks;
+  };
+
+  const handleMarkComplete = async (task: DashboardTask) => {
+    if (!task.table || supabaseConnected === false) {
+      message.error('Chưa kết nối Supabase.');
+      return;
+    }
+    if (!task.sourceRow) {
+      message.error('Không tìm thấy bản ghi để cập nhật.');
+      return;
+    }
+    if (task.status.includes('Hoàn thành')) {
+      message.info('Công việc đã được đánh dấu hoàn thành.');
+      return;
+    }
+
+    const completedAt = new Date();
+    const completedStamp = dayjs(completedAt).format('DD/MM/YYYY');
+    const optimistic: DashboardTask = {
+      ...task,
+      status: 'Hoàn thành',
+      tienDo: 'Hoàn thành',
+      ngayHoanThanh: completedStamp,
+      isIssue: false,
+    };
+
+    setCompletingTaskId(task.id);
+    // Cập nhật UI ngay; không mở modal chi tiết
+    setAllTasks(prev => prev.map(item => (item.id === task.id ? optimistic : item)));
+    setSelectedTask(null);
+
+    try {
+      const sourceRow = await hydrateSourceRowKey(task.sourceRow, task.table);
+      if (!hasRowKey(sourceRow, task.rowKey, task.table)) {
+        message.error('Không tìm thấy khóa TT trên Supabase. F5 tải lại danh sách.');
+        await reloadDashboardTasks();
+        return;
+      }
+      const editRow = buildCompleteTaskRow(sourceRow, completedAt, task.rowKey, task.table);
+      await editDataRow(editRow, task.table);
+      await reloadDashboardTasks();
+      setSelectedTask(null);
+      message.success('Đã đánh dấu hoàn thành.');
+    } catch (error) {
+      await reloadDashboardTasks();
+      message.error(error instanceof Error ? error.message : 'Không thể đánh dấu hoàn thành.');
+    } finally {
+      setCompletingTaskId(null);
+    }
+  };
+
+  const handleDeleteTask = async (task: DashboardTask) => {
+    if (!task.table || supabaseConnected === false) {
+      message.error('Chưa kết nối Supabase.');
+      return;
+    }
+    if (!task.sourceRow) {
+      message.error('Không tìm thấy khóa bản ghi (TT) để xoá.');
+      return;
+    }
+
+    setDeletingTaskId(task.id);
+    try {
+      const sourceRow = await hydrateSourceRowKey(task.sourceRow, task.table);
+      if (!hasRowKey(sourceRow, task.rowKey, task.table)) {
+        message.error('Không tìm thấy khóa TT trên Supabase. F5 tải lại danh sách.');
+        return;
+      }
+      const deleteRow = buildTaskDeleteRow(sourceRow, task.rowKey, task.table);
+      await deleteDataRow(deleteRow, task.table);
+      await reloadDashboardTasks();
+      if (selectedTask?.id === task.id) {
+        setSelectedTask(null);
+      }
+      message.success('Đã xoá công việc trên Supabase.');
+    } catch (error) {
+      message.error(error instanceof Error ? error.message : 'Không thể xoá công việc.');
+    } finally {
+      setDeletingTaskId(null);
+    }
+  };
+
+  const handleDetailSave = () => {
+    if (!selectedTask) return;
+    detailForm
+      .validateFields()
+      .then(async values => {
+        if (!selectedTask.table || supabaseConnected === false) {
+          message.error('Chưa kết nối Supabase.');
+          return;
+        }
+        if (!selectedTask.sourceRow) {
+          message.error('Không tìm thấy khóa bản ghi (TT) để cập nhật.');
+          return;
+        }
+
+        const updatedTask: TaskRecord = {
+          stt: 0,
+          kyBaoCao: selectedTask.week,
+          congViec: values.congViec as string,
+          nguoiGiao: values.nguoiGiao as string,
+          ngayGiao: formatTaskDate(values.ngayGiao),
+          ycXong: formatTaskDate(values.ycXong),
+          giaHan1: formatTaskDate(values.giaHan1),
+          giaHan2: formatTaskDate(values.giaHan2),
+          giaHan3: formatTaskDate(values.giaHan3),
+          ketQua: (values.ketQua as string) || '',
+          linkKQ: (values.linkKQ as string) || '',
+          tienDo: selectedTask.tienDo,
+          trangThai: '',
+          ngayGioHoanThanh: selectedTask.ngayHoanThanh,
+          vuongMac: (values.vuongMac as string) || '',
+          canLD: (values.canLD as string) || 'Không',
+          anhHuong: Number(values.anhHuong) || 1,
+          rowKey: selectedTask.rowKey,
+          sourceRow: selectedTask.sourceRow,
+        };
+
+        setSavingDetail(true);
+        try {
+          const sourceRow = await hydrateSourceRowKey(selectedTask.sourceRow, selectedTask.table);
+          if (!hasRowKey(sourceRow, selectedTask.rowKey, selectedTask.table)) {
+            message.error('Không tìm thấy khóa TT trên Supabase. F5 tải lại danh sách.');
+            return;
+          }
+          const editRow = buildTaskEditRow(
+            { ...updatedTask, sourceRow, rowKey: selectedTask.rowKey },
+            sourceRow,
+            selectedTask.table
+          );
+          await editDataRow(editRow, selectedTask.table);
+          const tasks = await reloadDashboardTasks();
+          const refreshed = tasks.find(item => item.id === selectedTask.id);
+          if (refreshed) {
+            setSelectedTask(refreshed);
+          }
+          message.success('Đã cập nhật Supabase.');
+        } catch (error) {
+          message.error(error instanceof Error ? error.message : 'Không thể cập nhật Supabase.');
+        } finally {
+          setSavingDetail(false);
+        }
+      })
+      .catch(() => {});
+  };
+
+  const renderTaskActions = (task: DashboardTask) => {
+    const completed = task.status.includes('Hoàn thành');
+    const actionsDisabled = supabaseConnected === false;
+    return (
+      <div
+        className="chart-drill-actions flex items-center justify-center gap-1"
+        data-task-action
+        onClick={event => event.stopPropagation()}
+        onMouseDown={event => event.stopPropagation()}
+      >
+        {!completed ? (
+          <Button
+            type="text"
+            size="large"
+            className="chart-drill-action-btn !text-green-700 hover:!text-green-800"
+            icon={<CheckCircleOutlined />}
+            title="Đã hoàn thành"
+            loading={completingTaskId === task.id}
+            disabled={actionsDisabled}
+            onClick={() => void handleMarkComplete(task)}
+          />
+        ) : null}
+        <Button
+          type="text"
+          size="large"
+          className="chart-drill-action-btn"
+          icon={<EditOutlined />}
+          title="Sửa"
+          onClick={() => openTaskEdit(task)}
+        />
+        <Popconfirm
+          title="Xoá công việc này trên Supabase?"
+          okText="Xoá"
+          cancelText="Huỷ"
+          okButtonProps={{ danger: true, loading: deletingTaskId === task.id }}
+          onConfirm={() => void handleDeleteTask(task)}
+          disabled={actionsDisabled}
+          zIndex={11000}
+          getPopupContainer={() => document.body}
+        >
+          <Button
+            type="text"
+            size="large"
+            danger
+            className="chart-drill-action-btn"
+            icon={<DeleteOutlined />}
+            title="Xóa"
+            loading={deletingTaskId === task.id}
+            disabled={actionsDisabled}
+          />
+        </Popconfirm>
+      </div>
+    );
+  };
+
+  const blockDeptKeys = useMemo(() => {
+    const map = new Map<string, Set<string>>();
+    for (const block of ORG_BLOCKS) {
+      map.set(block.key, new Set(block.depts.map(dept => dept.key)));
+    }
+    return map;
+  }, []);
 
   useEffect(() => {
     let cancelled = false;
@@ -151,13 +433,15 @@ const Dashboard: React.FC = () => {
     async function loadTasks() {
       setTasksLoading(true);
       try {
-        const tasks = await loadDashboardTasks();
+        const [tasks, status] = await Promise.all([loadDashboardTasks(), fetchDataStatus()]);
         if (!cancelled) {
           setAllTasks(tasks);
+          setSupabaseConnected(Boolean(status.connected));
         }
       } catch {
         if (!cancelled) {
           setAllTasks([]);
+          setSupabaseConnected(false);
         }
       } finally {
         if (!cancelled) {
@@ -280,9 +564,25 @@ const Dashboard: React.FC = () => {
   };
 
   const renderStatus = (status: string) => {
-    if (status.includes('Hoàn thành')) return <span className="px-3 py-1 bg-green-100 text-green-700 rounded-full text-xs font-semibold">🟢 {status}</span>;
-    if (status === 'Quá hạn') return <span className="px-3 py-1 bg-red-100 text-red-700 rounded-full text-xs font-semibold">🔴 Quá Hạn</span>;
-    return <span className="px-3 py-1 bg-orange-100 text-[#1E386B] rounded-full text-xs font-semibold">🟡 Đang Làm</span>;
+    if (status.includes('Hoàn thành')) {
+      return (
+        <span className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-green-100 text-green-800 rounded-full text-sm font-bold">
+          <span className="w-2.5 h-2.5 rounded-full bg-green-600" /> {status}
+        </span>
+      );
+    }
+    if (status === 'Quá hạn') {
+      return (
+        <span className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-red-100 text-red-700 rounded-full text-sm font-bold">
+          <span className="w-2.5 h-2.5 rounded-full bg-red-600" /> Quá hạn
+        </span>
+      );
+    }
+    return (
+      <span className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-orange-100 text-[#1E386B] rounded-full text-sm font-bold">
+        <span className="w-2.5 h-2.5 rounded-full bg-[#F38320]" /> Đang làm
+      </span>
+    );
   };
 
   const renderStatusCompact = (status: string) => {
@@ -382,9 +682,10 @@ const Dashboard: React.FC = () => {
       title: 'CÔNG VIỆC',
       dataIndex: 'name',
       key: 'name',
+      ellipsis: true,
       render: (text: string, record: DashboardTask) => (
-        <Tooltip title={record.desc} placement="topLeft">
-          <Text strong className="text-[#1E386B] cursor-pointer hover:underline">{text}</Text>
+        <Tooltip title={record.desc || text} placement="topLeft">
+          <span className="chart-drill-task-name text-[#1E386B] cursor-pointer hover:underline">{text}</span>
         </Tooltip>
       ),
     },
@@ -392,20 +693,37 @@ const Dashboard: React.FC = () => {
       title: 'PHÒNG BAN',
       dataIndex: 'department',
       key: 'department',
-      render: (text: string) => <Tag>{text}</Tag>,
+      width: 150,
+      render: (text: string) => <Tag className="chart-drill-tag m-0">{text}</Tag>,
     },
-    { title: 'NGƯỜI PHỤ TRÁCH', dataIndex: 'assignee', key: 'assignee' },
+    {
+      title: 'NGƯỜI PHỤ TRÁCH',
+      dataIndex: 'assignee',
+      key: 'assignee',
+      width: 130,
+      ellipsis: true,
+      render: (text: string) => <span className="chart-drill-cell-text">{text}</span>,
+    },
     {
       title: 'DEADLINE',
       dataIndex: 'deadline',
       key: 'deadline',
-      render: (date: string) => <strong>{date}</strong>,
+      width: 110,
+      render: (date: string) => <strong className="chart-drill-deadline">{date}</strong>,
     },
     {
       title: 'TRẠNG THÁI',
       dataIndex: 'status',
       key: 'status',
+      width: 130,
       render: (status: string) => renderStatus(status),
+    },
+    {
+      title: '',
+      key: 'actions',
+      width: 148,
+      align: 'center' as const,
+      render: (_: unknown, record: DashboardTask) => renderTaskActions(record),
     },
   ];
 
@@ -498,10 +816,106 @@ const Dashboard: React.FC = () => {
   );
   const completedStackLabel = useMemo(() => createCompletedStackLabel(), []);
 
+  const chartDrillTasks = useMemo(() => {
+    if (!chartDrillDown) return [];
+
+    return filteredTasks.filter(task => {
+      const matchGroup =
+        chartGroupMode === 'dept'
+          ? task.deptKey === chartDrillDown.groupKey
+          : Boolean(blockDeptKeys.get(chartDrillDown.groupKey)?.has(task.deptKey));
+
+      if (!matchGroup) return false;
+      return normalizeDashboardChartStatus(task.status) === chartDrillDown.status;
+    });
+  }, [blockDeptKeys, chartDrillDown, chartGroupMode, filteredTasks]);
+
+  const chartGroupStatusCounts = useMemo(() => {
+    if (!chartGroupPopup) {
+      return { 'Hoàn thành': 0, 'Đang làm': 0, 'Quá hạn': 0, total: 0 };
+    }
+
+    const tasks = filteredTasks.filter(task =>
+      chartGroupMode === 'dept'
+        ? task.deptKey === chartGroupPopup.groupKey
+        : Boolean(blockDeptKeys.get(chartGroupPopup.groupKey)?.has(task.deptKey))
+    );
+
+    const counts = { 'Hoàn thành': 0, 'Đang làm': 0, 'Quá hạn': 0 };
+    for (const task of tasks) {
+      counts[normalizeDashboardChartStatus(task.status)] += 1;
+    }
+    return {
+      ...counts,
+      total: counts['Hoàn thành'] + counts['Đang làm'] + counts['Quá hạn'],
+    };
+  }, [blockDeptKeys, chartGroupMode, chartGroupPopup, filteredTasks]);
+
+  useEffect(() => {
+    setChartDrillPage(1);
+  }, [chartDrillDown]);
+
+  const openChartGroupPopup = (data: { payload?: DashboardChartRow }) => {
+    const row = data?.payload;
+    if (!row?.deptKey) return;
+    setChartDrillDown(null);
+    setChartGroupPopup({
+      groupKey: row.deptKey,
+      groupName: row.name,
+    });
+  };
+
+  const openChartStatusTasks = (status: DashboardChartStatus) => {
+    if (!chartGroupPopup) return;
+    if (!chartGroupStatusCounts[status]) return;
+    setChartDrillDown({
+      ...chartGroupPopup,
+      status,
+    });
+  };
+
+  const handleChartBarClick = (_status: DashboardChartStatus) => (data: { payload?: DashboardChartRow }) => {
+    openChartGroupPopup(data);
+  };
+
   const chartTitle =
     chartGroupMode === 'block'
-      ? '📊 Biểu đồ trạng thái theo khối'
-      : '📊 Biểu đồ trạng thái theo phòng ban';
+      ? 'Trạng thái công việc - theo khối'
+      : 'Trạng thái công việc - theo phòng ban';
+
+  const doneCount = chartStatusSummary['Hoàn thành'];
+  const progressCount = chartStatusSummary['Đang làm'];
+  const overdueCount = chartStatusSummary['Quá hạn'];
+
+  const donePct = chartStatusTotal > 0 ? (doneCount / chartStatusTotal) * 100 : 0;
+  const progressPct = chartStatusTotal > 0 ? (progressCount / chartStatusTotal) * 100 : 0;
+
+  const donutConicGradient = useMemo(() => {
+    if (chartStatusTotal <= 0) {
+      return 'conic-gradient(#E5E7EB 0% 100%)';
+    }
+
+    // Thứ tự màu theo legend: Xanh (Hoàn thành) → Đỏ (Quá hạn) → Cam (Đang làm)
+    const stops: string[] = [];
+    let start = 0;
+
+    const addStop = (color: string, pct: number) => {
+      if (pct <= 0) return;
+      const end = Math.min(100, start + pct);
+      stops.push(`${color} ${start.toFixed(2)}% ${end.toFixed(2)}%`);
+      start = end;
+    };
+
+    addStop('#10b981', donePct);
+    addStop('#ef4444', chartStatusTotal > 0 ? (overdueCount / chartStatusTotal) * 100 : 0);
+    addStop('#F38320', progressPct);
+
+    if (start < 100) {
+      stops.push(`#E5E7EB ${start.toFixed(2)}% 100%`);
+    }
+
+    return `conic-gradient(${stops.join(', ')})`;
+  }, [chartStatusTotal, donePct, overdueCount, progressPct]);
 
   const desktopFiltersNode = (
     <>
@@ -775,7 +1189,7 @@ const Dashboard: React.FC = () => {
                 size: 'small',
                 showSizeChanger: false,
               }}
-              scroll={{ y: 320 }}
+              scroll={{ x: 'max-content', y: 320 }}
               size="small"
               rowKey="id"
               onRow={record => ({ onClick: () => handleRowClick(record) })}
@@ -999,127 +1413,263 @@ const Dashboard: React.FC = () => {
           value={chartGroupMode}
           onChange={value => setChartGroupMode(value as 'dept' | 'block')}
           options={[
-            { label: isMobile ? 'Khối' : 'Theo khối', value: 'block' },
-            { label: isMobile ? 'Phòng ban' : 'Theo phòng ban', value: 'dept' },
+            { label: 'Theo khối', value: 'block' },
+            { label: 'Theo phòng ban', value: 'dept' },
           ]}
         />
       }
     >
-      {chartStatusTotal > 0 ? (
-        <div className="dashboard-chart-summary">
-          <div
-            className="dashboard-chart-summary-bar"
-            role="img"
-            aria-label={`Hoàn thành ${chartStatusSummary['Hoàn thành']}, Đang làm ${chartStatusSummary['Đang làm']}, Quá hạn ${chartStatusSummary['Quá hạn']}`}
-          >
-            {chartStatusSummary['Hoàn thành'] > 0 ? (
-              <span
-                className="dashboard-chart-summary-seg dashboard-chart-summary-seg--done"
-                style={{ width: `${(chartStatusSummary['Hoàn thành'] / chartStatusTotal) * 100}%` }}
-              />
-            ) : null}
-            {chartStatusSummary['Đang làm'] > 0 ? (
-              <span
-                className="dashboard-chart-summary-seg dashboard-chart-summary-seg--progress"
-                style={{ width: `${(chartStatusSummary['Đang làm'] / chartStatusTotal) * 100}%` }}
-              />
-            ) : null}
-            {chartStatusSummary['Quá hạn'] > 0 ? (
-              <span
-                className="dashboard-chart-summary-seg dashboard-chart-summary-seg--overdue"
-                style={{ width: `${(chartStatusSummary['Quá hạn'] / chartStatusTotal) * 100}%` }}
-              />
-            ) : null}
-          </div>
-          <div className="dashboard-chart-summary-legend">
-            <span className="dashboard-chart-summary-item dashboard-chart-summary-item--done">
-              Hoàn thành <strong>{chartStatusSummary['Hoàn thành']}</strong>
-            </span>
-            <span className="dashboard-chart-summary-item dashboard-chart-summary-item--progress">
-              Đang làm <strong>{chartStatusSummary['Đang làm']}</strong>
-            </span>
-            <span className="dashboard-chart-summary-item dashboard-chart-summary-item--overdue">
-              Quá hạn <strong>{chartStatusSummary['Quá hạn']}</strong>
-            </span>
-          </div>
-        </div>
-      ) : null}
       {chartDataRecharts.length > 0 ? (
-        <div
-          className="dashboard-chart-scroll"
-          style={{ maxHeight: isMobile ? 360 : 520, overflowY: chartDataRecharts.length > 6 ? 'auto' : 'visible' }}
-        >
-          <div
-            style={{ height: chartHeight, minHeight: isMobile ? 200 : 220 }}
-            className="dashboard-chart-wrap"
-          >
-          <ResponsiveContainer width="100%" height={chartHeight} minHeight={isMobile ? 200 : 220}>
-            <BarChart
-              layout="vertical"
-              data={chartDataRecharts}
-              margin={{
-                top: 8,
-                right: isMobile ? 16 : 24,
-                left: 4,
-                bottom: 8,
-              }}
-              barCategoryGap="18%"
-              barSize={isMobile ? 12 : 14}
-            >
-              <CartesianGrid strokeDasharray="3 3" horizontal={false} stroke="#E5E7EB" />
-              <XAxis
-                type="number"
-                allowDecimals={false}
-                domain={[0, chartMaxValue + 1]}
-                axisLine={false}
-                tickLine={false}
-                tick={{ fontSize: isMobile ? 10 : 12, fill: '#6B7280' }}
-                label={{
-                  value: 'Số công việc',
-                  position: 'insideBottom',
-                  offset: -2,
-                  style: { fontSize: 11, fill: '#9CA3AF' },
+        isMobile ? (
+          <div className="dashboard-chart-mobile-layout">
+            {chartStatusTotal > 0 ? (
+              <div className="dashboard-chart-mobile-summary">
+                <div className="dashboard-chart-donut" aria-label={`Tổng ${chartStatusTotal} công việc`}>
+                  <div className="dashboard-chart-donut-ring" style={{ background: donutConicGradient }} />
+                  <div className="dashboard-chart-donut-center">
+                    <div className="dashboard-chart-donut-total">{chartStatusTotal}</div>
+                    <div className="dashboard-chart-donut-label">công việc</div>
+                  </div>
+                </div>
+                <div className="dashboard-chart-status-legend dashboard-chart-status-legend--mobile">
+                  <div className="dashboard-chart-status-legend-item dashboard-chart-status-legend-item--done">
+                    <span className="dashboard-chart-status-dot" />
+                    Hoàn thành <strong>{doneCount}</strong>
+                  </div>
+                  <div className="dashboard-chart-status-legend-item dashboard-chart-status-legend-item--overdue">
+                    <span className="dashboard-chart-status-dot" />
+                    Quá hạn <strong>{overdueCount}</strong>
+                  </div>
+                  <div className="dashboard-chart-status-legend-item dashboard-chart-status-legend-item--progress">
+                    <span className="dashboard-chart-status-dot" />
+                    Đang làm <strong>{progressCount}</strong>
+                  </div>
+                </div>
+              </div>
+            ) : null}
+
+            <div className="dashboard-chart-mobile-chart">
+              <div
+                className="dashboard-chart-scroll"
+                style={{
+                  maxHeight: 260,
+                  overflowY: chartDataRecharts.length > 6 ? 'auto' : 'visible',
                 }}
-              />
-              <YAxis
-                type="category"
-                dataKey="shortName"
-                width={isMobile ? 88 : 128}
-                axisLine={false}
-                tickLine={false}
-                tick={{ fontSize: isMobile ? 9 : 11, fill: '#1E386B', fontWeight: 600 }}
-              />
-              <RechartsTooltip
-                cursor={{ fill: 'rgba(30, 56, 107, 0.06)' }}
-                labelFormatter={(_label, payload) => payload?.[0]?.payload?.name ?? _label}
-                formatter={(value: number, name: string) => [`${value} việc`, name]}
-                contentStyle={{
-                  borderRadius: '8px',
-                  border: '1px solid #F3F4F6',
-                  boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)',
-                  fontSize: 12,
-                }}
-              />
-              <Legend
-                iconType="circle"
-                verticalAlign="top"
-                align="right"
-                wrapperStyle={{ fontSize: isMobile ? '11px' : '12px', paddingBottom: '8px' }}
-              />
-              <Bar dataKey="Hoàn thành" name="Hoàn thành" fill="#10b981" stackId="status" radius={[0, 0, 0, 0]}>
-                <LabelList content={completedStackLabel} />
-                <LabelList content={stackTotalLabel} />
-              </Bar>
-              <Bar dataKey="Đang làm" name="Đang làm" fill="#F38320" stackId="status" radius={[0, 0, 0, 0]}>
-                <LabelList content={stackTotalLabel} />
-              </Bar>
-              <Bar dataKey="Quá hạn" name="Quá hạn" fill="#ef4444" stackId="status" radius={[0, 4, 4, 0]}>
-                <LabelList content={stackTotalLabel} />
-              </Bar>
-            </BarChart>
-          </ResponsiveContainer>
+              >
+                <div style={{ height: chartHeight, minHeight: 200 }} className="dashboard-chart-wrap">
+                  <ResponsiveContainer width="100%" height={chartHeight} minHeight={200}>
+                    <BarChart
+                      layout="vertical"
+                      data={chartDataRecharts}
+                      margin={{
+                        top: 8,
+                        right: 8,
+                        left: 4,
+                        bottom: 8,
+                      }}
+                      barCategoryGap="18%"
+                      barSize={12}
+                    >
+                      <CartesianGrid strokeDasharray="3 3" horizontal={false} stroke="#E5E7EB" />
+                      <XAxis
+                        type="number"
+                        allowDecimals={false}
+                        domain={[0, chartMaxValue + 1]}
+                        axisLine={false}
+                        tickLine={false}
+                        tick={{ fontSize: 10, fill: '#6B7280' }}
+                        label={{
+                          value: 'Số công việc',
+                          position: 'insideBottom',
+                          offset: -2,
+                          style: { fontSize: 11, fill: '#9CA3AF' },
+                        }}
+                      />
+                      <YAxis
+                        type="category"
+                        dataKey="shortName"
+                        width={88}
+                        axisLine={false}
+                        tickLine={false}
+                        tick={{ fontSize: 9, fill: '#1E386B', fontWeight: 600 }}
+                      />
+                      <RechartsTooltip
+                        cursor={{ fill: 'rgba(30, 56, 107, 0.06)' }}
+                        labelFormatter={(_label, payload) => payload?.[0]?.payload?.name ?? _label}
+                        formatter={(value: number, name: string) => [`${value} việc`, name]}
+                        contentStyle={{
+                          borderRadius: '8px',
+                          border: '1px solid #F3F4F6',
+                          boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)',
+                          fontSize: 12,
+                        }}
+                      />
+                      <Bar
+                        dataKey="Hoàn thành"
+                        name="Hoàn thành"
+                        fill="#10b981"
+                        stackId="status"
+                        radius={[0, 0, 0, 0]}
+                        cursor="pointer"
+                        onClick={handleChartBarClick('Hoàn thành')}
+                      >
+                        <LabelList content={stackTotalLabel} />
+                      </Bar>
+                      <Bar
+                        dataKey="Đang làm"
+                        name="Đang làm"
+                        fill="#F38320"
+                        stackId="status"
+                        radius={[0, 0, 0, 0]}
+                        cursor="pointer"
+                        onClick={handleChartBarClick('Đang làm')}
+                      >
+                        <LabelList content={stackTotalLabel} />
+                      </Bar>
+                      <Bar
+                        dataKey="Quá hạn"
+                        name="Quá hạn"
+                        fill="#ef4444"
+                        stackId="status"
+                        radius={[0, 4, 4, 0]}
+                        cursor="pointer"
+                        onClick={handleChartBarClick('Quá hạn')}
+                      >
+                        <LabelList content={stackTotalLabel} />
+                      </Bar>
+                    </BarChart>
+                  </ResponsiveContainer>
+                </div>
+              </div>
+            </div>
           </div>
-        </div>
+        ) : (
+          <div className="dashboard-chart-desktop-layout">
+            {chartStatusTotal > 0 ? (
+              <div className="dashboard-chart-desktop-summary">
+                <div
+                  className="dashboard-chart-donut dashboard-chart-donut--desktop"
+                  aria-label={`Tổng ${chartStatusTotal} công việc`}
+                >
+                  <div className="dashboard-chart-donut-ring" style={{ background: donutConicGradient }} />
+                  <div className="dashboard-chart-donut-center">
+                    <div className="dashboard-chart-donut-total">{chartStatusTotal}</div>
+                    <div className="dashboard-chart-donut-label">công việc</div>
+                  </div>
+                </div>
+                <div className="dashboard-chart-status-legend dashboard-chart-status-legend--desktop">
+                  <div className="dashboard-chart-status-legend-item dashboard-chart-status-legend-item--done">
+                    <span className="dashboard-chart-status-dot" />
+                    Hoàn thành <strong>{doneCount}</strong>
+                  </div>
+                  <div className="dashboard-chart-status-legend-item dashboard-chart-status-legend-item--overdue">
+                    <span className="dashboard-chart-status-dot" />
+                    Quá hạn <strong>{overdueCount}</strong>
+                  </div>
+                  <div className="dashboard-chart-status-legend-item dashboard-chart-status-legend-item--progress">
+                    <span className="dashboard-chart-status-dot" />
+                    Đang làm <strong>{progressCount}</strong>
+                  </div>
+                </div>
+              </div>
+            ) : null}
+
+            <div className="dashboard-chart-desktop-chart">
+              <div
+                className="dashboard-chart-scroll"
+                style={{
+                  maxHeight: 520,
+                  overflowY: chartDataRecharts.length > 6 ? 'auto' : 'visible',
+                }}
+              >
+                <div style={{ height: chartHeight, minHeight: 220 }} className="dashboard-chart-wrap">
+                  <ResponsiveContainer width="100%" height={chartHeight} minHeight={220}>
+                    <BarChart
+                      layout="vertical"
+                      data={chartDataRecharts}
+                      margin={{
+                        top: 8,
+                        right: 24,
+                        left: 4,
+                        bottom: 8,
+                      }}
+                      barCategoryGap="18%"
+                      barSize={14}
+                    >
+                      <CartesianGrid strokeDasharray="3 3" horizontal={false} stroke="#E5E7EB" />
+                      <XAxis
+                        type="number"
+                        allowDecimals={false}
+                        domain={[0, chartMaxValue + 1]}
+                        axisLine={false}
+                        tickLine={false}
+                        tick={{ fontSize: 12, fill: '#6B7280' }}
+                        label={{
+                          value: 'Số công việc',
+                          position: 'insideBottom',
+                          offset: -2,
+                          style: { fontSize: 11, fill: '#9CA3AF' },
+                        }}
+                      />
+                      <YAxis
+                        type="category"
+                        dataKey="shortName"
+                        width={128}
+                        axisLine={false}
+                        tickLine={false}
+                        tick={{ fontSize: 11, fill: '#1E386B', fontWeight: 600 }}
+                      />
+                      <RechartsTooltip
+                        cursor={{ fill: 'rgba(30, 56, 107, 0.06)' }}
+                        labelFormatter={(_label, payload) => payload?.[0]?.payload?.name ?? _label}
+                        formatter={(value: number, name: string) => [`${value} việc`, name]}
+                        contentStyle={{
+                          borderRadius: '8px',
+                          border: '1px solid #F3F4F6',
+                          boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)',
+                          fontSize: 12,
+                        }}
+                      />
+                      <Bar
+                        dataKey="Hoàn thành"
+                        name="Hoàn thành"
+                        fill="#10b981"
+                        stackId="status"
+                        radius={[0, 0, 0, 0]}
+                        cursor="pointer"
+                        onClick={handleChartBarClick('Hoàn thành')}
+                      >
+                        <LabelList content={stackTotalLabel} />
+                      </Bar>
+                      <Bar
+                        dataKey="Đang làm"
+                        name="Đang làm"
+                        fill="#F38320"
+                        stackId="status"
+                        radius={[0, 0, 0, 0]}
+                        cursor="pointer"
+                        onClick={handleChartBarClick('Đang làm')}
+                      >
+                        <LabelList content={stackTotalLabel} />
+                      </Bar>
+                      <Bar
+                        dataKey="Quá hạn"
+                        name="Quá hạn"
+                        fill="#ef4444"
+                        stackId="status"
+                        radius={[0, 4, 4, 0]}
+                        cursor="pointer"
+                        onClick={handleChartBarClick('Quá hạn')}
+                      >
+                        <LabelList content={stackTotalLabel} />
+                      </Bar>
+                    </BarChart>
+                  </ResponsiveContainer>
+                </div>
+              </div>
+            </div>
+          </div>
+        )
       ) : (
         <Empty description="Không có dữ liệu để hiển thị biểu đồ với bộ lọc hiện tại." />
       )}
@@ -1239,81 +1789,293 @@ const Dashboard: React.FC = () => {
         </div>
       )}
 
-      {/* --- MODAL CHI TIẾT --- */}
-      {selectedTask && (
-        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-[9999] p-2 md:p-4">
-          <div className="bg-white rounded-xl shadow-xl w-full max-w-4xl flex flex-col max-h-[90vh] md:max-h-[85vh]">
-
-            {/* Header Modal */}
-            <div className="bg-[#F38320] text-white p-4 md:p-5 flex justify-between items-center rounded-t-xl shrink-0">
-              <h2 className="text-lg md:text-xl font-bold pr-4">{selectedTask.name}</h2>
-              <button onClick={() => setSelectedTask(null)} className="hover:bg-white/20 p-1 rounded transition shrink-0">
-                <X size={24} />
+      {/* --- POPUP TRẠNG THÁI TỪ BIỂU ĐỒ --- */}
+      {chartGroupPopup && !chartDrillDown && (
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-[9998] p-2 md:p-4">
+          <div className="bg-white rounded-xl shadow-xl w-full max-w-lg flex flex-col max-h-[90vh]">
+            <div className="bg-[#1E386B] text-white p-4 md:p-5 flex justify-between items-center rounded-t-xl shrink-0">
+              <div className="min-w-0 pr-3">
+                <h2 className="text-base md:text-lg font-bold truncate">{chartGroupPopup.groupName}</h2>
+                <p className="text-xs md:text-sm text-white/80 mt-0.5">
+                  Chọn trạng thái · {chartGroupStatusCounts.total} công việc
+                </p>
+              </div>
+              <button
+                onClick={() => setChartGroupPopup(null)}
+                className="hover:bg-white/20 p-1 rounded transition shrink-0"
+                aria-label="Đóng"
+              >
+                <X size={22} />
               </button>
             </div>
 
-            {/* Body Modal */}
-            <div className="p-4 md:p-6 grid grid-cols-1 md:grid-cols-3 gap-6 md:gap-8 overflow-y-auto min-h-0">
-              {/* Cột trái: Thông tin */}
-              <div className="col-span-1 space-y-4 md:space-y-6">
-                <div>
-                  <p className="text-sm text-gray-500 mb-1">Người phụ trách</p>
-                  <p className="font-semibold flex items-center gap-2"><User size={18} className="text-[#1E386B]" /> {selectedTask.assignee}</p>
-                </div>
-                <div>
-                  <p className="text-sm text-gray-500 mb-1">Deadline</p>
-                  <p className="font-semibold flex items-center gap-2"><Calendar size={18} className="text-[#1E386B]" /> {selectedTask.deadline}</p>
-                </div>
-                <div>
-                  <p className="text-sm text-gray-500 mb-2">Trạng thái</p>
-                  {selectedTask.isIssue ? (
-                    <span className="inline-flex items-center gap-1.5 px-3 py-1 bg-red-50 text-red-500 rounded-full text-xs font-semibold">
-                      <span className="w-2 h-2 rounded-full bg-red-500"></span> Vướng Mắc
+            <div className="p-4 space-y-3">
+              {(
+                [
+                  { status: 'Hoàn thành' as const, color: 'border-emerald-200 bg-emerald-50 hover:bg-emerald-100', dot: 'bg-emerald-500', text: 'text-emerald-800' },
+                  { status: 'Đang làm' as const, color: 'border-orange-200 bg-orange-50 hover:bg-orange-100', dot: 'bg-[#F38320]', text: 'text-[#1E386B]' },
+                  { status: 'Quá hạn' as const, color: 'border-red-200 bg-red-50 hover:bg-red-100', dot: 'bg-red-500', text: 'text-red-700' },
+                ]
+              ).map(item => {
+                const count = chartGroupStatusCounts[item.status];
+                const disabled = count <= 0;
+                return (
+                  <button
+                    key={item.status}
+                    type="button"
+                    disabled={disabled}
+                    onClick={() => openChartStatusTasks(item.status)}
+                    className={`w-full flex items-center justify-between gap-3 rounded-xl border px-4 py-3.5 text-left transition ${
+                      disabled ? 'opacity-45 cursor-not-allowed border-gray-200 bg-gray-50' : item.color
+                    }`}
+                  >
+                    <span className="inline-flex items-center gap-2.5 min-w-0">
+                      <span className={`w-3 h-3 rounded-full shrink-0 ${item.dot}`} />
+                      <span className={`font-bold text-base ${disabled ? 'text-gray-500' : item.text}`}>
+                        {item.status}
+                      </span>
                     </span>
-                  ) : (
-                    renderStatus(selectedTask.status)
-                  )}
-                </div>
-                <div>
-                  <p className="text-sm text-gray-500 mb-2">Mức độ ảnh hưởng</p>
-                  {renderImpact(selectedTask.impact)}
-                </div>
-              </div>
-
-              {/* Cột phải: Mô tả & Lịch sử */}
-              <div className="col-span-1 md:col-span-2 space-y-4 md:space-y-6">
-                <div className="bg-gray-50 p-3 md:p-4 rounded-lg border border-gray-100">
-                  <h3 className="font-semibold text-[#1E386B] mb-2 flex items-center gap-2">Mô tả chi tiết</h3>
-                  <p className="text-gray-700 leading-relaxed text-sm md:text-base">{selectedTask.desc}</p>
-                </div>
-
-                <div className="bg-gray-50 p-3 md:p-4 rounded-lg border border-gray-100">
-                  <h3 className="font-semibold text-[#1E386B] mb-2 flex items-center gap-2">Lịch sử cập nhật</h3>
-                  <div className="border-l-2 border-[#1E386B] pl-3 md:pl-4 py-1 ml-1 md:ml-2">
-                    <p className="text-xs md:text-sm text-gray-500">Hôm qua</p>
-                    <p className="text-gray-700 text-sm md:text-base">{selectedTask.history}</p>
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            {/* Footer Modal: Comment */}
-            <div className="border-t border-gray-200 p-4 md:p-5 bg-gray-50 flex items-start gap-2 md:gap-3 rounded-b-xl shrink-0">
-              <MessageSquare className="text-gray-400 mt-2 min-w-[20px]" size={20} />
-              <div className="flex-1 w-full">
-                <textarea
-                  className="w-full border border-gray-300 rounded-lg p-2 md:p-3 outline-none focus:border-[#F38320] focus:ring-1 focus:ring-[#1E386B]/30 transition resize-none text-sm"
-                  rows={2}
-                  placeholder="Bình luận hoặc cập nhật trạng thái..."
-                />
-                <div className="flex justify-end mt-2">
-                  <button className="bg-[#F38320] text-white px-4 md:px-6 py-2 rounded-lg font-medium hover:bg-[#e07518] transition text-sm">
-                    Gửi
+                    <span className={`text-lg font-extrabold tabular-nums ${disabled ? 'text-gray-400' : 'text-gray-900'}`}>
+                      {count}
+                    </span>
                   </button>
-                </div>
+                );
+              })}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* --- POPUP DANH SÁCH TỪ BIỂU ĐỒ --- */}
+      {chartDrillDown && (
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-[9998] p-2 md:p-4">
+          <div className="bg-white rounded-xl shadow-xl w-full max-w-[98vw] md:max-w-[96vw] lg:max-w-[94vw] xl:max-w-[1600px] flex flex-col max-h-[96vh] min-h-[75vh]">
+            <div className="bg-[#1E386B] text-white p-4 md:p-5 flex justify-between items-center rounded-t-xl shrink-0">
+              <div className="min-w-0 pr-3">
+                <h2 className="text-base md:text-lg font-bold truncate">
+                  {chartDrillDown.groupName}
+                </h2>
+                <p className="text-xs md:text-sm text-white/80 mt-0.5">
+                  {chartDrillDown.status} · {chartDrillTasks.length} công việc
+                </p>
+              </div>
+              <div className="flex items-center gap-2 shrink-0">
+                <Button
+                  size="small"
+                  className="bg-white/10 text-white border-white/30 hover:!bg-white/20"
+                  onClick={() => setChartDrillDown(null)}
+                >
+                  Chọn trạng thái
+                </Button>
+                <button
+                  onClick={() => {
+                    setChartDrillDown(null);
+                    setChartGroupPopup(null);
+                  }}
+                  className="hover:bg-white/20 p-1 rounded transition shrink-0"
+                  aria-label="Đóng"
+                >
+                  <X size={22} />
+                </button>
               </div>
             </div>
 
+            <div className="p-3 md:p-5 overflow-y-auto min-h-0 flex-1">
+              {chartDrillTasks.length > 0 ? (
+                <>
+                  <div className="hidden md:block chart-drill-table-wrap">
+                    <Table
+                      className="chart-drill-table"
+                      dataSource={chartDrillTasks}
+                      columns={taskListColumns}
+                      pagination={{
+                        current: chartDrillPage,
+                        pageSize: 10,
+                        onChange: setChartDrillPage,
+                        size: 'default',
+                        showSizeChanger: false,
+                      }}
+                      size="large"
+                      rowKey="id"
+                      scroll={{ x: 'max-content' }}
+                      onRow={record => ({
+                        onClick: () => {
+                          handleRowClick(record);
+                        },
+                      })}
+                    />
+                  </div>
+                  <div className="block md:hidden space-y-2">
+                    {chartDrillTasks
+                      .slice((chartDrillPage - 1) * 5, chartDrillPage * 5)
+                      .map(task => (
+                        <div key={task.id} className="space-y-1">
+                          <div
+                            onClick={() => {
+                              handleRowClick(task);
+                            }}
+                          >
+                            {renderMobileTaskCard(
+                              task,
+                              chartDrillDown.status === 'Quá hạn'
+                                ? 'red'
+                                : chartDrillDown.status === 'Đang làm'
+                                  ? 'orange'
+                                  : 'default'
+                            )}
+                          </div>
+                          <div className="flex justify-end px-1">{renderTaskActions(task)}</div>
+                        </div>
+                      ))}
+                    {chartDrillTasks.length > 5 ? (
+                      <div className="pt-2 flex justify-center">
+                        <Pagination
+                          current={chartDrillPage}
+                          pageSize={5}
+                          total={chartDrillTasks.length}
+                          onChange={setChartDrillPage}
+                          size="small"
+                          showSizeChanger={false}
+                        />
+                      </div>
+                    ) : null}
+                  </div>
+                </>
+              ) : (
+                <Empty description="Không có công việc liên quan." />
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* --- MODAL CHI TIẾT / SỬA TRỰC TIẾP --- */}
+      {selectedTask && (
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-[9999] p-2 md:p-4">
+          <div className="bg-white rounded-xl shadow-xl w-full max-w-5xl flex flex-col max-h-[94vh]">
+            <div className="bg-[#F38320] text-white p-4 md:p-5 flex flex-wrap justify-between items-start gap-3 rounded-t-xl shrink-0">
+              <div className="min-w-0 flex-1">
+                <p className="text-white/70 text-[10px] md:text-xs m-0 mb-0.5 uppercase tracking-wide">
+                  Chi tiết công việc · {selectedTask.department}
+                </p>
+                <h2 className="text-base md:text-xl font-bold pr-2 m-0 leading-snug line-clamp-2">
+                  {selectedTask.name}
+                </h2>
+              </div>
+              <div className="flex flex-wrap items-center gap-2 shrink-0">
+                {!selectedTask.status.includes('Hoàn thành') ? (
+                  <Button
+                    type="primary"
+                    className="bg-green-600 border-green-600 hover:!bg-green-700"
+                    icon={<CheckCircleOutlined />}
+                    loading={completingTaskId === selectedTask.id}
+                    disabled={supabaseConnected === false}
+                    onClick={() => void handleMarkComplete(selectedTask)}
+                  >
+                    Đã hoàn thành
+                  </Button>
+                ) : null}
+                <Button
+                  type="primary"
+                  className="bg-[#1E386B] border-[#1E386B]"
+                  loading={savingDetail}
+                  onClick={handleDetailSave}
+                  disabled={supabaseConnected === false}
+                >
+                  Lưu
+                </Button>
+                <Popconfirm
+                  title="Xoá công việc này trên Supabase?"
+                  okText="Xoá"
+                  cancelText="Huỷ"
+                  okButtonProps={{ danger: true, loading: deletingTaskId === selectedTask.id }}
+                  onConfirm={() => void handleDeleteTask(selectedTask)}
+                  disabled={supabaseConnected === false}
+                  zIndex={11000}
+                  getPopupContainer={() => document.body}
+                >
+                  <Button
+                    danger
+                    icon={<DeleteOutlined />}
+                    loading={deletingTaskId === selectedTask.id}
+                    disabled={supabaseConnected === false}
+                  >
+                    Xóa
+                  </Button>
+                </Popconfirm>
+                <button
+                  onClick={() => setSelectedTask(null)}
+                  className="hover:bg-white/20 p-1.5 rounded transition shrink-0"
+                  aria-label="Đóng"
+                >
+                  <X size={22} />
+                </button>
+              </div>
+            </div>
+
+            <div className="p-4 md:p-5 overflow-y-auto min-h-0 flex-1">
+              <Form form={detailForm} layout="vertical" className="grid grid-cols-1 md:grid-cols-2 gap-x-5">
+                <Form.Item
+                  name="congViec"
+                  label="Công việc"
+                  rules={[{ required: true, message: 'Nhập công việc' }]}
+                  className="md:col-span-2"
+                >
+                  <Input.TextArea rows={2} />
+                </Form.Item>
+                <Form.Item
+                  name="nguoiGiao"
+                  label="Người phụ trách"
+                  rules={[{ required: true, message: 'Nhập người phụ trách' }]}
+                >
+                  <Input />
+                </Form.Item>
+                <Form.Item name="ngayGiao" label="Ngày giao">
+                  <Input placeholder="DD/MM/YYYY" />
+                </Form.Item>
+                <Form.Item name="ycXong" label="Y/C xong">
+                  <DatePicker className="w-full" format="DD/MM/YYYY" />
+                </Form.Item>
+                <Form.Item name="anhHuong" label="Mức ảnh hưởng">
+                  <InputNumber min={1} max={4} className="w-full" />
+                </Form.Item>
+                <Form.Item name="giaHan1" label="Gia hạn 1">
+                  <DatePicker className="w-full" format="DD/MM/YYYY" />
+                </Form.Item>
+                <Form.Item name="giaHan2" label="Gia hạn 2">
+                  <DatePicker className="w-full" format="DD/MM/YYYY" />
+                </Form.Item>
+                <Form.Item name="giaHan3" label="Gia hạn 3">
+                  <DatePicker className="w-full" format="DD/MM/YYYY" />
+                </Form.Item>
+                <Form.Item name="canLD" label="Cần LĐ tác động">
+                  <Select
+                    options={[
+                      { value: 'Không', label: 'Không' },
+                      { value: 'Có', label: 'Có' },
+                    ]}
+                  />
+                </Form.Item>
+                <Form.Item name="ketQua" label="Kết quả" className="md:col-span-2">
+                  <Input.TextArea rows={2} />
+                </Form.Item>
+                <Form.Item name="linkKQ" label="Link kết quả" className="md:col-span-2">
+                  <Input placeholder="https://..." />
+                </Form.Item>
+                <Form.Item name="vuongMac" label="Vướng mắc" className="md:col-span-2">
+                  <Input.TextArea rows={2} />
+                </Form.Item>
+                <div className="md:col-span-2 flex flex-wrap items-center gap-3 pb-1">
+                  <span className="text-sm text-gray-500">Trạng thái:</span>
+                  {renderStatus(selectedTask.status)}
+                  {selectedTask.ngayHoanThanh ? (
+                    <span className="text-sm text-gray-600">
+                      Ngày HT: <strong>{selectedTask.ngayHoanThanh}</strong>
+                    </span>
+                  ) : null}
+                </div>
+              </Form>
+            </div>
           </div>
         </div>
       )}

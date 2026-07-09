@@ -8,16 +8,25 @@
   --color-brand-blue: #1e386b;
   --color-ant-primary: #f38320;
   --color-ant-primary-hover: #ffc48a;
-  --color-ant-bg: #f0f2f5;
+  --color-ant-bg: #f4f5f7;
   --color-ant-sidebar: #1e386b;
   --color-ant-sidebar-deep: #152a47;
   --color-ant-sidebar-logo: #f38320;
-  --color-ant-border: #d9d9d9;
+  --color-ant-border: #e2e5eb;
+  /* Độ sâu (elevation) dùng chung — giữ bóng đổ mềm, nhất quán toàn app */
+  --shadow-elevation-1: 0 1px 2px 0 rgba(16, 24, 40, 0.04), 0 1px 3px 0 rgba(16, 24, 40, 0.06);
+  --shadow-elevation-2: 0 4px 10px -2px rgba(16, 24, 40, 0.1), 0 2px 6px -2px rgba(16, 24, 40, 0.06);
 }
 
 body {
   @apply bg-ant-bg text-[rgba(0,0,0,0.88)];
   font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+}
+
+*:focus-visible {
+  outline: 2px solid rgba(243, 131, 32, 0.55);
+  outline-offset: 2px;
 }
 
 .text-brand-blue {
@@ -43,6 +52,7 @@ body {
 .ant-layout-header {
   background-color: white !important;
   border-bottom: 1px solid var(--color-ant-border) !important;
+  box-shadow: 0 1px 2px 0 rgba(16, 24, 40, 0.04);
   height: 4rem !important; /* h-16 */
   display: flex !important;
   align-items: center !important;
@@ -51,20 +61,42 @@ body {
 }
 
 .ant-card {
-  border: 1px solid rgba(0,0,0,0.05) !important;
-  box-shadow: 0 1px 2px rgba(0,0,0,0.03) !important;
-  border-radius: 0.5rem !important; /* rounded-lg */
+  border: 1px solid rgba(16, 24, 40, 0.06) !important;
+  box-shadow: var(--shadow-elevation-1) !important;
+  border-radius: 0.75rem !important; /* rounded-xl */
+  transition: box-shadow 0.2s ease;
+}
+
+.ant-card-head {
+  border-bottom: 1px solid rgba(16, 24, 40, 0.06) !important;
 }
 
 .ant-table-thead > tr > th {
-  background-color: #fafafa !important;
-  color: rgba(0,0,0,0.45) !important;
-  font-weight: 500 !important;
-  font-size: 13px !important;
+  background-color: #fafbfc !important;
+  color: rgba(15, 23, 42, 0.55) !important;
+  font-weight: 600 !important;
+  font-size: 12px !important;
+  letter-spacing: 0.02em;
 }
 
 .ant-table-tbody > tr > td {
   font-size: 13px !important;
+}
+
+.ant-table {
+  border-radius: 0.625rem !important;
+}
+
+.ant-btn {
+  transition: box-shadow 0.15s ease, transform 0.1s ease, background-color 0.15s ease;
+}
+
+.ant-btn:active {
+  transform: translateY(1px);
+}
+
+.ant-tag {
+  border-radius: 6px;
 }
 
 /* Custom scrollbar */
@@ -78,7 +110,7 @@ body {
 }
 
 ::-webkit-scrollbar-thumb {
-  background: #d1d5db;
+  background: #cbd2dc;
   border-radius: 10px;
 }
 
@@ -241,4 +273,66 @@ body {
   font-size: 9px;
   right: 4px;
   margin-top: -5px;
+}
+
+/* Công việc ghi chú */
+.work-notes-bullet {
+  font-weight: 900;
+  font-size: 20px;
+  line-height: 1.55;
+  width: 14px;
+  text-align: center;
+  flex-shrink: 0;
+}
+
+.work-notes-idea-title {
+  font-size: 1.15rem;
+  font-weight: 800;
+  line-height: 1.3;
+  letter-spacing: 0.02em;
+}
+
+@media (min-width: 768px) {
+  .work-notes-idea-title {
+    font-size: 1.35rem;
+  }
+}
+
+.work-notes-done-btn.ant-btn {
+  min-width: 88px;
+  height: 36px !important;
+  font-size: 15px !important;
+  font-weight: 700 !important;
+  border-radius: 8px !important;
+}
+
+.work-notes-done-btn.ant-btn-primary {
+  background: #16a34a !important;
+  border-color: #16a34a !important;
+  box-shadow: 0 1px 2px rgba(22, 163, 74, 0.35);
+}
+
+.work-notes-done-btn.ant-btn-primary:hover {
+  background: #15803d !important;
+  border-color: #15803d !important;
+}
+
+.work-notes-idea-input {
+  font-family: "Segoe UI", "Be Vietnam Pro", system-ui, sans-serif;
+  border: 0;
+  min-height: 32px;
+  font-size: 18px;
+  font-weight: 700;
+  line-height: 1.55;
+  color: #111827;
+}
+
+@media (min-width: 768px) {
+  .work-notes-idea-input {
+    font-size: 19px;
+  }
+}
+
+.work-notes-idea-input:disabled {
+  cursor: default;
 }

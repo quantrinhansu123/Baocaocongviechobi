@@ -3,7 +3,7 @@ import { ORG_BLOCKS } from '../data/orgBlocks';
 import type { TaskRecord } from '../types/task';
 import { normalizeDisplayDate, calculateAutomaticStatus } from '../utils/taskDate';
 import { findDataRows } from './dataApi';
-import { listTaskTableBindings, mapRowsToTasksByDept } from './taskData';
+import { isTaskRecordCompleted, listTaskTableBindings, mapRowsToTasksByDept } from './taskData';
 
 export type DashboardChartStatus = 'Hoàn thành' | 'Đang làm' | 'Quá hạn';
 
@@ -177,7 +177,10 @@ export function buildDashboardBlockChartData(tasks: DashboardTask[]): DashboardC
 
 export type DashboardTask = {
   id: string;
+  taskKey: string;
   deptKey: string;
+  blockKey: string;
+  table: string;
   name: string;
   department: string;
   status: string;
@@ -188,6 +191,19 @@ export type DashboardTask = {
   week: string;
   desc: string;
   history: string;
+  ngayGiao: string;
+  ycXong: string;
+  giaHan1: string;
+  giaHan2: string;
+  giaHan3: string;
+  ketQua: string;
+  linkKQ: string;
+  tienDo: string;
+  vuongMac: string;
+  canLD: string;
+  ngayHoanThanh: string;
+  rowKey?: string | null;
+  sourceRow?: Record<string, unknown>;
 };
 
 function weekKeyFromDate(dateStr: string): string {
@@ -222,29 +238,45 @@ function resolveDashboardWeek(kyBaoCao: string, deadline: string): string {
   return weekKeyFromDate(deadline);
 }
 
+function resolveBlockKey(deptKey: string): string {
+  for (const block of ORG_BLOCKS) {
+    if (block.depts.some(dept => dept.key === deptKey)) {
+      return block.key;
+    }
+  }
+  return '';
+}
+
 function mapTaskRecordToDashboardTask(
   taskKey: string,
   deptKey: string,
   department: string,
+  table: string,
   task: TaskRecord
 ): DashboardTask {
   const deadline = normalizeDisplayDate(task.giaHan3 || task.giaHan2 || task.giaHan1 || task.ycXong);
-  let status: string = calculateAutomaticStatus({
-    deadline: task.ycXong,
-    giaHan1: task.giaHan1,
-    giaHan2: task.giaHan2,
-    giaHan3: task.giaHan3,
-    ngayHoanThanh: task.ngayGioHoanThanh,
-  });
-
-  // Preserve completed extensions if they are completed
-  if (status === 'Hoàn thành' && task.tienDo && task.tienDo.toLowerCase().includes('gia hạn')) {
-    status = task.tienDo;
+  // Dashboard: đã có tiến độ/ngày HT → luôn coi là Hoàn thành (kể cả HT sau hạn).
+  // Không dùng calculateAutomaticStatus cho case này vì hàm đó trả "Quá hạn" khi ngày HT > deadline.
+  let status: string;
+  if (isTaskRecordCompleted(task)) {
+    status =
+      task.tienDo && task.tienDo.toLowerCase().includes('gia hạn') ? task.tienDo : 'Hoàn thành';
+  } else {
+    status = calculateAutomaticStatus({
+      deadline: task.ycXong,
+      giaHan1: task.giaHan1,
+      giaHan2: task.giaHan2,
+      giaHan3: task.giaHan3,
+      ngayHoanThanh: task.ngayGioHoanThanh,
+    });
   }
 
   return {
     id: `${deptKey}-${taskKey}`,
+    taskKey,
     deptKey,
+    blockKey: resolveBlockKey(deptKey),
+    table,
     name: task.congViec || task.ketQua || (task.stt ? `CV #${task.stt}` : 'Công việc'),
     department,
     status,
@@ -255,6 +287,19 @@ function mapTaskRecordToDashboardTask(
     week: resolveDashboardWeek(task.kyBaoCao, deadline),
     desc: task.ketQua || task.congViec || '',
     history: task.vuongMac || task.ketQua || '',
+    ngayGiao: task.ngayGiao || '',
+    ycXong: task.ycXong || '',
+    giaHan1: task.giaHan1 || '',
+    giaHan2: task.giaHan2 || '',
+    giaHan3: task.giaHan3 || '',
+    ketQua: task.ketQua || '',
+    linkKQ: task.linkKQ || '',
+    tienDo: task.tienDo || '',
+    vuongMac: task.vuongMac || '',
+    canLD: task.canLD || 'Không',
+    ngayHoanThanh: task.ngayGioHoanThanh || '',
+    rowKey: task.rowKey,
+    sourceRow: task.sourceRow,
   };
 }
 
@@ -272,7 +317,9 @@ export async function loadDashboardTasks(): Promise<DashboardTask[]> {
           const department = DEPT_KEY_TO_NAME.get(deptKey) ?? binding.department;
 
           Object.entries(bucket).forEach(([taskKey, task]) => {
-            tasks.push(mapTaskRecordToDashboardTask(taskKey, deptKey, department, task));
+            tasks.push(
+              mapTaskRecordToDashboardTask(taskKey, deptKey, department, result.table || binding.table, task)
+            );
           });
         });
       } catch {

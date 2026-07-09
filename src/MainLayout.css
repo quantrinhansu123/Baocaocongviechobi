@@ -87,8 +87,18 @@
     transition: width 0.22s ease, min-width 0.22s ease, flex 0.22s ease !important;
 }
 
+.sidebar-sider-brand.ant-layout-sider {
+    box-shadow: 4px 0 20px -10px rgba(8, 15, 33, 0.45);
+}
+
 .sidebar-report-menu.ant-menu-dark {
     background: transparent !important;
+    padding: 4px 0;
+}
+
+.sidebar-report-menu.ant-menu-dark .ant-menu-item,
+.sidebar-report-menu.ant-menu-dark .ant-menu-submenu-title {
+    transition: background-color 0.15s ease, color 0.15s ease;
 }
 
 .sidebar-report-menu.ant-menu-dark .ant-menu-sub.ant-menu-inline {
@@ -98,10 +108,15 @@
 .sidebar-report-menu.ant-menu-dark .ant-menu-item,
 .sidebar-report-menu.ant-menu-dark .ant-menu-submenu-title {
     color: rgba(255, 255, 255, 0.92) !important;
+    font-size: 14.5px !important;
+    font-weight: 700 !important;
 }
 
-.sidebar-report-menu.ant-menu-dark .ant-menu-sub .ant-menu-item {
+.sidebar-report-menu.ant-menu-dark .ant-menu-sub .ant-menu-item,
+.sidebar-report-menu.ant-menu-dark .ant-menu-sub .ant-menu-submenu-title {
     color: rgba(255, 255, 255, 0.9) !important;
+    font-size: 13.5px !important;
+    font-weight: 700 !important;
 }
 
 .sidebar-report-menu.ant-menu-dark .ant-menu-item-disabled,
@@ -119,6 +134,7 @@
     background: #f38320 !important;
     color: #ffffff !important;
     font-weight: 600;
+    box-shadow: 0 2px 8px -1px rgba(243, 131, 32, 0.45);
 }
 
 .sidebar-report-menu.ant-menu-dark .ant-menu-submenu-selected > .ant-menu-submenu-title {
@@ -128,6 +144,41 @@
 
 .sidebar-report-menu.ant-menu-dark .ant-menu-submenu-open > .ant-menu-submenu-title {
     color: #ffffff !important;
+}
+
+.sidebar-menu-label-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    width: 100%;
+    gap: 8px;
+}
+
+.sidebar-menu-label-text {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    min-width: 0;
+}
+
+.sidebar-menu-count-badge {
+    flex-shrink: 0;
+    min-width: 20px;
+    height: 20px;
+    padding: 0 6px;
+    border-radius: 999px;
+    background: rgba(255, 255, 255, 0.16);
+    color: #ffffff;
+    font-size: 11px;
+    font-weight: 800;
+    line-height: 20px;
+    text-align: center;
+}
+
+.ant-menu-item-selected .sidebar-menu-count-badge,
+.ant-menu-item:hover .sidebar-menu-count-badge,
+.ant-menu-submenu-title:hover .sidebar-menu-count-badge {
+    background: rgba(0, 0, 0, 0.22);
 }
 
 .sidebar-report-menu .sidebar-nav-icon {

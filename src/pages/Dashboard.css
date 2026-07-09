@@ -280,6 +280,10 @@
   width: 100%;
 }
 
+.dashboard-chart-wrap .recharts-bar-rectangle {
+  cursor: pointer;
+}
+
 .dashboard-chart-wrap .recharts-legend-item-text {
   color: #374151 !important;
 }
@@ -381,4 +385,263 @@
 .ant-table-body::-webkit-scrollbar-thumb {
   background-color: rgba(0, 0, 0, 0.2);
   border-radius: 4px;
+}
+
+/* ────────────────────────────────────────────────────────────────────────── */
+/* Biểu đồ trạng thái (làm lại như ảnh mẫu) */
+/* ────────────────────────────────────────────────────────────────────────── */
+
+.dashboard-chart-mobile-layout {
+  display: grid;
+  grid-template-columns: 190px 1fr;
+  gap: 14px;
+  align-items: center;
+}
+
+.dashboard-chart-mobile-summary {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  padding: 4px 0;
+}
+
+.dashboard-chart-donut {
+  position: relative;
+  width: 118px;
+  height: 118px;
+}
+
+.dashboard-chart-donut-ring {
+  position: absolute;
+  inset: 0;
+  border-radius: 9999px;
+}
+
+.dashboard-chart-donut-center {
+  position: absolute;
+  inset: 22px;
+  border-radius: 9999px;
+  background: #ffffff;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  box-shadow: inset 0 0 0 1px rgba(30, 56, 107, 0.06);
+}
+
+.dashboard-chart-donut-total {
+  font-size: 30px;
+  font-weight: 800;
+  line-height: 1;
+  color: #1e386b;
+}
+
+.dashboard-chart-donut-label {
+  margin-top: 2px;
+  font-size: 12px;
+  font-weight: 700;
+  color: #6b7280;
+}
+
+.dashboard-chart-status-legend {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  font-size: 12px;
+  color: #6b7280;
+}
+
+.dashboard-chart-status-legend--mobile {
+  align-items: flex-start;
+}
+
+.dashboard-chart-status-legend--desktop {
+  align-items: flex-start;
+  padding-top: 2px;
+}
+
+.dashboard-chart-status-legend-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  white-space: nowrap;
+}
+
+.dashboard-chart-status-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 9999px;
+  background: #e5e7eb;
+  flex-shrink: 0;
+}
+
+.dashboard-chart-status-legend-item--done .dashboard-chart-status-dot {
+  background: #10b981;
+}
+.dashboard-chart-status-legend-item--progress .dashboard-chart-status-dot {
+  background: #f38320;
+}
+.dashboard-chart-status-legend-item--overdue .dashboard-chart-status-dot {
+  background: #ef4444;
+}
+
+.dashboard-chart-status-legend-item strong {
+  font-weight: 800;
+  margin-left: 2px;
+}
+
+.dashboard-chart-status-legend-item--done strong {
+  color: #047857;
+}
+.dashboard-chart-status-legend-item--progress strong {
+  color: #c2410c;
+}
+.dashboard-chart-status-legend-item--overdue strong {
+  color: #b91c1c;
+}
+
+.dashboard-chart-mobile-chart {
+  min-width: 0;
+}
+
+.dashboard-chart-desktop-layout {
+  display: grid;
+  grid-template-columns: 220px minmax(0, 1fr);
+  gap: 20px;
+  align-items: center;
+}
+
+.dashboard-chart-desktop-summary {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 14px;
+  padding: 8px 4px;
+}
+
+.dashboard-chart-donut--desktop {
+  width: 148px;
+  height: 148px;
+}
+
+.dashboard-chart-donut--desktop .dashboard-chart-donut-center {
+  inset: 28px;
+}
+
+.dashboard-chart-donut--desktop .dashboard-chart-donut-total {
+  font-size: 34px;
+}
+
+.dashboard-chart-desktop-chart {
+  min-width: 0;
+}
+
+.dashboard-chart-status-desktop {
+  margin-bottom: 0.75rem;
+}
+
+.dashboard-chart-status-desktop-top {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.dashboard-chart-status-desktop-barWrap {
+  flex: 1;
+  min-width: 0;
+}
+
+.dashboard-chart-status-desktop-counts {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16px;
+  margin-top: 10px;
+  font-size: 12px;
+  color: #6b7280;
+}
+
+.dashboard-chart-status-desktop-count strong {
+  color: #1e386b;
+  font-weight: 800;
+}
+
+@media (max-width: 480px) {
+  .dashboard-chart-mobile-layout {
+    grid-template-columns: 160px 1fr;
+    gap: 10px;
+  }
+
+  .dashboard-chart-donut {
+    width: 104px;
+    height: 104px;
+  }
+
+  .dashboard-chart-donut-center {
+    inset: 20px;
+  }
+}
+
+/* Modal danh sách từ biểu đồ — chữ to/đậm hơn, nút thao tác lớn */
+.chart-drill-table .ant-table {
+  font-size: 16px;
+}
+
+.chart-drill-table .ant-table-thead > tr > th {
+  font-size: 13px;
+  font-weight: 800;
+  letter-spacing: 0.02em;
+  padding: 14px 16px !important;
+}
+
+.chart-drill-table .ant-table-tbody > tr > td {
+  padding: 16px !important;
+  vertical-align: middle;
+}
+
+.chart-drill-task-name {
+  font-size: 16px;
+  font-weight: 700;
+  line-height: 1.45;
+  display: inline-block;
+}
+
+.chart-drill-cell-text {
+  font-size: 15px;
+  font-weight: 700;
+  color: #1f2937;
+}
+
+.chart-drill-deadline {
+  font-size: 16px;
+  font-weight: 800;
+  color: #111827;
+}
+
+.chart-drill-tag.ant-tag {
+  font-size: 13px !important;
+  font-weight: 700 !important;
+  padding: 4px 10px !important;
+  line-height: 1.4 !important;
+  border-radius: 8px !important;
+}
+
+.chart-drill-action-btn.ant-btn {
+  width: 42px !important;
+  height: 42px !important;
+  min-width: 42px !important;
+  padding: 0 !important;
+  font-size: 20px !important;
+  border-radius: 10px !important;
+}
+
+.chart-drill-action-btn.ant-btn .anticon {
+  font-size: 20px !important;
+}
+
+.chart-drill-actions {
+  gap: 4px;
 }

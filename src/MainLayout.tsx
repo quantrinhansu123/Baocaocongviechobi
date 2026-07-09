@@ -5,6 +5,7 @@ import {
   DashboardOutlined,
   ClusterOutlined,
   CheckSquareOutlined,
+  FormOutlined,
   BellOutlined,
   UserOutlined,
   MenuOutlined,
@@ -25,6 +26,7 @@ import SmartView from './pages/SmartView';
 import AdminView from './pages/AdminView';
 import WorkReportDetail from './pages/WorkReportDetail';
 import TaskView from './pages/TaskView';
+import WorkNotesView from './pages/WorkNotesView';
 import logo from './img/logo.png';
 import {
   buildReportMenuItems,
@@ -35,6 +37,7 @@ import {
 } from './data/reportNavigation';
 import { buildDefaultReportCatalog } from './services/reportData';
 import { loadReportCatalog } from './services/reportCatalog';
+import { loadDashboardTasks } from './services/dashboardData';
 import type { ReportCatalog } from './types/report';
 import MobileBottomNav from './components/MobileBottomNav';
 import { MobileShellProvider } from './contexts/MobileShellContext';
@@ -48,7 +51,6 @@ const TASK_MENU_TREE = [
     depts: [
       { key: 'bld-ca-nhan', label: '1. CÔNG VIỆC CÁ NHÂN' },
       { key: 'bld-cong-viec-bld', label: '2. CÔNG VIỆC CỦA BLĐ' },
-      { key: 'bld-danh-muc', label: '3. DANH MỤC CÔNG VIỆC' },
     ],
   },
   {
@@ -84,6 +86,16 @@ const TASK_MENU_TREE = [
     ],
   },
 ];
+
+function renderMenuLabelWithCount(label: string, count: number): React.ReactNode {
+  if (!count) return label;
+  return (
+    <span className="sidebar-menu-label-row">
+      <span className="sidebar-menu-label-text">{label}</span>
+      <span className="sidebar-menu-count-badge">{count > 99 ? '99+' : count}</span>
+    </span>
+  );
+}
 
 function sidebarSelectedKey(pathname: string): string {
   if (pathname === '/' || pathname === '/navigation' || pathname === '/tasks') return pathname;
@@ -142,6 +154,31 @@ const MainLayout: React.FC = () => {
   const [collapsed, setCollapsed] = useState(false); // Desktop Sider State
   const [menuOpenKeys, setMenuOpenKeys] = useState<string[]>(['/navigation']);
   const [reportCatalog, setReportCatalog] = useState<ReportCatalog>(() => buildDefaultReportCatalog());
+  const [incompleteByDept, setIncompleteByDept] = useState<Record<string, number>>({});
+
+  useEffect(() => {
+    let cancelled = false;
+
+    void loadDashboardTasks()
+      .then(tasks => {
+        if (cancelled) return;
+        const counts: Record<string, number> = {};
+        for (const task of tasks) {
+          if (task.status.includes('Hoàn thành')) continue;
+          counts[task.deptKey] = (counts[task.deptKey] ?? 0) + 1;
+        }
+        setIncompleteByDept(counts);
+      })
+      .catch(() => {
+        if (!cancelled) {
+          setIncompleteByDept({});
+        }
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   useEffect(() => {
     let cancelled = false;
@@ -180,19 +217,30 @@ const MainLayout: React.FC = () => {
 
   const menuItems: MenuProps['items'] = useMemo(
     () => [
+      {
+        key: '/work-notes',
+        icon: <FormOutlined className="sidebar-nav-icon" />,
+        label: 'CÔNG VIỆC GHI CHÚ',
+      },
       { key: '/', icon: <DashboardOutlined className="sidebar-nav-icon" />, label: 'ĐIỀU HÀNH CÔNG VIỆC' },
       {
         key: '/tasks',
         icon: <CheckSquareOutlined className="sidebar-nav-icon" />,
         label: 'CÔNG VIỆC CHI TIẾT',
-        children: TASK_MENU_TREE.map(block => ({
-          key: `/tasks/${block.key}`,
-          label: block.label,
-          children: block.depts.map(dept => ({
-            key: `/tasks/${block.key}/${dept.key}`,
-            label: dept.label,
-          })),
-        })),
+        children: TASK_MENU_TREE.map(block => {
+          const blockCount = block.depts.reduce(
+            (sum, dept) => sum + (incompleteByDept[dept.key] ?? 0),
+            0
+          );
+          return {
+            key: `/tasks/${block.key}`,
+            label: renderMenuLabelWithCount(block.label, blockCount),
+            children: block.depts.map(dept => ({
+              key: `/tasks/${block.key}/${dept.key}`,
+              label: renderMenuLabelWithCount(dept.label, incompleteByDept[dept.key] ?? 0),
+            })),
+          };
+        }),
       },
       {
         key: '/navigation',
@@ -201,7 +249,7 @@ const MainLayout: React.FC = () => {
         children: buildReportMenuItems(reportCatalog),
       },
     ],
-    [reportCatalog]
+    [reportCatalog, incompleteByDept]
   );
 
   const selectedMenuKeys = useMemo(() => {
@@ -217,7 +265,7 @@ const MainLayout: React.FC = () => {
         }
       }
       if (selectedBlockKey && reportCatalog.blocks.some(block => block.blockKey === selectedBlockKey)) {
-        return [`block-reports-${selectedBlockKey}`];
+        return [selectedBlockKey];
       }
       return ['/navigation'];
     }
@@ -226,6 +274,7 @@ const MainLayout: React.FC = () => {
       return k ? [k] : [];
     }
     if (location.pathname === '/') return ['/'];
+    if (location.pathname === '/work-notes') return ['/work-notes'];
     return [];
   }, [location.pathname, selectedReportId, selectedGroupKey, selectedBlockKey, reportCatalog]);
 
@@ -268,12 +317,6 @@ const MainLayout: React.FC = () => {
       setMobileMenuOpen(false);
       return;
     }
-    if (key.startsWith('block-reports-')) {
-      const blockKey = key.slice('block-reports-'.length);
-      navigate(`/navigation?b=${encodeURIComponent(blockKey)}`);
-      setMobileMenuOpen(false);
-      return;
-    }
     if (key.startsWith('group-')) {
       navigate(`/navigation?g=${encodeURIComponent(key)}`);
       setMobileMenuOpen(false);
@@ -281,6 +324,11 @@ const MainLayout: React.FC = () => {
     }
     if (key === '/navigation') {
       navigate('/navigation');
+      setMobileMenuOpen(false);
+      return;
+    }
+    if (key === '/work-notes') {
+      navigate('/work-notes');
       setMobileMenuOpen(false);
     }
   };
@@ -465,6 +513,7 @@ const MainLayout: React.FC = () => {
             <Route path="/tasks/:blockKey/:deptKey" element={<TaskView />} />
             <Route path="/tasks/:blockKey" element={<TaskView />} />
             <Route path="/tasks" element={<TaskView />} />
+            <Route path="/work-notes" element={<WorkNotesView />} />
             <Route path="/work-report-detail" element={<WorkReportDetail />} />
           </Routes>
         </Content>

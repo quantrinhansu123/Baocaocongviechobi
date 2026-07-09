@@ -77,19 +77,10 @@ export function openKeysForBlockId(
 }
 
 export function buildReportMenuItems(catalog: ReportCatalog): NonNullable<MenuProps['items']> {
-  const reportsByBlock = new Map<string, ReportRecord[]>();
-
-  Object.values(catalog.reports).forEach(report => {
-    const blockReports = reportsByBlock.get(report.blockKey) ?? [];
-    blockReports.push(report);
-    reportsByBlock.set(report.blockKey, blockReports);
-  });
-
   return catalog.blocks
     .slice()
     .sort((left, right) => left.order - right.order)
     .map(block => {
-      const blockReports = reportsByBlock.get(block.blockKey) ?? [];
       const blockGroups = catalog.groups
         .filter(group => group.blockKey === block.blockKey)
         .sort((left, right) => left.order - right.order);
@@ -98,14 +89,6 @@ export function buildReportMenuItems(catalog: ReportCatalog): NonNullable<MenuPr
         key: group.groupKey,
         label: group.label,
       }));
-
-      const hasUngroupedReports = blockReports.some(report => !report.groupKey);
-      if (hasUngroupedReports) {
-        groupItems.push({
-          key: `block-reports-${block.blockKey}`,
-          label: 'Các báo cáo khác',
-        });
-      }
 
       if (groupItems.length === 0) {
         return {
