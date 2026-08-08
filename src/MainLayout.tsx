@@ -1,5 +1,5 @@
-import React, { useEffect, useMemo, useState } from 'react';
-import { Layout, Badge, Avatar, Dropdown, Space, Drawer, Menu } from 'antd';
+import React, { Suspense, lazy, useEffect, useMemo, useState } from 'react';
+import { Layout, Badge, Avatar, Dropdown, Space, Drawer, Menu, Spin } from 'antd';
 import type { MenuProps } from 'antd';
 import {
   DashboardOutlined,
@@ -15,20 +15,6 @@ import {
 } from '@ant-design/icons';
 import { Routes, Route, useNavigate, useLocation } from 'react-router-dom';
 import './MainLayout.css';
-
-// Pages
-import Dashboard from './pages/Dashboard';
-import NavigationHub from './pages/NavigationHub';
-import ReportList from './pages/ReportList';
-import ReportDetail from './pages/ReportDetail';
-import ExecutiveView from './pages/ExecutiveView';
-import CalendarView from './pages/CalendarView';
-import SmartView from './pages/SmartView';
-import AdminView from './pages/AdminView';
-import WorkReportDetail from './pages/WorkReportDetail';
-import TaskView from './pages/TaskView';
-import WorkNotesView from './pages/WorkNotesView';
-import GeneralNotesView from './pages/GeneralNotesView';
 import logo from './img/logo.png';
 import {
   buildReportMenuItems,
@@ -43,6 +29,20 @@ import { loadDashboardTasks } from './services/dashboardData';
 import type { ReportCatalog } from './types/report';
 import MobileBottomNav from './components/MobileBottomNav';
 import { MobileShellProvider } from './contexts/MobileShellContext';
+
+// Lazy-load pages để giảm JS lần đầu mở app
+const Dashboard = lazy(() => import('./pages/Dashboard'));
+const NavigationHub = lazy(() => import('./pages/NavigationHub'));
+const ReportList = lazy(() => import('./pages/ReportList'));
+const ReportDetail = lazy(() => import('./pages/ReportDetail'));
+const ExecutiveView = lazy(() => import('./pages/ExecutiveView'));
+const CalendarView = lazy(() => import('./pages/CalendarView'));
+const SmartView = lazy(() => import('./pages/SmartView'));
+const AdminView = lazy(() => import('./pages/AdminView'));
+const WorkReportDetail = lazy(() => import('./pages/WorkReportDetail'));
+const TaskView = lazy(() => import('./pages/TaskView'));
+const WorkNotesView = lazy(() => import('./pages/WorkNotesView'));
+const GeneralNotesView = lazy(() => import('./pages/GeneralNotesView'));
 
 const { Content, Header, Sider } = Layout;
 
@@ -160,45 +160,51 @@ const MainLayout: React.FC = () => {
 
   useEffect(() => {
     let cancelled = false;
-
-    void loadDashboardTasks()
-      .then(tasks => {
-        if (cancelled) return;
-        const counts: Record<string, number> = {};
-        for (const task of tasks) {
-          if (task.status.includes('Hoàn thành')) continue;
-          counts[task.deptKey] = (counts[task.deptKey] ?? 0) + 1;
-        }
-        setIncompleteByDept(counts);
-      })
-      .catch(() => {
-        if (!cancelled) {
-          setIncompleteByDept({});
-        }
-      });
+    // Để dashboard/route hiện tại chiếm mạng trước; badge sidebar tải sau một nhịp.
+    const timer = window.setTimeout(() => {
+      void loadDashboardTasks()
+        .then(tasks => {
+          if (cancelled) return;
+          const counts: Record<string, number> = {};
+          for (const task of tasks) {
+            if (task.status.includes('Hoàn thành')) continue;
+            counts[task.deptKey] = (counts[task.deptKey] ?? 0) + 1;
+          }
+          setIncompleteByDept(counts);
+        })
+        .catch(() => {
+          if (!cancelled) {
+            setIncompleteByDept({});
+          }
+        });
+    }, 0);
 
     return () => {
       cancelled = true;
+      window.clearTimeout(timer);
     };
   }, []);
 
   useEffect(() => {
     let cancelled = false;
-
-    void loadReportCatalog()
-      .then(catalog => {
-        if (!cancelled) {
-          setReportCatalog(catalog);
-        }
-      })
-      .catch(() => {
-        if (!cancelled) {
-          setReportCatalog(buildDefaultReportCatalog());
-        }
-      });
+    // Catalog báo cáo không cần chặn first paint.
+    const timer = window.setTimeout(() => {
+      void loadReportCatalog()
+        .then(catalog => {
+          if (!cancelled) {
+            setReportCatalog(catalog);
+          }
+        })
+        .catch(() => {
+          if (!cancelled) {
+            setReportCatalog(buildDefaultReportCatalog());
+          }
+        });
+    }, 150);
 
     return () => {
       cancelled = true;
+      window.clearTimeout(timer);
     };
   }, []);
 
@@ -514,22 +520,30 @@ const MainLayout: React.FC = () => {
           }`}
           style={{ minHeight: 280 }}
         >
-          <Routes>
-            <Route path="/" element={<Dashboard />} />
-            <Route path="/navigation" element={<NavigationHub />} />
-            <Route path="/reports" element={<ReportList />} />
-            <Route path="/reports/:id" element={<ReportDetail />} />
-            <Route path="/executive" element={<ExecutiveView />} />
-            <Route path="/calendar" element={<CalendarView />} />
-            <Route path="/smart-view" element={<SmartView />} />
-            <Route path="/admin" element={<AdminView />} />
-            <Route path="/tasks/:blockKey/:deptKey" element={<TaskView />} />
-            <Route path="/tasks/:blockKey" element={<TaskView />} />
-            <Route path="/tasks" element={<TaskView />} />
-            <Route path="/general-notes" element={<GeneralNotesView />} />
-            <Route path="/work-notes" element={<WorkNotesView />} />
-            <Route path="/work-report-detail" element={<WorkReportDetail />} />
-          </Routes>
+          <Suspense
+            fallback={
+              <div className="flex-1 flex items-center justify-center min-h-[240px]">
+                <Spin size="large" />
+              </div>
+            }
+          >
+            <Routes>
+              <Route path="/" element={<Dashboard />} />
+              <Route path="/navigation" element={<NavigationHub />} />
+              <Route path="/reports" element={<ReportList />} />
+              <Route path="/reports/:id" element={<ReportDetail />} />
+              <Route path="/executive" element={<ExecutiveView />} />
+              <Route path="/calendar" element={<CalendarView />} />
+              <Route path="/smart-view" element={<SmartView />} />
+              <Route path="/admin" element={<AdminView />} />
+              <Route path="/tasks/:blockKey/:deptKey" element={<TaskView />} />
+              <Route path="/tasks/:blockKey" element={<TaskView />} />
+              <Route path="/tasks" element={<TaskView />} />
+              <Route path="/general-notes" element={<GeneralNotesView />} />
+              <Route path="/work-notes" element={<WorkNotesView />} />
+              <Route path="/work-report-detail" element={<WorkReportDetail />} />
+            </Routes>
+          </Suspense>
         </Content>
         <MobileBottomNav />
       </Layout>

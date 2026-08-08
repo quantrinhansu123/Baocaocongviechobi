@@ -303,7 +303,18 @@ function mapTaskRecordToDashboardTask(
   };
 }
 
-export async function loadDashboardTasks(): Promise<DashboardTask[]> {
+const TASKS_CACHE_TTL_MS = 30_000;
+let cachedDashboardTasks: DashboardTask[] | null = null;
+let cachedDashboardTasksAt = 0;
+let dashboardTasksInflight: Promise<DashboardTask[]> | null = null;
+
+export function invalidateDashboardTasksCache() {
+  cachedDashboardTasks = null;
+  cachedDashboardTasksAt = 0;
+  dashboardTasksInflight = null;
+}
+
+async function fetchDashboardTasks(): Promise<DashboardTask[]> {
   const bindings = listTaskTableBindings();
   const tasks: DashboardTask[] = [];
 
@@ -329,4 +340,37 @@ export async function loadDashboardTasks(): Promise<DashboardTask[]> {
   );
 
   return tasks.sort((left, right) => left.id.localeCompare(right.id));
+}
+
+/** Dùng chung 1 request giữa layout/dashboard; `force` để tải lại sau khi sửa task. */
+export async function loadDashboardTasks(options?: { force?: boolean }): Promise<DashboardTask[]> {
+  const force = Boolean(options?.force);
+  const now = Date.now();
+
+  if (
+    !force &&
+    cachedDashboardTasks &&
+    now - cachedDashboardTasksAt < TASKS_CACHE_TTL_MS
+  ) {
+    return cachedDashboardTasks;
+  }
+
+  if (!force && dashboardTasksInflight) {
+    return dashboardTasksInflight;
+  }
+
+  const request = fetchDashboardTasks()
+    .then(tasks => {
+      cachedDashboardTasks = tasks;
+      cachedDashboardTasksAt = Date.now();
+      return tasks;
+    })
+    .finally(() => {
+      if (dashboardTasksInflight === request) {
+        dashboardTasksInflight = null;
+      }
+    });
+
+  dashboardTasksInflight = request;
+  return request;
 }

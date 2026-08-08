@@ -215,7 +215,7 @@ const Dashboard: React.FC = () => {
   }, [selectedTask, detailForm]);
 
   const reloadDashboardTasks = async () => {
-    const tasks = await loadDashboardTasks();
+    const tasks = await loadDashboardTasks({ force: true });
     setAllTasks(tasks);
     return tasks;
   };
