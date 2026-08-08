@@ -356,7 +356,7 @@ const WorkNotesView: React.FC = () => {
       </div>
 
       <div className="flex-1 flex min-h-0 overflow-hidden">
-        <aside className="w-[196px] md:w-[240px] flex-shrink-0 bg-[#1E386B] text-white overflow-y-auto">
+        <aside className="w-[260px] md:w-[320px] flex-shrink-0 bg-[#1E386B] text-white overflow-y-auto">
           <div className="px-3 py-3 border-b border-white/10">
             <p className="m-0 text-[11px] uppercase tracking-widest text-white/70 font-bold">Phòng ban</p>
             <p className="m-0 mt-1 text-sm font-extrabold">
@@ -391,7 +391,7 @@ const WorkNotesView: React.FC = () => {
           <div className="flex-1 flex flex-col min-h-0 bg-white border border-gray-200 rounded-lg shadow-sm overflow-hidden">
             <div className="bg-[#F38320] text-white px-4 py-3 flex items-start justify-between gap-3 flex-shrink-0">
               <div className="min-w-0">
-                <p className="m-0 text-[11px] font-bold uppercase tracking-widest text-white/80">Công việc ghi chú</p>
+                <p className="m-0 text-[11px] font-bold uppercase tracking-widest text-white/80">Ghi chú phòng ban</p>
                 <h2 className="m-0 mt-0.5 text-base md:text-lg font-extrabold uppercase leading-snug truncate">
                   Theo thứ tự gõ
                 </h2>

@@ -6,6 +6,7 @@ import {
   ClusterOutlined,
   CheckSquareOutlined,
   FormOutlined,
+  UnorderedListOutlined,
   BellOutlined,
   UserOutlined,
   MenuOutlined,
@@ -27,6 +28,7 @@ import AdminView from './pages/AdminView';
 import WorkReportDetail from './pages/WorkReportDetail';
 import TaskView from './pages/TaskView';
 import WorkNotesView from './pages/WorkNotesView';
+import GeneralNotesView from './pages/GeneralNotesView';
 import logo from './img/logo.png';
 import {
   buildReportMenuItems,
@@ -218,9 +220,14 @@ const MainLayout: React.FC = () => {
   const menuItems: MenuProps['items'] = useMemo(
     () => [
       {
+        key: '/general-notes',
+        icon: <UnorderedListOutlined className="sidebar-nav-icon" />,
+        label: 'GHI CHÚ CHUNG',
+      },
+      {
         key: '/work-notes',
         icon: <FormOutlined className="sidebar-nav-icon" />,
-        label: 'CÔNG VIỆC GHI CHÚ',
+        label: 'GHI CHÚ PHÒNG BAN',
       },
       { key: '/', icon: <DashboardOutlined className="sidebar-nav-icon" />, label: 'ĐIỀU HÀNH CÔNG VIỆC' },
       {
@@ -274,6 +281,7 @@ const MainLayout: React.FC = () => {
       return k ? [k] : [];
     }
     if (location.pathname === '/') return ['/'];
+    if (location.pathname === '/general-notes') return ['/general-notes'];
     if (location.pathname === '/work-notes') return ['/work-notes'];
     return [];
   }, [location.pathname, selectedReportId, selectedGroupKey, selectedBlockKey, reportCatalog]);
@@ -327,6 +335,11 @@ const MainLayout: React.FC = () => {
       setMobileMenuOpen(false);
       return;
     }
+    if (key === '/general-notes') {
+      navigate('/general-notes');
+      setMobileMenuOpen(false);
+      return;
+    }
     if (key === '/work-notes') {
       navigate('/work-notes');
       setMobileMenuOpen(false);
@@ -364,7 +377,7 @@ const MainLayout: React.FC = () => {
           </div>
           {!collapsed && (
             <span className="font-bold text-lg text-[#1E386B] tracking-wider whitespace-nowrap overflow-hidden">
-              HoBi Wood
+              HOBI VIỆT NAM
             </span>
           )}
         </div>
@@ -425,7 +438,7 @@ const MainLayout: React.FC = () => {
                       isReportRoute ? 'text-white' : 'text-[#1E386B]'
                     }`}
                   >
-                    HoBi Wood
+                    HOBI VIỆT NAM
                   </p>
                 </div>
               </div>
@@ -464,7 +477,7 @@ const MainLayout: React.FC = () => {
               <div className="flex-shrink-0 h-8 w-8 flex items-center justify-center overflow-hidden mr-2 bg-white p-1 rounded-md shadow-sm">
                 <img src={logo} alt="Hobiwood Logo" className="w-full h-auto object-contain" />
               </div>
-              <span className="font-bold text-lg text-[#1E386B] tracking-wider">HoBi Wood</span>
+              <span className="font-bold text-lg text-[#1E386B] tracking-wider">HOBI VIỆT NAM</span>
             </div>
           }
           placement="left"
@@ -513,6 +526,7 @@ const MainLayout: React.FC = () => {
             <Route path="/tasks/:blockKey/:deptKey" element={<TaskView />} />
             <Route path="/tasks/:blockKey" element={<TaskView />} />
             <Route path="/tasks" element={<TaskView />} />
+            <Route path="/general-notes" element={<GeneralNotesView />} />
             <Route path="/work-notes" element={<WorkNotesView />} />
             <Route path="/work-report-detail" element={<WorkReportDetail />} />
           </Routes>
