@@ -10,6 +10,7 @@
     "start": "tsx server/index.ts",
     "clean": "rm -rf dist",
     "lint": "tsc --noEmit",
+    "db:schema": "node scripts/apply-supabase-schema.mjs",
     "db:check": "node scripts/check-supabase-tables.mjs",
     "db:seed": "node scripts/seed-auxiliary.mjs",
     "db:seed-reports": "node scripts/seed-bc-reports.mjs --force"
