@@ -2,14 +2,12 @@ import React from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import {
   HomeOutlined,
-  FileTextOutlined,
   CarryOutOutlined,
   UserOutlined,
 } from '@ant-design/icons';
 
 const NAV_ITEMS = [
   { key: '/', label: 'Tổng quan', icon: HomeOutlined },
-  { key: '/navigation', label: 'Báo cáo', icon: FileTextOutlined },
   { key: '/tasks', label: 'Công việc', icon: CarryOutOutlined },
   { key: '/profile', label: 'Cá nhân', icon: UserOutlined },
 ] as const;
@@ -17,9 +15,6 @@ const NAV_ITEMS = [
 function isActive(pathname: string, key: string): boolean {
   if (key === '/') {
     return pathname === '/';
-  }
-  if (key === '/navigation') {
-    return pathname === '/navigation' || pathname.startsWith('/reports');
   }
   if (key === '/tasks') {
     return pathname.startsWith('/tasks');
@@ -36,7 +31,7 @@ const MobileBottomNav: React.FC = () => {
       className="md:hidden fixed bottom-0 inset-x-0 z-50 bg-white border-t border-gray-200 safe-area-pb"
       aria-label="Điều hướng chính"
     >
-      <div className="grid grid-cols-4 h-[60px]">
+      <div className="grid grid-cols-3 h-[60px]">
         {NAV_ITEMS.map(item => {
           const active = isActive(location.pathname, item.key);
           const Icon = item.icon;

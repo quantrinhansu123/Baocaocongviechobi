@@ -969,7 +969,7 @@ const TaskView: React.FC = () => {
         className: 'task-col-phutrach',
       },
       {
-        title: th('Deadline'),
+        title: th('Ngày hoàn thành'),
         dataIndex: 'deadline',
         key: 'deadline',
         width: 100,
@@ -1048,7 +1048,7 @@ const TaskView: React.FC = () => {
         },
       },
       {
-        title: th('Ngày hoàn thành'),
+        title: th('Ngày đã hoàn thành'),
         dataIndex: 'ngayHoanThanh',
         key: 'ngayHoanThanh',
         width: 108,
@@ -1200,7 +1200,7 @@ const TaskView: React.FC = () => {
               placeholder="Chọn mức độ ảnh hưởng"
             />
           </Form.Item>
-          <Form.Item name="deadline" label="Y/C xong" rules={[{ required: true, message: 'Chọn deadline' }]}>
+          <Form.Item name="deadline" label="Ngày hoàn thành" rules={[{ required: true, message: 'Chọn ngày hoàn thành' }]}>
             <DatePicker className="w-full" format="DD/MM/YYYY" />
           </Form.Item>
           <Form.Item name="linkKQ" label="Link KQ (tùy chọn)">
@@ -1350,13 +1350,13 @@ const TaskView: React.FC = () => {
                             <p>
                               Phụ trách: <span className="font-medium">{row.nguoiPhuTrach}</span>
                             </p>
-                            {renderMobileDateLine('Deadline', row.deadline, row)}
+                            {renderMobileDateLine('Ngày hoàn thành', row.deadline, row)}
                             {renderMobileDateLine('Gia hạn 1', row.giaHan1, row)}
                             {renderMobileDateLine('Gia hạn 2', row.giaHan2, row)}
                             {renderMobileDateLine('Gia hạn 3', row.giaHan3, row)}
                             {row.ngayHoanThanh ? (
                               <p>
-                                Ngày hoàn thành:{' '}
+                                Ngày đã hoàn thành:{' '}
                                 <span className="font-semibold text-green-700">
                                   {normalizeDisplayDate(row.ngayHoanThanh) || row.ngayHoanThanh}
                                 </span>
@@ -1480,7 +1480,7 @@ const TaskView: React.FC = () => {
                       <Form.Item name="ngayGiao" label="Ngày giao">
                         <Input placeholder="DD/MM/YYYY" />
                       </Form.Item>
-                      <Form.Item name="ycXong" label="Y/C xong">
+                      <Form.Item name="ycXong" label="Ngày hoàn thành">
                         <DatePicker className="w-full" format="DD/MM/YYYY" />
                       </Form.Item>
                       <div className="xl:col-span-2">
@@ -1508,7 +1508,7 @@ const TaskView: React.FC = () => {
                         </div>
                       </Form.Item>
                       {selected.ngayGioHoanThanh ? (
-                        <Form.Item label="Ngày hoàn thành">
+                        <Form.Item label="Ngày đã hoàn thành">
                           <Text className="font-medium">{selected.ngayGioHoanThanh}</Text>
                         </Form.Item>
                       ) : null}
@@ -1545,7 +1545,7 @@ const TaskView: React.FC = () => {
                   Nhấn <strong>Thêm</strong> để tạo công việc mới (chọn phòng ban trong form), hoặc mở menu ☰ để chọn phòng ban.
                 </span>
                 <span className="hidden md:inline">
-                  Chọn khối hoặc phòng ban ở sidebar để xem bảng công việc (STT, Phòng ban, Công việc, Người phụ trách, Deadline), hoặc chọn một công việc để xem chi tiết.
+                  Chọn khối hoặc phòng ban ở sidebar để xem bảng công việc (STT, Phòng ban, Công việc, Người phụ trách, Ngày hoàn thành), hoặc chọn một công việc để xem chi tiết.
                 </span>
               </Text>
               <div className="md:hidden w-full max-w-xs mt-2">{addTaskButton({ block: true })}</div>

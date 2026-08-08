@@ -618,7 +618,7 @@ const Dashboard: React.FC = () => {
             <Tag className="task-tag" title={task.department}>
               {task.department}
             </Tag>
-            <span className={`task-deadline ${deadlineClass}`}>Hạn: {task.deadline}</span>
+            <span className={`task-deadline ${deadlineClass}`}>Ngày hoàn thành: {task.deadline}</span>
           </div>
           <div className="task-footer">
             <span className="task-assignee" title={task.assignee}>
@@ -685,10 +685,10 @@ const Dashboard: React.FC = () => {
     },
     { title: 'NGƯỜI PHỤ TRÁCH', dataIndex: 'assignee', key: 'assignee', width: 150 },
     {
-      title: 'DEADLINE',
+      title: 'NGÀY HOÀN THÀNH',
       dataIndex: 'deadline',
       key: 'deadline',
-      width: 120,
+      width: 140,
       render: (date: string) => <strong className="text-red-600">{date}</strong>,
     },
   ];
@@ -722,10 +722,10 @@ const Dashboard: React.FC = () => {
       render: (text: string) => <span className="chart-drill-cell-text">{text}</span>,
     },
     {
-      title: 'DEADLINE',
+      title: 'NGÀY HOÀN THÀNH',
       dataIndex: 'deadline',
       key: 'deadline',
-      width: 110,
+      width: 140,
       render: (date: string) => <strong className="chart-drill-deadline">{date}</strong>,
     },
     {
@@ -765,10 +765,10 @@ const Dashboard: React.FC = () => {
     },
     { title: 'NGƯỜI PHỤ TRÁCH', dataIndex: 'assignee', key: 'assignee', width: 150 },
     {
-      title: 'DEADLINE',
+      title: 'NGÀY HOÀN THÀNH',
       dataIndex: 'deadline',
       key: 'deadline',
-      width: 120,
+      width: 140,
       render: (date: string) => <strong className="text-[#1E386B]">{date}</strong>
     },
     {
@@ -1124,7 +1124,7 @@ const Dashboard: React.FC = () => {
       },
       {
         key: 'overdue',
-        label: '🔴 Quá hạn nộp',
+        label: 'Quá hạn nộp',
         shortLabel: 'Quá hạn',
         filterKey: 'overdue' as const,
         value: displayStats.overdue,
@@ -1136,7 +1136,7 @@ const Dashboard: React.FC = () => {
       },
       {
         key: 'priority',
-        label: '⭐ Việc quan trọng',
+        label: 'Việc quan trọng',
         shortLabel: 'Quan trọng',
         filterKey: 'priority' as const,
         value: displayStats.highPriority,
@@ -1164,16 +1164,13 @@ const Dashboard: React.FC = () => {
               item.cardClass
             } ${isActive ? 'dashboard-kpi-card-active' : ''}`}
           >
-            <Icon className={`kpi-icon md:hidden ${item.iconClass}`} />
+            <Icon className={`kpi-icon ${item.iconClass}`} />
             <div className="kpi-body">
               <p className={`kpi-label text-gray-500 line-clamp-1 ${item.labelClass ?? ''}`}>
                 <span className="md:hidden">{item.shortLabel}</span>
                 <span className="hidden md:inline">{item.label}</span>
               </p>
-              <div className="kpi-value-row">
-                <Icon className={`kpi-icon hidden md:inline ${item.iconClass}`} />
-                <span className={`kpi-value ${item.valueClass}`}>{item.value}</span>
-              </div>
+              <span className={`kpi-value ${item.valueClass}`}>{item.value}</span>
             </div>
           </button>
         );
@@ -1258,7 +1255,7 @@ const Dashboard: React.FC = () => {
   const listsNode = (
     <div className="space-y-3 md:space-y-5">
       <Card
-        title={<span className="text-red-600 font-bold uppercase"><ClockCircleOutlined className="mr-2" />🔴 DANH SÁCH VIỆC QUÁ HẠN</span>}
+        title={<span className="text-red-600 font-bold uppercase"><ClockCircleOutlined className="mr-2" />Danh sách việc quá hạn</span>}
         variant="borderless"
         className="shadow-sm border border-red-100"
         styles={{ body: { padding: 0 } }}
@@ -1309,7 +1306,7 @@ const Dashboard: React.FC = () => {
 
       {/* VIỆC ẢNH HƯỞNG CAO */}
       <Card
-        title={<span className="text-orange-600 font-bold uppercase"><FireOutlined className="mr-2" />⭐ VIỆC ẢNH HƯỞNG CAO ĐANG LÀM (MỨC 3-4)</span>}
+        title={<span className="text-orange-600 font-bold uppercase"><FireOutlined className="mr-2" />Việc ảnh hưởng cao đang làm (mức 3-4)</span>}
         variant="borderless"
         className="shadow-sm border border-orange-100"
         styles={{ body: { padding: 0 } }}
@@ -2095,7 +2092,7 @@ const Dashboard: React.FC = () => {
                 <Form.Item name="ngayGiao" label="Ngày giao">
                   <Input placeholder="DD/MM/YYYY" />
                 </Form.Item>
-                <Form.Item name="ycXong" label="Y/C xong">
+                <Form.Item name="ycXong" label="Ngày hoàn thành">
                   <DatePicker className="w-full" format="DD/MM/YYYY" />
                 </Form.Item>
                 <Form.Item name="anhHuong" label="Mức ảnh hưởng">
@@ -2132,7 +2129,7 @@ const Dashboard: React.FC = () => {
                   {renderStatus(selectedTask.status)}
                   {selectedTask.ngayHoanThanh ? (
                     <span className="text-sm text-gray-600">
-                      Ngày HT: <strong>{selectedTask.ngayHoanThanh}</strong>
+                      Ngày đã hoàn thành: <strong>{selectedTask.ngayHoanThanh}</strong>
                     </span>
                   ) : null}
                 </div>
