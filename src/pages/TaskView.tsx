@@ -10,6 +10,7 @@ import {
   Modal,
   Form,
   Input,
+  InputNumber,
   DatePicker,
 } from 'antd';
 import type { ColumnsType } from 'antd/es/table';
@@ -29,6 +30,7 @@ import dayjs from 'dayjs';
 import BackButton from '../components/BackButton';
 import TaskActionMenu from '../components/TaskActionMenu';
 import TaskCompleteTick from '../components/TaskCompleteTick';
+import TaskProgressBar, { clampProgressPercent } from '../components/TaskProgressBar';
 import { ORG_BLOCKS } from '../data/orgBlocks';
 import type { TaskRecord } from '../types/task';
 import {
@@ -229,6 +231,7 @@ type TableRow = {
   giaHan2: string;
   giaHan3: string;
   tienDo: string;
+  tienDoPhanTram: number;
   trangThai: string;
   ngayHoanThanh: string;
   deptKey: string;
@@ -437,7 +440,14 @@ const TaskView: React.FC = () => {
       giaHan3: parseTaskDate(detailTask.giaHan3) ?? undefined,
       ketQua: detailTask.ketQua,
       linkKQ: detailTask.linkKQ,
-      tienDo: detailTask.tienDo,
+      tienDo: (() => {
+        const raw = (detailTask.tienDo || '').trim();
+        if (raw === 'Đang thực hiện') return 'Đang làm';
+        if (raw === 'Đang làm' || raw === 'Hoàn thành' || raw === 'Quá hạn') return raw;
+        if (raw.toLowerCase().includes('hoàn thành')) return 'Hoàn thành';
+        return 'Đang làm';
+      })(),
+      tienDoPhanTram: detailTask.tienDoPhanTram ?? 0,
       vuongMac: detailTask.vuongMac,
       canLD: detailTask.canLD,
       anhHuong: detailTask.anhHuong,
@@ -500,6 +510,7 @@ const TaskView: React.FC = () => {
             giaHan2: t.giaHan2,
             giaHan3: t.giaHan3,
             tienDo: resolveDisplayTienDo(t),
+            tienDoPhanTram: t.tienDoPhanTram ?? 0,
             trangThai: t.trangThai,
             ngayHoanThanh: t.ngayGioHoanThanh,
             deptKey: scope.deptKey,
@@ -527,6 +538,7 @@ const TaskView: React.FC = () => {
             giaHan2: t.giaHan2,
             giaHan3: t.giaHan3,
             tienDo: resolveDisplayTienDo(t),
+            tienDoPhanTram: t.tienDoPhanTram ?? 0,
             trangThai: t.trangThai,
             ngayHoanThanh: t.ngayGioHoanThanh,
             deptKey: dept.key,
@@ -637,6 +649,7 @@ const TaskView: React.FC = () => {
               anhHuong: Number(values.anhHuong),
               stt: nextStt,
               linkKQ: values.linkKQ as string | undefined,
+              tienDoPhanTram: clampProgressPercent(values.tienDoPhanTram),
             }),
             targetTable
           );
@@ -685,7 +698,17 @@ const TaskView: React.FC = () => {
           giaHan3: formatTaskDate(values.giaHan3),
           ketQua: values.ketQua as string,
           linkKQ: values.linkKQ as string,
-          tienDo: detailTask.tienDo,
+          tienDo: (values.tienDo as string) || detailTask.tienDo,
+          tienDoPhanTram:
+            (values.tienDo as string) === 'Hoàn thành'
+              ? Math.max(clampProgressPercent(values.tienDoPhanTram), 100)
+              : clampProgressPercent(values.tienDoPhanTram),
+          ngayGioHoanThanh:
+            (values.tienDo as string) === 'Hoàn thành'
+              ? detailTask.ngayGioHoanThanh || formatTaskDate(dayjs())
+              : (values.tienDo as string) === 'Đang làm' || (values.tienDo as string) === 'Quá hạn'
+                ? ''
+                : detailTask.ngayGioHoanThanh,
           vuongMac: values.vuongMac as string,
           canLD: values.canLD as string,
           anhHuong: Number(values.anhHuong),
@@ -771,6 +794,8 @@ const TaskView: React.FC = () => {
         tienDo === 'Hoàn thành'
           ? task.ngayGioHoanThanh || formatTaskDate(dayjs())
           : '';
+      const optimisticPercent =
+        tienDo === 'Hoàn thành' ? Math.max(task.tienDoPhanTram ?? 0, 100) : task.tienDoPhanTram ?? 0;
       setTasksByDept(prev => {
         const next = cloneTasksMap(prev);
         const current = next[deptKey]?.[taskKey];
@@ -778,6 +803,7 @@ const TaskView: React.FC = () => {
         next[deptKey][taskKey] = {
           ...current,
           tienDo,
+          tienDoPhanTram: optimisticPercent,
           ngayGioHoanThanh: optimisticNgay,
           sourceRow: { ...current.sourceRow, ...editRow },
         };
@@ -789,11 +815,12 @@ const TaskView: React.FC = () => {
             ? {
                 ...prev,
                 tienDo,
+                tienDoPhanTram: optimisticPercent,
                 ngayGioHoanThanh: optimisticNgay,
               }
             : prev
         );
-        detailForm.setFieldsValue({ tienDo });
+        detailForm.setFieldsValue({ tienDo, tienDoPhanTram: optimisticPercent });
       }
 
       setSavingTienDoKey(taskKey);
@@ -1066,7 +1093,16 @@ const TaskView: React.FC = () => {
         ),
       },
       {
-        title: th('Tiến độ'),
+        title: th('Tiến độ CV'),
+        dataIndex: 'tienDoPhanTram',
+        key: 'tienDoPhanTram',
+        width: 150,
+        align: 'center',
+        className: 'task-col-progress',
+        render: (value: number) => <TaskProgressBar value={value} />,
+      },
+      {
+        title: th('Trạng thái'),
         dataIndex: 'tienDo',
         key: 'tienDo',
         width: 120,
@@ -1217,6 +1253,17 @@ const TaskView: React.FC = () => {
           <Form.Item name="deadline" label="Ngày hoàn thành" rules={[{ required: true, message: 'Chọn ngày hoàn thành' }]}>
             <DatePicker className="w-full" format="DD/MM/YYYY" />
           </Form.Item>
+          <Form.Item
+            name="tienDoPhanTram"
+            label="Tiến độ CV (%)"
+            initialValue={0}
+            rules={[
+              { required: true, message: 'Nhập tiến độ' },
+              { type: 'number', min: 0, max: 100, message: 'Nhập từ 0 đến 100' },
+            ]}
+          >
+            <InputNumber className="w-full" min={0} max={100} addonAfter="%" placeholder="0–100" />
+          </Form.Item>
           <Form.Item name="linkKQ" label="Link KQ (tùy chọn)">
             <Input placeholder="https://..." />
           </Form.Item>
@@ -1295,7 +1342,7 @@ const TaskView: React.FC = () => {
                     pagination={false}
                     size="middle"
                     tableLayout="fixed"
-                    scroll={{ x: showDeptColumn ? 1520 : 1460 }}
+                    scroll={{ x: showDeptColumn ? 1680 : 1620 }}
                     locale={{ emptyText: 'Chưa có công việc' }}
                     onRow={record => {
                       const overdue =
@@ -1368,6 +1415,10 @@ const TaskView: React.FC = () => {
                             {renderMobileDateLine('Gia hạn 1', row.giaHan1, row)}
                             {renderMobileDateLine('Gia hạn 2', row.giaHan2, row)}
                             {renderMobileDateLine('Gia hạn 3', row.giaHan3, row)}
+                            <div className="mt-2">
+                              <p className="text-[11px] text-gray-400 m-0 mb-1">Tiến độ CV</p>
+                              <TaskProgressBar value={row.tienDoPhanTram} className="max-w-none" />
+                            </div>
                             {row.ngayHoanThanh ? (
                               <p>
                                 Ngày đã hoàn thành:{' '}
@@ -1490,15 +1541,34 @@ const TaskView: React.FC = () => {
                           </Form.Item>
                         </div>
                       </div>
-                      <Form.Item label="Tiến độ">
-                        <div className="flex flex-wrap items-center gap-2">
-                          <Tag color={(STATUS_CFG[selected.tienDo] ?? { color: 'default' }).color}>
-                            {selected.tienDo || 'Chưa bắt đầu'}
-                          </Tag>
-                          <Button size="small" onClick={openTienDoModal} disabled={isTaskRecordCompleted(selected)}>
-                            Sửa tiến độ
-                          </Button>
-                        </div>
+                      <Form.Item
+                        name="tienDo"
+                        label="Trạng thái"
+                        rules={[{ required: true, message: 'Chọn trạng thái' }]}
+                      >
+                        <Select
+                          options={TIEN_DO_EDIT_OPTIONS}
+                          placeholder="Chọn trạng thái"
+                          disabled={!supabaseConnected}
+                        />
+                      </Form.Item>
+                      <Form.Item
+                        name="tienDoPhanTram"
+                        label="Tiến độ CV (%)"
+                        rules={[
+                          { required: true, message: 'Nhập tiến độ' },
+                          { type: 'number', min: 0, max: 100, message: 'Nhập từ 0 đến 100' },
+                        ]}
+                      >
+                        <InputNumber className="w-full" min={0} max={100} addonAfter="%" placeholder="0–100" />
+                      </Form.Item>
+                      <Form.Item shouldUpdate={(prev, next) => prev.tienDoPhanTram !== next.tienDoPhanTram} className="mb-0 xl:col-span-2">
+                        {() => (
+                          <TaskProgressBar
+                            value={clampProgressPercent(detailForm.getFieldValue('tienDoPhanTram'))}
+                            className="max-w-none mb-2"
+                          />
+                        )}
                       </Form.Item>
                       {selected.ngayGioHoanThanh ? (
                         <Form.Item label="Ngày đã hoàn thành">

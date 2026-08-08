@@ -199,6 +199,7 @@ export type DashboardTask = {
   ketQua: string;
   linkKQ: string;
   tienDo: string;
+  tienDoPhanTram: number;
   vuongMac: string;
   canLD: string;
   ngayHoanThanh: string;
@@ -255,12 +256,19 @@ function mapTaskRecordToDashboardTask(
   task: TaskRecord
 ): DashboardTask {
   const deadline = normalizeDisplayDate(task.giaHan3 || task.giaHan2 || task.giaHan1 || task.ycXong);
-  // Dashboard: đã có tiến độ/ngày HT → luôn coi là Hoàn thành (kể cả HT sau hạn).
-  // Không dùng calculateAutomaticStatus cho case này vì hàm đó trả "Quá hạn" khi ngày HT > deadline.
+  // Ưu tiên TIẾN ĐỘ đã lưu (để form sửa Trạng thái có hiệu lực); không thì mới tự tính.
+  const storedTienDo = (task.tienDo || '').trim();
   let status: string;
-  if (isTaskRecordCompleted(task)) {
-    status =
-      task.tienDo && task.tienDo.toLowerCase().includes('gia hạn') ? task.tienDo : 'Hoàn thành';
+  if (
+    storedTienDo === 'Đang làm' ||
+    storedTienDo === 'Hoàn thành' ||
+    storedTienDo === 'Quá hạn' ||
+    storedTienDo.toLowerCase().includes('gia hạn') ||
+    storedTienDo === 'Đang thực hiện'
+  ) {
+    status = storedTienDo === 'Đang thực hiện' ? 'Đang làm' : storedTienDo;
+  } else if (isTaskRecordCompleted(task)) {
+    status = 'Hoàn thành';
   } else {
     status = calculateAutomaticStatus({
       deadline: task.ycXong,
@@ -295,6 +303,7 @@ function mapTaskRecordToDashboardTask(
     ketQua: task.ketQua || '',
     linkKQ: task.linkKQ || '',
     tienDo: task.tienDo || '',
+    tienDoPhanTram: task.tienDoPhanTram ?? 0,
     vuongMac: task.vuongMac || '',
     canLD: task.canLD || 'Không',
     ngayHoanThanh: task.ngayGioHoanThanh || '',

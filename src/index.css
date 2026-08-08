@@ -240,6 +240,22 @@ body {
   white-space: nowrap;
 }
 
+.task-progress-bar {
+  min-width: 110px;
+  max-width: 160px;
+  margin: 0 auto;
+}
+
+.task-progress-bar .ant-progress {
+  margin-bottom: 0 !important;
+}
+
+.task-progress-bar .ant-progress-text {
+  font-size: 12px !important;
+  font-weight: 700 !important;
+  color: #1e386b !important;
+}
+
 .task-action-menu {
   display: inline-flex;
   align-items: center;

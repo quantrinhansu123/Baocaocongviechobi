@@ -128,7 +128,53 @@ function pickFormattedDate(row: Record<string, unknown>, keys: string[]): string
 /** Tên cột dữ liệu (xác nhận bởi người dùng). */
 export const COL_NGAY_HOAN_THANH = 'Ngày hoàn thành';
 export const COL_TIEN_DO = 'TIẾN ĐỘ';
+export const COL_TIEN_DO_CV = 'TIẾN ĐỘ CV';
 export const COL_LINK_KQ = 'LINK KQ';
+
+const TIEN_DO_CV_KEYS = [
+  COL_TIEN_DO_CV,
+  'Tiến độ CV',
+  'Tien do CV',
+  'TienDoCV',
+  'tienDoCV',
+  'tienDoPhanTram',
+  '% TIẾN ĐỘ',
+  '% tiến độ',
+  'Phần trăm',
+  'Phan tram',
+];
+
+export function normalizeTienDoPhanTram(value: unknown): number {
+  if (typeof value === 'number' && Number.isFinite(value)) {
+    return Math.max(0, Math.min(100, Math.round(value)));
+  }
+  const text = String(value ?? '')
+    .replace(/%/g, '')
+    .trim();
+  if (!text) return 0;
+  const n = Number(text);
+  if (!Number.isFinite(n)) return 0;
+  return Math.max(0, Math.min(100, Math.round(n)));
+}
+
+function resolveTienDoCvColumnKey(row: Record<string, unknown>): string {
+  return resolveRowColumnKey(row, TIEN_DO_CV_KEYS, COL_TIEN_DO_CV);
+}
+
+function pickTienDoPhanTram(row: Record<string, unknown>): number {
+  for (const key of TIEN_DO_CV_KEYS) {
+    if (Object.prototype.hasOwnProperty.call(row, key)) {
+      return normalizeTienDoPhanTram(row[key]);
+    }
+  }
+  const targets = new Set(TIEN_DO_CV_KEYS.map(normalizeColumnKey));
+  for (const [key, value] of Object.entries(row)) {
+    if (targets.has(normalizeColumnKey(key))) {
+      return normalizeTienDoPhanTram(value);
+    }
+  }
+  return 0;
+}
 
 const LINK_KQ_KEYS = ['LINK KQ', 'Link KQ', 'LinkKQ', 'linkKQ', 'Link'];
 
@@ -555,6 +601,7 @@ export function mapRowToTaskRecord(
       ketQua: pickField(row, ['KẾT QUẢ', 'Kết quả', 'Ket qua', 'KetQua', 'ketQua', 'Result']),
       linkKQ: parseUrlField(pickLinkKQRawValue(row)),
       tienDo: tienDoVal,
+      tienDoPhanTram: isCompleted ? Math.max(pickTienDoPhanTram(row), 100) : pickTienDoPhanTram(row),
       trangThai: trangThaiVal,
       ngayGioHoanThanh,
       vuongMac: pickField(row, ['VƯỚNG MẮC', 'Vướng mắc', 'Vuong mac', 'VuongMac', 'vuongMac']),
@@ -595,6 +642,7 @@ export function buildTaskRow(input: {
   kyBaoCao?: string;
   stt?: number;
   linkKQ?: string;
+  tienDoPhanTram?: number;
 }): Record<string, unknown> {
   const row: Record<string, unknown> = {
     TT: input.stt != null ? String(input.stt) : '',
@@ -607,6 +655,7 @@ export function buildTaskRow(input: {
     'GIA HẠN 3': formatRecordDate(input.giaHan3 ?? ''),
     'CẦN LĐ TÁC ĐỘNG': 'Không',
     'MỨC ẢNH HƯỞNG': String(input.anhHuong),
+    [COL_TIEN_DO_CV]: normalizeTienDoPhanTram(input.tienDoPhanTram ?? 0),
   };
   applyLinkKQToRow(row, input.linkKQ);
   return row;
@@ -618,6 +667,8 @@ export function buildTaskEditRow(
   tableName: string
 ): Record<string, unknown> {
   const row: Record<string, unknown> = {};
+  const tienDoKey = resolveTienDoColumnKey(sourceRow);
+  const ngayHtKey = resolveNgayHoanThanhColumnKey(sourceRow);
 
   row['CÔNG VIỆC'] = task.congViec;
   row['NGƯỜI ĐƯỢC GIAO'] = task.nguoiGiao;
@@ -634,7 +685,37 @@ export function buildTaskEditRow(
 
   const tienDo = serializeTienDo(task.tienDo);
   if (tienDo) {
-    row['TIẾN ĐỘ'] = tienDo;
+    row[tienDoKey] = tienDo;
+    if (tienDoKey !== COL_TIEN_DO) {
+      row[COL_TIEN_DO] = tienDo;
+    }
+  }
+
+  const tienDoCvKey = resolveTienDoCvColumnKey(sourceRow);
+  const percent =
+    (task.tienDo || '').trim() === 'Hoàn thành'
+      ? Math.max(normalizeTienDoPhanTram(task.tienDoPhanTram), 100)
+      : normalizeTienDoPhanTram(task.tienDoPhanTram);
+  row[tienDoCvKey] = percent;
+  if (tienDoCvKey !== COL_TIEN_DO_CV) {
+    row[COL_TIEN_DO_CV] = percent;
+  }
+
+  const isCompleted = (task.tienDo || '').trim() === 'Hoàn thành';
+  if (isCompleted) {
+    const stamp =
+      pickNgayHoanThanhFromRow(sourceRow) ||
+      formatRecordDate(task.ngayGioHoanThanh) ||
+      formatRecordDate(new Date());
+    row[ngayHtKey] = stamp;
+    if (ngayHtKey !== COL_NGAY_HOAN_THANH) {
+      row[COL_NGAY_HOAN_THANH] = stamp;
+    }
+  } else if ((task.tienDo || '').trim()) {
+    row[ngayHtKey] = null;
+    if (ngayHtKey !== COL_NGAY_HOAN_THANH) {
+      row[COL_NGAY_HOAN_THANH] = null;
+    }
   }
 
   return applyRowKey(row, sourceRow, task.rowKey, tableName);
@@ -652,6 +733,7 @@ export function mergeTaskCompletion(
   return {
     ...task,
     tienDo: 'Hoàn thành',
+    tienDoPhanTram: 100,
     trangThai: '',
     ngayGioHoanThanh: ngayHoanThanh,
     rowKey: pickRowKey(mergedSource) ?? task.rowKey,
@@ -669,8 +751,21 @@ export function buildCompleteTaskRow(
   const row: Record<string, unknown> = { ...sourceRow };
 
   const tienDoValue = serializeTienDo('Hoàn thành') ?? 'Hoàn thành';
-  row[COL_TIEN_DO] = tienDoValue;
-  row[COL_NGAY_HOAN_THANH] = formatRecordDate(completedAt);
+  const tienDoKey = resolveTienDoColumnKey(sourceRow);
+  const tienDoCvKey = resolveTienDoCvColumnKey(sourceRow);
+  const ngayHtKey = resolveNgayHoanThanhColumnKey(sourceRow);
+  row[tienDoKey] = tienDoValue;
+  if (tienDoKey !== COL_TIEN_DO) {
+    row[COL_TIEN_DO] = tienDoValue;
+  }
+  row[tienDoCvKey] = 100;
+  if (tienDoCvKey !== COL_TIEN_DO_CV) {
+    row[COL_TIEN_DO_CV] = 100;
+  }
+  row[ngayHtKey] = formatRecordDate(completedAt);
+  if (ngayHtKey !== COL_NGAY_HOAN_THANH) {
+    row[COL_NGAY_HOAN_THANH] = formatRecordDate(completedAt);
+  }
 
   return applyRowKey(row, sourceRow, explicitRowKey, tableName);
 }

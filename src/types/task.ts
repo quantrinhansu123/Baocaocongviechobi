@@ -11,6 +11,8 @@ export type TaskRecord = {
   ketQua: string;
   linkKQ: string;
   tienDo: string;
+  /** Phần trăm tiến độ công việc (0–100) */
+  tienDoPhanTram: number;
   trangThai: string;
   ngayGioHoanThanh: string;
   vuongMac: string;

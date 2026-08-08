@@ -41,6 +41,7 @@ import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip,
 import { X, User, Star } from 'lucide-react';
 import TaskActionMenu from '../components/TaskActionMenu';
 import TaskCompleteTick from '../components/TaskCompleteTick';
+import TaskProgressBar, { clampProgressPercent } from '../components/TaskProgressBar';
 import { ORG_BLOCKS } from '../data/orgBlocks';
 import {
   buildDashboardBlockChartData,
@@ -199,6 +200,15 @@ const Dashboard: React.FC = () => {
       detailForm.resetFields();
       return;
     }
+    const statusValue = (() => {
+      const raw = (selectedTask.tienDo || selectedTask.status || '').trim();
+      if (raw === 'Đang thực hiện') return 'Đang làm';
+      if (raw === 'Đang làm' || raw === 'Hoàn thành' || raw === 'Quá hạn') return raw;
+      if (raw.includes('Hoàn thành')) return 'Hoàn thành';
+      if (raw === 'Quá hạn') return 'Quá hạn';
+      return 'Đang làm';
+    })();
+
     detailForm.setFieldsValue({
       congViec: selectedTask.name,
       nguoiGiao: selectedTask.assignee === '—' ? '' : selectedTask.assignee,
@@ -209,6 +219,8 @@ const Dashboard: React.FC = () => {
       giaHan3: parseTaskDate(selectedTask.giaHan3) ?? undefined,
       ketQua: selectedTask.ketQua || selectedTask.desc,
       linkKQ: selectedTask.linkKQ,
+      tienDo: statusValue,
+      tienDoPhanTram: selectedTask.tienDoPhanTram ?? 0,
       vuongMac: selectedTask.vuongMac || selectedTask.history,
       canLD: selectedTask.canLD || 'Không',
       anhHuong: selectedTask.impact || 1,
@@ -241,6 +253,7 @@ const Dashboard: React.FC = () => {
       ...task,
       status: 'Hoàn thành',
       tienDo: 'Hoàn thành',
+      tienDoPhanTram: 100,
       ngayHoanThanh: completedStamp,
       isIssue: false,
     };
@@ -315,6 +328,11 @@ const Dashboard: React.FC = () => {
           return;
         }
 
+        const nextTienDo = (values.tienDo as string) || selectedTask.tienDo || 'Đang làm';
+        const nextPercent =
+          nextTienDo === 'Hoàn thành'
+            ? Math.max(clampProgressPercent(values.tienDoPhanTram), 100)
+            : clampProgressPercent(values.tienDoPhanTram);
         const updatedTask: TaskRecord = {
           stt: 0,
           kyBaoCao: selectedTask.week,
@@ -327,9 +345,13 @@ const Dashboard: React.FC = () => {
           giaHan3: formatTaskDate(values.giaHan3),
           ketQua: (values.ketQua as string) || '',
           linkKQ: (values.linkKQ as string) || '',
-          tienDo: selectedTask.tienDo,
+          tienDo: nextTienDo,
+          tienDoPhanTram: nextPercent,
           trangThai: '',
-          ngayGioHoanThanh: selectedTask.ngayHoanThanh,
+          ngayGioHoanThanh:
+            nextTienDo === 'Hoàn thành'
+              ? selectedTask.ngayHoanThanh || formatTaskDate(dayjs())
+              : '',
           vuongMac: (values.vuongMac as string) || '',
           canLD: (values.canLD as string) || 'Không',
           anhHuong: Number(values.anhHuong) || 1,
@@ -596,6 +618,9 @@ const Dashboard: React.FC = () => {
             </Tag>
             <span className={`task-deadline ${deadlineClass}`}>Ngày hoàn thành: {task.deadline}</span>
           </div>
+          <div className="mt-1.5">
+            <TaskProgressBar value={task.tienDoPhanTram} className="max-w-none" />
+          </div>
           <div className="task-footer">
             <span className="task-assignee" title={task.assignee}>
               <User size={10} className="shrink-0" />
@@ -672,6 +697,14 @@ const Dashboard: React.FC = () => {
       width: 160,
       render: (date: string) => <strong className="text-red-600">{date}</strong>,
     },
+    {
+      title: 'TIẾN ĐỘ CV',
+      dataIndex: 'tienDoPhanTram',
+      key: 'tienDoPhanTram',
+      width: 150,
+      align: 'center' as const,
+      render: (value: number) => <TaskProgressBar value={value} />,
+    },
   ];
 
   const buildTaskListColumns = (page: number, pageSize: number) => [
@@ -710,6 +743,14 @@ const Dashboard: React.FC = () => {
       key: 'deadline',
       width: 160,
       render: (date: string) => <strong className="chart-drill-deadline">{date}</strong>,
+    },
+    {
+      title: 'TIẾN ĐỘ CV',
+      dataIndex: 'tienDoPhanTram',
+      key: 'tienDoPhanTram',
+      width: 150,
+      align: 'center' as const,
+      render: (value: number) => <TaskProgressBar value={value} />,
     },
     {
       title: 'TRẠNG THÁI',
@@ -755,6 +796,14 @@ const Dashboard: React.FC = () => {
       key: 'deadline',
       width: 160,
       render: (date: string) => <strong className="text-[#1E386B]">{date}</strong>
+    },
+    {
+      title: 'TIẾN ĐỘ CV',
+      dataIndex: 'tienDoPhanTram',
+      key: 'tienDoPhanTram',
+      width: 150,
+      align: 'center' as const,
+      render: (value: number) => <TaskProgressBar value={value} />,
     },
     {
       title: 'MỨC ĐỘ ẢNH HƯỞNG',
@@ -2095,6 +2144,38 @@ const Dashboard: React.FC = () => {
                 <Form.Item name="giaHan3" label="Gia hạn 3">
                   <DatePicker className="w-full" format="DD/MM/YYYY" />
                 </Form.Item>
+                <Form.Item
+                  name="tienDo"
+                  label="Trạng thái"
+                  rules={[{ required: true, message: 'Chọn trạng thái' }]}
+                >
+                  <Select
+                    options={[
+                      { value: 'Đang làm', label: 'Đang làm' },
+                      { value: 'Hoàn thành', label: 'Hoàn thành' },
+                      { value: 'Quá hạn', label: 'Quá hạn' },
+                    ]}
+                    disabled={supabaseConnected === false}
+                  />
+                </Form.Item>
+                <Form.Item
+                  name="tienDoPhanTram"
+                  label="Tiến độ CV (%)"
+                  rules={[
+                    { required: true, message: 'Nhập tiến độ' },
+                    { type: 'number', min: 0, max: 100, message: 'Nhập từ 0 đến 100' },
+                  ]}
+                >
+                  <InputNumber className="w-full" min={0} max={100} addonAfter="%" placeholder="0–100" />
+                </Form.Item>
+                <Form.Item shouldUpdate={(prev, next) => prev.tienDoPhanTram !== next.tienDoPhanTram} className="mb-0">
+                  {() => (
+                    <TaskProgressBar
+                      value={clampProgressPercent(detailForm.getFieldValue('tienDoPhanTram'))}
+                      className="max-w-none mb-4"
+                    />
+                  )}
+                </Form.Item>
                 <Form.Item name="canLD" label="Cần LĐ tác động">
                   <Select
                     options={[
@@ -2112,15 +2193,11 @@ const Dashboard: React.FC = () => {
                 <Form.Item name="vuongMac" label="Vướng mắc" className="md:col-span-2">
                   <Input.TextArea rows={2} />
                 </Form.Item>
-                <div className="md:col-span-2 flex flex-wrap items-center gap-3 pb-1">
-                  <span className="text-sm text-gray-500">Trạng thái:</span>
-                  {renderStatus(selectedTask.status)}
-                  {selectedTask.ngayHoanThanh ? (
-                    <span className="text-sm text-gray-600">
-                      Ngày đã hoàn thành: <strong>{selectedTask.ngayHoanThanh}</strong>
-                    </span>
-                  ) : null}
-                </div>
+                {selectedTask.ngayHoanThanh ? (
+                  <div className="md:col-span-2 text-sm text-gray-600 pb-1">
+                    Ngày đã hoàn thành: <strong>{selectedTask.ngayHoanThanh}</strong>
+                  </div>
+                ) : null}
               </Form>
             </div>
           </div>
