@@ -11,15 +11,12 @@ import {
   Form,
   Input,
   DatePicker,
-  Popconfirm,
 } from 'antd';
 import type { ColumnsType } from 'antd/es/table';
 import {
   CheckSquareOutlined,
   CheckCircleOutlined,
   PlusOutlined,
-  EditOutlined,
-  DeleteOutlined,
   LinkOutlined,
   UserOutlined,
   CalendarOutlined,
@@ -30,6 +27,7 @@ import {
 import { Star } from 'lucide-react';
 import dayjs from 'dayjs';
 import BackButton from '../components/BackButton';
+import TaskActionMenu from '../components/TaskActionMenu';
 import { ORG_BLOCKS } from '../data/orgBlocks';
 import type { TaskRecord } from '../types/task';
 import {
@@ -1059,59 +1057,21 @@ const TaskView: React.FC = () => {
       {
         title: th(''),
         key: 'actions',
-        width: 112,
+        width: 56,
         align: 'center',
         className: 'task-col-actions',
         render: (_, record) => {
           const completed = isTaskRecordCompleted(record);
-          const overdue =
-            !completed && isTaskOverduePastExtensions(taskDueContext(record));
           return (
-          <div
-            className={`flex items-center justify-center gap-0.5${overdue ? ' task-overdue-actions' : ''}`}
-            data-task-action
-            onClick={event => event.stopPropagation()}
-          >
-            {!completed ? (
-              <Button
-                type="text"
-                size="small"
-                className="!px-1 !text-green-700 hover:!text-green-800"
-                icon={<CheckCircleOutlined />}
-                title="Đã hoàn thành"
-                loading={completingTaskKey === record.key}
-                disabled={!supabaseConnected}
-                onClick={() => void handleMarkComplete(record.key, record.deptKey)}
-              />
-            ) : null}
-            <Button
-              type="text"
-              size="small"
-              className="!px-1"
-              icon={<EditOutlined />}
-              title="Sửa"
-              onClick={() => openDetail(record.key, record.deptKey)}
-            />
-            <Popconfirm
-              title="Xoá công việc này trên Supabase?"
-              okText="Xoá"
-              cancelText="Huỷ"
-              okButtonProps={{ danger: true, loading: deletingTaskKey === record.key }}
-              onConfirm={() => void handleDeleteTask(record.key, record.deptKey)}
+            <TaskActionMenu
+              completed={completed}
               disabled={!supabaseConnected}
-            >
-              <Button
-                type="text"
-                size="small"
-                danger
-                className="!px-1"
-                icon={<DeleteOutlined />}
-                title="Xóa"
-                loading={deletingTaskKey === record.key}
-                disabled={!supabaseConnected}
-              />
-            </Popconfirm>
-          </div>
+              completing={completingTaskKey === record.key}
+              deleting={deletingTaskKey === record.key}
+              onComplete={() => void handleMarkComplete(record.key, record.deptKey)}
+              onEdit={() => openDetail(record.key, record.deptKey)}
+              onDelete={() => void handleDeleteTask(record.key, record.deptKey)}
+            />
           );
         },
       }
@@ -1257,7 +1217,7 @@ const TaskView: React.FC = () => {
                     variant="light"
                     size="small"
                     className="mt-0.5"
-                    to={
+                    fallbackTo={
                       listScope?.kind === 'dept' && blockKeyParam
                         ? `/tasks/${blockKeyParam}`
                         : '/tasks'
@@ -1364,41 +1324,16 @@ const TaskView: React.FC = () => {
                             ) : null}
                           </div>
                         </button>
-                        <div className="mt-3 flex flex-wrap items-center gap-2 border-t border-gray-100 pt-3" data-task-action>
-                          {!isTaskRecordCompleted(row) ? (
-                            <Button
-                              size="small"
-                              type="primary"
-                              className="bg-green-600 border-green-600"
-                              icon={<CheckCircleOutlined />}
-                              loading={completingTaskKey === row.key}
-                              disabled={!supabaseConnected}
-                              onClick={() => void handleMarkComplete(row.key, row.deptKey)}
-                            >
-                              Đã hoàn thành
-                            </Button>
-                          ) : null}
-                          <Button size="small" icon={<EditOutlined />} onClick={() => openDetail(row.key, row.deptKey)}>
-                            Sửa
-                          </Button>
-                          <Popconfirm
-                            title="Xoá công việc này trên Supabase?"
-                            okText="Xoá"
-                            cancelText="Huỷ"
-                            okButtonProps={{ danger: true, loading: deletingTaskKey === row.key }}
-                            onConfirm={() => void handleDeleteTask(row.key, row.deptKey)}
+                        <div className="mt-3 flex justify-end border-t border-gray-100 pt-3">
+                          <TaskActionMenu
+                            completed={isTaskRecordCompleted(row)}
                             disabled={!supabaseConnected}
-                          >
-                            <Button
-                              size="small"
-                              danger
-                              icon={<DeleteOutlined />}
-                              loading={deletingTaskKey === row.key}
-                              disabled={!supabaseConnected}
-                            >
-                              Xoá
-                            </Button>
-                          </Popconfirm>
+                            completing={completingTaskKey === row.key}
+                            deleting={deletingTaskKey === row.key}
+                            onComplete={() => void handleMarkComplete(row.key, row.deptKey)}
+                            onEdit={() => openDetail(row.key, row.deptKey)}
+                            onDelete={() => void handleDeleteTask(row.key, row.deptKey)}
+                          />
                         </div>
                       </div>
                     );

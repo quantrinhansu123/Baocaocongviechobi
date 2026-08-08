@@ -155,7 +155,7 @@ const ReportDetail: React.FC = () => {
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
           <div className="mb-2">
-            <BackButton to="/reports" size="small" />
+            <BackButton size="small" />
           </div>
           <AntBreadcrumb
             items={[

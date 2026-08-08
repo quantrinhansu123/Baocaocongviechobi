@@ -95,7 +95,7 @@ const ExecutiveView: React.FC = () => {
     <div className="max-w-5xl mx-auto space-y-6 py-6 px-4">
       <div className="border-b pb-4 mb-6">
         <div className="mb-2">
-          <BackButton to="/" size="small" />
+          <BackButton size="small" />
         </div>
         <Title level={2} className="m-0 text-gray-800">Giao Diện Điều Hành</Title>
         <Text type="secondary" className="text-base">Tóm tắt các vấn đề trọng điểm từ Supabase.</Text>

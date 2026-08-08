@@ -76,7 +76,7 @@ export default function ReportDetailScreen() {
       <div className="max-w-6xl mx-auto bg-white rounded-xl shadow-sm border border-gray-100 p-6 mb-6">
         <div className="flex justify-between items-center mb-6 gap-3">
           <div className="flex items-center gap-3 min-w-0">
-            <BackButton to="/" size="small" />
+            <BackButton size="small" />
             <h1 className="text-2xl font-bold text-[#1E386B] flex items-center gap-2 m-0">
               <AlertCircle className="text-[#F38320]" />
               Báo Cáo Tuần Nhà Máy

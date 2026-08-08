@@ -34,12 +34,12 @@ import {
   CheckOutlined,
   ClockCircleOutlined,
   DeleteOutlined,
-  EditOutlined,
   FireOutlined,
   FileTextOutlined,
 } from '@ant-design/icons';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, ResponsiveContainer, LabelList } from 'recharts';
 import { X, User, Star } from 'lucide-react';
+import TaskActionMenu from '../components/TaskActionMenu';
 import { ORG_BLOCKS } from '../data/orgBlocks';
 import {
   buildDashboardBlockChartData,
@@ -366,56 +366,16 @@ const Dashboard: React.FC = () => {
 
   const renderTaskActions = (task: DashboardTask) => {
     const completed = task.status.includes('Hoàn thành');
-    const actionsDisabled = supabaseConnected === false;
     return (
-      <div
-        className="chart-drill-actions flex items-center justify-center gap-1"
-        data-task-action
-        onClick={event => event.stopPropagation()}
-        onMouseDown={event => event.stopPropagation()}
-      >
-        {!completed ? (
-          <Button
-            type="text"
-            size="large"
-            className="chart-drill-action-btn !text-green-700 hover:!text-green-800"
-            icon={<CheckCircleOutlined />}
-            title="Đã hoàn thành"
-            loading={completingTaskId === task.id}
-            disabled={actionsDisabled}
-            onClick={() => void handleMarkComplete(task)}
-          />
-        ) : null}
-        <Button
-          type="text"
-          size="large"
-          className="chart-drill-action-btn"
-          icon={<EditOutlined />}
-          title="Sửa"
-          onClick={() => openTaskEdit(task)}
-        />
-        <Popconfirm
-          title="Xoá công việc này trên Supabase?"
-          okText="Xoá"
-          cancelText="Huỷ"
-          okButtonProps={{ danger: true, loading: deletingTaskId === task.id }}
-          onConfirm={() => void handleDeleteTask(task)}
-          disabled={actionsDisabled}
-          zIndex={11000}
-          getPopupContainer={() => document.body}
-        >
-          <Button
-            type="text"
-            size="large"
-            danger
-            className="chart-drill-action-btn"
-            icon={<DeleteOutlined />}
-            title="Xóa"
-            loading={deletingTaskId === task.id}
-            disabled={actionsDisabled}
-          />
-        </Popconfirm>
-      </div>
+      <TaskActionMenu
+        completed={completed}
+        disabled={supabaseConnected === false}
+        completing={completingTaskId === task.id}
+        deleting={deletingTaskId === task.id}
+        onComplete={() => void handleMarkComplete(task)}
+        onEdit={() => openTaskEdit(task)}
+        onDelete={() => void handleDeleteTask(task)}
+      />
     );
   };
 
@@ -738,7 +698,7 @@ const Dashboard: React.FC = () => {
     {
       title: '',
       key: 'actions',
-      width: 148,
+      width: 64,
       align: 'center' as const,
       render: (_: unknown, record: DashboardTask) => renderTaskActions(record),
     },

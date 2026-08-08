@@ -827,7 +827,7 @@ const NavigationHub: React.FC = () => {
     <>
       <div className="bg-white border-b border-gray-200 px-4 md:px-8 py-5 flex-shrink-0">
         <div className="mb-3">
-          <BackButton to="/" size="small" />
+          <BackButton size="small" />
         </div>
         <div className="text-xs text-gray-500 mb-1">
           <span className="hover:text-[#1E386B] cursor-default">Báo cáo định kỳ</span>

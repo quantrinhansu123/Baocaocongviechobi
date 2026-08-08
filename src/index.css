@@ -195,6 +195,59 @@ body {
   animation: task-overdue-blink 1s ease-in-out infinite;
 }
 
+.task-action-menu {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.task-action-menu-trigger.ant-btn {
+  width: 36px !important;
+  height: 36px !important;
+  padding: 0 !important;
+  font-size: 20px !important;
+  color: #1e386b !important;
+  border-radius: 8px !important;
+}
+
+.task-action-menu-trigger.ant-btn:hover {
+  color: #f38320 !important;
+  background: rgba(243, 131, 32, 0.1) !important;
+}
+
+.task-action-menu-panel {
+  min-width: 200px;
+  padding: 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  background: #ffffff;
+  border: 1px solid #e5e7eb;
+  border-radius: 12px;
+  box-shadow: 0 10px 28px -8px rgba(15, 23, 42, 0.28);
+}
+
+.task-action-menu-btn.ant-btn {
+  height: 44px !important;
+  font-size: 15px !important;
+  font-weight: 700 !important;
+  border-radius: 10px !important;
+}
+
+.task-action-menu-btn.ant-btn .anticon {
+  font-size: 18px !important;
+}
+
+.task-action-menu-btn--done.ant-btn {
+  background: #16a34a !important;
+  border-color: #16a34a !important;
+}
+
+.task-action-menu-btn--done.ant-btn:hover {
+  background: #15803d !important;
+  border-color: #15803d !important;
+}
+
 .task-overdue-row > td {
   background-color: rgba(255, 77, 79, 0.2) !important;
   box-shadow: inset 4px 0 0 #ff4d4f;

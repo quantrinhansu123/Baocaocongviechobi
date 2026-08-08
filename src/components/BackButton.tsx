@@ -4,7 +4,8 @@ import { ArrowLeftOutlined } from '@ant-design/icons';
 import { useNavigate } from 'react-router-dom';
 
 type BackButtonProps = {
-  to?: string;
+  /** Fallback khi không còn lịch sử trong app */
+  fallbackTo?: string;
   onClick?: () => void;
   label?: string;
   /** Dùng trên nền cam/xanh đậm */
@@ -13,8 +14,16 @@ type BackButtonProps = {
   size?: 'small' | 'middle' | 'large';
 };
 
+function canGoBackInApp(): boolean {
+  const idx = (window.history.state as { idx?: number } | null)?.idx;
+  if (typeof idx === 'number') {
+    return idx > 0;
+  }
+  return window.history.length > 1;
+}
+
 const BackButton: React.FC<BackButtonProps> = ({
-  to,
+  fallbackTo = '/',
   onClick,
   label = 'Quay lại',
   variant = 'default',
@@ -28,22 +37,18 @@ const BackButton: React.FC<BackButtonProps> = ({
       onClick();
       return;
     }
-    if (to) {
-      navigate(to);
-      return;
-    }
-    if (window.history.length > 1) {
+    if (canGoBackInApp()) {
       navigate(-1);
       return;
     }
-    navigate('/');
+    navigate(fallbackTo);
   };
 
   const light = variant === 'light';
 
   return (
     <Button
-      type={light ? 'default' : 'default'}
+      type="default"
       size={size}
       icon={<ArrowLeftOutlined />}
       onClick={handleClick}

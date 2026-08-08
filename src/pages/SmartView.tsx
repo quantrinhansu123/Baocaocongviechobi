@@ -124,7 +124,7 @@ const SmartView: React.FC = () => {
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
           <div className="mb-2">
-            <BackButton to="/" size="small" />
+            <BackButton size="small" />
           </div>
           <Title level={3} className="m-0">Tổng hợp Chủ đề (Smart View)</Title>
         </div>

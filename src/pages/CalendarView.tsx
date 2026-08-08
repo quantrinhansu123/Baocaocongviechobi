@@ -88,7 +88,7 @@ const ReportCalendar: React.FC = () => {
     <div className="p-6 space-y-6 bg-gray-50 min-h-screen">
       <div className="bg-white p-5 rounded-xl shadow-sm border border-gray-200 flex justify-between items-center gap-3">
         <div className="flex items-start gap-3 min-w-0">
-          <BackButton to="/" size="small" className="mt-1" />
+          <BackButton size="small" className="mt-1" />
           <div className="min-w-0">
           <Title level={3} className="m-0">
             <CalendarOutlined className="mr-2 text-blue-600" />
