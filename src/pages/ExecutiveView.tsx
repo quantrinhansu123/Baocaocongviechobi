@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { Typography, Alert, Space, Tag, Table, Card, Spin, Empty } from 'antd';
 import { WarningOutlined, ClockCircleOutlined, FireOutlined } from '@ant-design/icons';
+import BackButton from '../components/BackButton';
 import {
   loadImportantExecutiveTasks,
   loadOverdueExecutiveTasks,
@@ -93,6 +94,9 @@ const ExecutiveView: React.FC = () => {
   return (
     <div className="max-w-5xl mx-auto space-y-6 py-6 px-4">
       <div className="border-b pb-4 mb-6">
+        <div className="mb-2">
+          <BackButton to="/" size="small" />
+        </div>
         <Title level={2} className="m-0 text-gray-800">Giao Diện Điều Hành</Title>
         <Text type="secondary" className="text-base">Tóm tắt các vấn đề trọng điểm từ Supabase.</Text>
       </div>
@@ -114,7 +118,7 @@ const ExecutiveView: React.FC = () => {
                       dataSource={overdueTasks}
                       columns={overdueColumns}
                       pagination={false}
-                      size="small"
+                      size="middle"
                       rowKey="id"
                       className="px-2 pb-2"
                     />
@@ -146,7 +150,7 @@ const ExecutiveView: React.FC = () => {
                       dataSource={importantTasks}
                       columns={importantColumns}
                       pagination={false}
-                      size="small"
+                      size="middle"
                       rowKey="id"
                       className="px-2 pb-2"
                     />

@@ -2,6 +2,7 @@ import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { Button, Checkbox, Empty, Spin, Typography, message } from 'antd';
 import { CheckOutlined, CloudOutlined, CloudSyncOutlined } from '@ant-design/icons';
 import { ORG_BLOCKS } from '../data/orgBlocks';
+import BackButton from '../components/BackButton';
 import {
   loadWorkNotesFromSupabase,
   syncWorkNotesToSupabase,
@@ -503,11 +504,14 @@ const WorkNotesView: React.FC = () => {
         <main className="flex-1 flex flex-col min-w-0 overflow-hidden p-3 md:p-4">
           <div className="flex-1 flex flex-col min-h-0 bg-white border border-gray-200 rounded-lg shadow-sm overflow-hidden">
             <div className="bg-[#F38320] text-white px-4 py-3 flex items-start justify-between gap-3 flex-shrink-0">
-              <div className="min-w-0">
-                <p className="m-0 text-[11px] font-bold uppercase tracking-widest text-white/80">Ghi chú phòng ban</p>
-                <h2 className="m-0 mt-0.5 text-base md:text-lg font-extrabold uppercase leading-snug truncate">
-                  Theo thứ tự gõ
-                </h2>
+              <div className="min-w-0 flex items-start gap-3">
+                <BackButton variant="light" size="small" to="/" className="mt-0.5" />
+                <div className="min-w-0">
+                  <p className="m-0 text-[11px] font-bold uppercase tracking-widest text-white/80">Ghi chú phòng ban</p>
+                  <h2 className="m-0 mt-0.5 text-base md:text-lg font-extrabold uppercase leading-snug truncate">
+                    Theo thứ tự gõ
+                  </h2>
+                </div>
               </div>
               <div className="shrink-0 text-right text-[11px] font-semibold uppercase tracking-wide text-white/90">
                 {syncing || loadingRemote ? (

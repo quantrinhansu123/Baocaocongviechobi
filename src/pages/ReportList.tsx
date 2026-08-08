@@ -4,6 +4,7 @@ import * as Antd from 'antd';
 const Card = Antd.Card as any;
 import { SearchOutlined, PlusOutlined, FilterOutlined, UserOutlined } from '@ant-design/icons';
 import { useNavigate } from 'react-router-dom';
+import BackButton from '../components/BackButton';
 import { loadReportListItems, type ReportListItem } from '../services/reportListData';
 
 const { Title, Text } = Typography;
@@ -109,6 +110,9 @@ const ReportList: React.FC = () => {
     <div className="space-y-6">
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
+          <div className="mb-2">
+            <BackButton to="/" size="small" />
+          </div>
           <Breadcrumb
             items={[
               { title: 'Trang chủ' },

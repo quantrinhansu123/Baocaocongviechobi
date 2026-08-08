@@ -27,6 +27,7 @@ import {
   PlusOutlined,
 } from '@ant-design/icons';
 import { useNavigate, useSearchParams } from 'react-router-dom';
+import BackButton from '../components/BackButton';
 import { addDataRow, deleteDataRow, editDataRow, findDataRows } from '../services/dataApi';
 import { loadReportCatalog } from '../services/reportCatalog';
 import {
@@ -138,7 +139,7 @@ function ReportTable({
 
   return (
     <div className="overflow-x-auto">
-      <table className="w-full text-sm border-collapse min-w-[1000px]">
+      <table className="app-data-table w-full text-base border-collapse min-w-[1000px]">
         <thead>
           <tr className="bg-[#0F274D] text-white border-b border-[#0F274D]">
             {(showRowActions
@@ -147,7 +148,7 @@ function ReportTable({
             ).map(header => (
               <th
                 key={header || 'link'}
-                className="px-4 py-3.5 text-left text-[15px] font-black uppercase tracking-wider whitespace-nowrap text-white"
+                className="px-4 py-4 text-left text-base font-black uppercase tracking-wider whitespace-nowrap text-white"
               >
                 {header}
               </th>
@@ -165,63 +166,63 @@ function ReportTable({
                   isSelected ? 'bg-orange-50/80' : 'hover:bg-slate-50'
                 }`}
               >
-                <td className="px-4 py-4 text-gray-500 font-medium align-top">{index + 1}</td>
-                <td className="px-4 py-4 font-semibold text-[#1E386B] align-top min-w-[200px] max-w-[280px]">
+                <td className="px-4 py-5 text-gray-500 font-medium align-top">{index + 1}</td>
+                <td className="px-4 py-5 font-semibold text-[#1E386B] align-top min-w-[200px] max-w-[280px]">
                   <span className="leading-snug break-words">{report.name}</span>
                 </td>
-                <td className="px-4 py-4 text-gray-600 align-top min-w-[220px] max-w-[360px]">
+                <td className="px-4 py-5 text-gray-600 align-top min-w-[220px] max-w-[360px]">
                   <span className="leading-relaxed break-words whitespace-normal">{report.noidung || '—'}</span>
                 </td>
-                <td className="px-4 py-4 align-top text-xs whitespace-nowrap min-w-[120px]">
+                <td className="px-4 py-5 align-top text-sm whitespace-nowrap min-w-[120px]">
                   {report.ngayTaoBaoCao ? (
-                    <Tag className="m-0 rounded-md border-0 bg-emerald-50 text-emerald-800 px-2 py-0.5 text-xs font-medium">
+                    <Tag className="m-0 rounded-md border-0 bg-emerald-50 text-emerald-800 px-2 py-1 text-sm font-medium">
                       {normalizeDisplayDate(report.ngayTaoBaoCao)}
                     </Tag>
                   ) : (
                     <Text type="secondary">—</Text>
                   )}
                 </td>
-                <td className="px-4 py-4 align-top">
+                <td className="px-4 py-5 align-top">
                   {report.ngay ? (
-                    <Tag className="m-0 rounded-md border-0 bg-blue-50 text-blue-700 px-2 py-0.5 text-xs font-medium">
+                    <Tag className="m-0 rounded-md border-0 bg-blue-50 text-blue-700 px-2 py-1 text-sm font-medium">
                       {normalizeDisplayDate(report.ngay)}
                     </Tag>
                   ) : (
                     <Text type="secondary">—</Text>
                   )}
                 </td>
-                <td className="px-4 py-4 align-top">
+                <td className="px-4 py-5 align-top">
                   {report.ky ? (
-                    <Tag className="m-0 rounded-md border-0 bg-violet-50 text-violet-700 px-2 py-0.5 text-xs font-medium">
+                    <Tag className="m-0 rounded-md border-0 bg-violet-50 text-violet-700 px-2 py-1 text-sm font-medium">
                       {report.ky}
                     </Tag>
                   ) : (
                     <Text type="secondary">—</Text>
                   )}
                 </td>
-                <td className="px-4 py-4 align-top min-w-[140px]">
+                <td className="px-4 py-5 align-top min-w-[140px]">
                   {report.nguoiGui ? (
                     <div className="flex items-center gap-2">
-                      <Avatar size={28} className="bg-[#F38320] text-[10px] font-bold shrink-0">
+                      <Avatar size={30} className="bg-[#F38320] text-xs font-bold shrink-0">
                         {senderInitials(report.nguoiGui)}
                       </Avatar>
-                      <span className="text-gray-800 text-xs leading-snug break-words">{report.nguoiGui}</span>
+                      <span className="text-gray-800 text-sm leading-snug break-words">{report.nguoiGui}</span>
                     </div>
                   ) : (
                     <Text type="secondary">—</Text>
                   )}
                 </td>
-                <td className="px-4 py-4 text-gray-700 align-top text-xs leading-snug break-words min-w-[120px]">
+                <td className="px-4 py-5 text-gray-700 align-top text-sm leading-snug break-words min-w-[120px]">
                   {report.nguoiNhan || '—'}
                 </td>
-                <td className="px-4 py-4 align-top text-center">
+                <td className="px-4 py-5 align-top text-center">
                   {report.link ? (
                     <a
                       href={report.link}
                       target="_blank"
                       rel="noreferrer"
                       onClick={event => event.stopPropagation()}
-                      className="inline-flex items-center justify-center w-8 h-8 rounded-lg bg-orange-50 text-[#1E386B] hover:bg-orange-100"
+                      className="inline-flex items-center justify-center w-9 h-9 rounded-lg bg-orange-50 text-[#1E386B] hover:bg-orange-100"
                       title="Mở link báo cáo"
                     >
                       <LinkOutlined />
@@ -229,7 +230,7 @@ function ReportTable({
                   ) : null}
                 </td>
                 {showRowActions ? (
-                  <td className="px-4 py-4 align-top text-center whitespace-nowrap">
+                  <td className="px-4 py-5 align-top text-center whitespace-nowrap">
                     <div
                       className="inline-flex items-center justify-center gap-0.5"
                       onClick={event => event.stopPropagation()}
@@ -825,6 +826,9 @@ const NavigationHub: React.FC = () => {
   const desktopContent = showContent ? (
     <>
       <div className="bg-white border-b border-gray-200 px-4 md:px-8 py-5 flex-shrink-0">
+        <div className="mb-3">
+          <BackButton to="/" size="small" />
+        </div>
         <div className="text-xs text-gray-500 mb-1">
           <span className="hover:text-[#1E386B] cursor-default">Báo cáo định kỳ</span>
           <span className="mx-2 text-gray-300">›</span>

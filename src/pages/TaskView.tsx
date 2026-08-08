@@ -29,6 +29,7 @@ import {
 } from '@ant-design/icons';
 import { Star } from 'lucide-react';
 import dayjs from 'dayjs';
+import BackButton from '../components/BackButton';
 import { ORG_BLOCKS } from '../data/orgBlocks';
 import type { TaskRecord } from '../types/task';
 import {
@@ -1251,9 +1252,21 @@ const TaskView: React.FC = () => {
             <div className="flex-1 flex flex-col overflow-hidden p-4 md:p-6 min-w-0">
               <div className="flex-1 flex flex-col overflow-hidden w-full min-w-0">
               <div className="bg-[#F38320] text-white px-4 md:px-5 py-3 rounded-t-lg flex-shrink-0 flex items-start justify-between gap-3">
-                <div className="min-w-0 flex-1">
-                  <p className="text-[10px] uppercase tracking-widest text-white/70 m-0 mb-1">Danh sách công việc</p>
-                  <h2 className="m-0 text-base font-bold uppercase leading-snug">{listTitle}</h2>
+                <div className="min-w-0 flex-1 flex items-start gap-3">
+                  <BackButton
+                    variant="light"
+                    size="small"
+                    className="mt-0.5"
+                    to={
+                      listScope?.kind === 'dept' && blockKeyParam
+                        ? `/tasks/${blockKeyParam}`
+                        : '/tasks'
+                    }
+                  />
+                  <div className="min-w-0">
+                    <p className="text-[10px] uppercase tracking-widest text-white/70 m-0 mb-1">Danh sách công việc</p>
+                    <h2 className="m-0 text-base font-bold uppercase leading-snug">{listTitle}</h2>
+                  </div>
                 </div>
                 <div className="shrink-0 pt-0.5">{addTaskButton({ size: 'small' })}</div>
               </div>
@@ -1261,12 +1274,12 @@ const TaskView: React.FC = () => {
                 <div className="hidden md:block min-w-0">
                   <Table<TableRow>
                     rowKey="key"
-                    className="task-table-compact task-table-balanced"
+                    className="task-table-compact task-table-balanced text-[15px]"
                     columns={tableColumns}
                     dataSource={tableRows}
                     loading={taskLoading}
                     pagination={false}
-                    size="small"
+                    size="middle"
                     tableLayout="fixed"
                     scroll={{ x: showDeptColumn ? 1284 : 1204 }}
                     locale={{ emptyText: 'Chưa có công việc' }}
@@ -1398,24 +1411,32 @@ const TaskView: React.FC = () => {
           ) : selected ? (
             <>
               <div className="bg-[#F38320] px-4 md:px-6 py-3 md:py-4 flex-shrink-0 shadow flex items-start justify-between gap-3">
-                <div className="min-w-0">
-                  <p className="text-white/60 text-[10px] md:text-xs m-0 mb-0.5 tracking-wide uppercase">Chi tiết công việc</p>
-                  <div className="flex flex-wrap items-center gap-2">
-                    {isTaskOverduePastExtensions({
-                      deadline: selected.ycXong,
-                      giaHan1: selected.giaHan1,
-                      giaHan2: selected.giaHan2,
-                      giaHan3: selected.giaHan3,
-                      tienDo: selected.tienDo,
-                      trangThai: selected.trangThai,
-                    }) ? (
-                      <Tag color="error" className="task-overdue-blink m-0 border-0 font-bold uppercase text-[11px]">
-                        Quá hạn
-                      </Tag>
-                    ) : null}
-                    <h2 className="text-white font-bold text-base md:text-lg m-0 leading-snug line-clamp-2 md:line-clamp-none">
-                      {selected.congViec}
-                    </h2>
+                <div className="min-w-0 flex items-start gap-3">
+                  <BackButton
+                    variant="light"
+                    size="small"
+                    className="mt-0.5"
+                    onClick={() => setDetailTask(null)}
+                  />
+                  <div className="min-w-0">
+                    <p className="text-white/60 text-[10px] md:text-xs m-0 mb-0.5 tracking-wide uppercase">Chi tiết công việc</p>
+                    <div className="flex flex-wrap items-center gap-2">
+                      {isTaskOverduePastExtensions({
+                        deadline: selected.ycXong,
+                        giaHan1: selected.giaHan1,
+                        giaHan2: selected.giaHan2,
+                        giaHan3: selected.giaHan3,
+                        tienDo: selected.tienDo,
+                        trangThai: selected.trangThai,
+                      }) ? (
+                        <Tag color="error" className="task-overdue-blink m-0 border-0 font-bold uppercase text-[11px]">
+                          Quá hạn
+                        </Tag>
+                      ) : null}
+                      <h2 className="text-white font-bold text-base md:text-lg m-0 leading-snug line-clamp-2 md:line-clamp-none">
+                        {selected.congViec}
+                      </h2>
+                    </div>
                   </div>
                 </div>
                 <div className="flex flex-wrap items-center justify-end gap-2 shrink-0">

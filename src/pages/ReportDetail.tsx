@@ -35,6 +35,7 @@ import {
 } from '@ant-design/icons';
 import dayjs from 'dayjs';
 import { useParams } from 'react-router-dom';
+import BackButton from '../components/BackButton';
 import { loadReportDetailTasks, type ReportDetailTask } from '../services/auxiliaryData';
 import { loadReportById } from '../services/reportListData';
 
@@ -153,6 +154,9 @@ const ReportDetail: React.FC = () => {
     <div className="space-y-6">
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
+          <div className="mb-2">
+            <BackButton to="/reports" size="small" />
+          </div>
           <AntBreadcrumb
             items={[
               { title: 'Nhà máy' },

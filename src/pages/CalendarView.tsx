@@ -20,6 +20,7 @@ import {
   NotificationOutlined,
   ArrowRightOutlined,
 } from '@ant-design/icons';
+import BackButton from '../components/BackButton';
 import { loadCalendarSchedule, type CalendarScheduleItem } from '../services/auxiliaryData';
 
 const { Title, Text } = Typography;
@@ -85,13 +86,16 @@ const ReportCalendar: React.FC = () => {
 
   return (
     <div className="p-6 space-y-6 bg-gray-50 min-h-screen">
-      <div className="bg-white p-5 rounded-xl shadow-sm border border-gray-200 flex justify-between items-center">
-        <div>
+      <div className="bg-white p-5 rounded-xl shadow-sm border border-gray-200 flex justify-between items-center gap-3">
+        <div className="flex items-start gap-3 min-w-0">
+          <BackButton to="/" size="small" className="mt-1" />
+          <div className="min-w-0">
           <Title level={3} className="m-0">
             <CalendarOutlined className="mr-2 text-blue-600" />
             Lịch & Nhắc Báo Cáo
           </Title>
           <Text type="secondary">Dữ liệu từ Supabase (bảng lich_bao_cao)</Text>
+          </div>
         </div>
         <div className="text-right">
           <Tag color="blue" className="px-3 py-1 rounded-full text-sm font-medium">

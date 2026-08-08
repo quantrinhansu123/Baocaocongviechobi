@@ -1,6 +1,7 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Button, Checkbox, Empty, Spin, Typography, message } from 'antd';
 import { CheckOutlined, CloudOutlined, CloudSyncOutlined, PlusOutlined } from '@ant-design/icons';
+import BackButton from '../components/BackButton';
 import {
   loadGeneralNotesFromSupabase,
   syncGeneralNotesToSupabase,
@@ -262,26 +263,29 @@ const GeneralNotesView: React.FC = () => {
     <div className="flex-1 flex flex-col overflow-hidden bg-gray-50 min-h-0 p-3 md:p-4">
       <div className="flex-1 flex flex-col min-h-0 bg-white border border-gray-200 rounded-lg shadow-sm overflow-hidden">
         <div className="bg-[#F38320] text-white px-4 py-3 flex items-center justify-between gap-3 flex-shrink-0">
-          <div className="min-w-0">
-            <p className="m-0 text-[11px] font-bold uppercase tracking-widest text-white/80">Ghi chú chung</p>
-            <h2 className="m-0 mt-0.5 text-base md:text-lg font-extrabold uppercase leading-snug truncate">
-              Theo thứ tự gõ
-            </h2>
-            <p className="m-0 mt-1 text-[11px] font-semibold uppercase tracking-wide text-white/90">
-              {syncing || loadingRemote ? (
-                <span>
-                  <CloudSyncOutlined className="mr-1" />
-                  Đang đồng bộ
-                </span>
-              ) : supabaseConnected ? (
-                <span>
-                  <CloudOutlined className="mr-1" />
-                  Supabase
-                </span>
-              ) : (
-                <span>Chưa kết nối Supabase</span>
-              )}
-            </p>
+          <div className="min-w-0 flex items-start gap-3">
+            <BackButton variant="light" size="small" to="/" className="mt-0.5" />
+            <div className="min-w-0">
+              <p className="m-0 text-[11px] font-bold uppercase tracking-widest text-white/80">Ghi chú chung</p>
+              <h2 className="m-0 mt-0.5 text-base md:text-lg font-extrabold uppercase leading-snug truncate">
+                Theo thứ tự gõ
+              </h2>
+              <p className="m-0 mt-1 text-[11px] font-semibold uppercase tracking-wide text-white/90">
+                {syncing || loadingRemote ? (
+                  <span>
+                    <CloudSyncOutlined className="mr-1" />
+                    Đang đồng bộ
+                  </span>
+                ) : supabaseConnected ? (
+                  <span>
+                    <CloudOutlined className="mr-1" />
+                    Supabase
+                  </span>
+                ) : (
+                  <span>Chưa kết nối Supabase</span>
+                )}
+              </p>
+            </div>
           </div>
           <Button
             type="default"

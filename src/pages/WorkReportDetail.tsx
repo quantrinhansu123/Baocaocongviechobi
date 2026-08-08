@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { Edit2, X, Star, Calendar, User, MessageSquare, AlertCircle, ChevronDown } from 'lucide-react';
+import BackButton from '../components/BackButton';
 import { loadWorkReportTasks, type WorkReportTask } from '../services/auxiliaryData';
 
 export default function ReportDetailScreen() {
@@ -73,14 +74,14 @@ export default function ReportDetailScreen() {
 
       {/* 1. Header & Filters */}
       <div className="max-w-6xl mx-auto bg-white rounded-xl shadow-sm border border-gray-100 p-6 mb-6">
-        <div className="flex justify-between items-center mb-6">
-          <h1 className="text-2xl font-bold text-[#1E386B] flex items-center gap-2">
-            <AlertCircle className="text-[#F38320]" />
-            Báo Cáo Tuần Nhà Máy
-          </h1>
-          {/* <button className="bg-[#1E386B] text-white px-4 py-2 rounded-lg font-medium hover:bg-opacity-90 transition">
-            Xuất báo cáo
-          </button> */}
+        <div className="flex justify-between items-center mb-6 gap-3">
+          <div className="flex items-center gap-3 min-w-0">
+            <BackButton to="/" size="small" />
+            <h1 className="text-2xl font-bold text-[#1E386B] flex items-center gap-2 m-0">
+              <AlertCircle className="text-[#F38320]" />
+              Báo Cáo Tuần Nhà Máy
+            </h1>
+          </div>
         </div>
 
         <div className="flex gap-4">
@@ -109,24 +110,24 @@ export default function ReportDetailScreen() {
         ) : filteredTasks.length === 0 ? (
           <div className="p-12 text-center text-gray-500">Chưa có dữ liệu (bảng bc_chi_tiet)</div>
         ) : (
-        <table className="w-full text-left border-collapse">
+        <table className="app-data-table w-full text-left border-collapse text-base">
           <thead>
             <tr className="bg-[#0F274D] text-white">
-              <th className="p-4 text-[15px] font-black text-center w-16 text-white">STT</th>
-              <th className="p-4 text-[15px] font-black text-white">Công việc</th>
-              <th className="p-4 text-[15px] font-black w-40 text-white">Người phụ trách</th>
-              <th className="p-4 text-[15px] font-black w-40 text-white">Deadline</th>
-              <th className="p-4 text-[15px] font-black w-40 text-white">Trạng thái</th>
-              <th className="p-4 text-[15px] font-black w-32 text-white">Ảnh hưởng</th>
+              <th className="px-4 py-4 text-base font-black text-center w-16 text-white">STT</th>
+              <th className="px-4 py-4 text-base font-black text-white">Công việc</th>
+              <th className="px-4 py-4 text-base font-black w-40 text-white">Người phụ trách</th>
+              <th className="px-4 py-4 text-base font-black w-40 text-white">Deadline</th>
+              <th className="px-4 py-4 text-base font-black w-40 text-white">Trạng thái</th>
+              <th className="px-4 py-4 text-base font-black w-32 text-white">Ảnh hưởng</th>
             </tr>
           </thead>
           <tbody>
             {filteredTasks.map((task, index) => (
               <tr key={task.id} className="border-b hover:bg-gray-50 transition group">
-                <td className="p-4 text-center text-gray-500 font-medium">{index + 1}</td>
+                <td className="px-4 py-5 text-center text-gray-500 font-medium">{index + 1}</td>
 
                 {/* Click mở Modal */}
-                <td className="p-4">
+                <td className="px-4 py-5">
                   <span
                     className="font-medium text-[#1E386B] cursor-pointer hover:text-[#F38320] transition underline-offset-4 hover:underline"
                     onClick={() => setSelectedTask(task)}
@@ -136,7 +137,7 @@ export default function ReportDetailScreen() {
                 </td>
 
                 {/* Inline Edit: Người phụ trách */}
-                <td className="p-4 relative">
+                <td className="px-4 py-5 relative">
                   {editingCell.id === task.id && editingCell.field === 'assignee' ? (
                     <input
                       type="text" autoFocus
@@ -155,7 +156,7 @@ export default function ReportDetailScreen() {
                 </td>
 
                 {/* Inline Edit: Deadline */}
-                <td className="p-4 relative">
+                <td className="px-4 py-5 relative">
                   {editingCell.id === task.id && editingCell.field === 'deadline' ? (
                     <input
                       type="date" autoFocus
@@ -173,7 +174,7 @@ export default function ReportDetailScreen() {
                 </td>
 
                 {/* Inline Edit: Trạng thái */}
-                <td className="p-4 relative">
+                <td className="px-4 py-5 relative">
                   {editingCell.id === task.id && editingCell.field === 'status' ? (
                     <div className="relative w-full">
                       <select
@@ -200,7 +201,7 @@ export default function ReportDetailScreen() {
                   )}
                 </td>
 
-                <td className="p-4">{renderImpact(task.impact)}</td>
+                <td className="px-4 py-5">{renderImpact(task.impact)}</td>
               </tr>
             ))}
           </tbody>

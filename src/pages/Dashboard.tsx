@@ -667,6 +667,13 @@ const Dashboard: React.FC = () => {
   const overdueColumns = [
     sttColumn(overduePage, LIST_PAGE_SIZE),
     {
+      title: 'PHÒNG BAN',
+      dataIndex: 'department',
+      key: 'department',
+      width: 170,
+      render: (text: string) => <Tag>{text}</Tag>,
+    },
+    {
       title: 'CÔNG VIỆC',
       dataIndex: 'name',
       key: 'name',
@@ -675,13 +682,6 @@ const Dashboard: React.FC = () => {
           <Text strong className="text-red-600 cursor-pointer hover:underline">{text}</Text>
         </Tooltip>
       ),
-    },
-    {
-      title: 'PHÒNG BAN',
-      dataIndex: 'department',
-      key: 'department',
-      width: 170,
-      render: (text: string) => <Tag>{text}</Tag>,
     },
     { title: 'NGƯỜI PHỤ TRÁCH', dataIndex: 'assignee', key: 'assignee', width: 150 },
     {
@@ -696,6 +696,13 @@ const Dashboard: React.FC = () => {
   const buildTaskListColumns = (page: number, pageSize: number) => [
     sttColumn(page, pageSize),
     {
+      title: 'PHÒNG BAN',
+      dataIndex: 'department',
+      key: 'department',
+      width: 150,
+      render: (text: string) => <Tag className="chart-drill-tag m-0">{text}</Tag>,
+    },
+    {
       title: 'CÔNG VIỆC',
       dataIndex: 'name',
       key: 'name',
@@ -705,13 +712,6 @@ const Dashboard: React.FC = () => {
           <span className="chart-drill-task-name text-[#1E386B] cursor-pointer hover:underline">{text}</span>
         </Tooltip>
       ),
-    },
-    {
-      title: 'PHÒNG BAN',
-      dataIndex: 'department',
-      key: 'department',
-      width: 150,
-      render: (text: string) => <Tag className="chart-drill-tag m-0">{text}</Tag>,
     },
     {
       title: 'NGƯỜI PHỤ TRÁCH',
@@ -747,6 +747,13 @@ const Dashboard: React.FC = () => {
   const importantColumns = [
     sttColumn(importantPage, LIST_PAGE_SIZE),
     {
+      title: 'PHÒNG BAN',
+      dataIndex: 'department',
+      key: 'department',
+      width: 170,
+      render: (text: string) => <Tag>{text}</Tag>
+    },
+    {
       title: 'CÔNG VIỆC',
       dataIndex: 'name',
       key: 'name',
@@ -757,13 +764,6 @@ const Dashboard: React.FC = () => {
       )
     },
     { title: 'NGƯỜI PHỤ TRÁCH', dataIndex: 'assignee', key: 'assignee', width: 150 },
-    {
-      title: 'PHÒNG BAN',
-      dataIndex: 'department',
-      key: 'department',
-      width: 170,
-      render: (text: string) => <Tag>{text}</Tag>
-    },
     {
       title: 'DEADLINE',
       dataIndex: 'deadline',
@@ -1193,8 +1193,8 @@ const Dashboard: React.FC = () => {
           variant="borderless"
           className="shadow-sm border border-[#1E386B]/15"
           extra={
-            <Button type="link" size="small" onClick={() => setActiveKpiFilter(null)} className="text-gray-500">
-              Đóng
+            <Button type="default" size="small" onClick={() => setActiveKpiFilter(null)} className="font-bold text-[#1E386B]">
+              ← Quay lại
             </Button>
           }
           styles={{ body: { padding: 0 } }}
@@ -1241,7 +1241,15 @@ const Dashboard: React.FC = () => {
       </div>
     ) : activeKpiFilter ? (
       <div ref={kpiListRef}>
-        <Card variant="borderless" className="shadow-sm border border-gray-100">
+        <Card
+          variant="borderless"
+          className="shadow-sm border border-gray-100"
+          extra={
+            <Button type="default" size="small" onClick={() => setActiveKpiFilter(null)} className="font-bold text-[#1E386B]">
+              ← Quay lại
+            </Button>
+          }
+        >
           <Empty description="Không có công việc trong nhóm này với bộ lọc hiện tại." />
         </Card>
       </div>
@@ -1905,10 +1913,10 @@ const Dashboard: React.FC = () => {
               <div className="flex items-center gap-2 shrink-0">
                 <Button
                   size="small"
-                  className="bg-white/10 text-white border-white/30 hover:!bg-white/20"
+                  className="bg-white/10 text-white border-white/30 hover:!bg-white/20 font-bold"
                   onClick={() => setChartDrillDown(null)}
                 >
-                  Chọn trạng thái
+                  ← Quay lại
                 </Button>
                 <button
                   onClick={() => {
@@ -1999,13 +2007,22 @@ const Dashboard: React.FC = () => {
         <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-[9999] p-2 md:p-4">
           <div className="bg-white rounded-xl shadow-xl w-full max-w-5xl flex flex-col max-h-[94vh]">
             <div className="bg-[#F38320] text-white p-4 md:p-5 flex flex-wrap justify-between items-start gap-3 rounded-t-xl shrink-0">
-              <div className="min-w-0 flex-1">
+              <div className="min-w-0 flex-1 flex items-start gap-3">
+                <Button
+                  size="small"
+                  className="mt-0.5 shrink-0 bg-white/15 text-white border-white/40 hover:!bg-white/25 hover:!text-white hover:!border-white font-bold"
+                  onClick={() => setSelectedTask(null)}
+                >
+                  ← Quay lại
+                </Button>
+                <div className="min-w-0">
                 <p className="text-white/70 text-[10px] md:text-xs m-0 mb-0.5 uppercase tracking-wide">
                   Chi tiết công việc · {selectedTask.department}
                 </p>
                 <h2 className="text-base md:text-xl font-bold pr-2 m-0 leading-snug line-clamp-2">
                   {selectedTask.name}
                 </h2>
+                </div>
               </div>
               <div className="flex flex-wrap items-center gap-2 shrink-0">
                 {!selectedTask.status.includes('Hoàn thành') ? (

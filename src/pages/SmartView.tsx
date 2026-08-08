@@ -2,6 +2,7 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { Table, Tabs, Typography, Tag, Space, Spin, Empty } from 'antd';
 import * as Antd from 'antd';
 const Card = Antd.Card as any;
+import BackButton from '../components/BackButton';
 import { loadDebtRecords, type DebtRecord } from '../services/auxiliaryData';
 
 const { Title, Text } = Typography;
@@ -121,7 +122,12 @@ const SmartView: React.FC = () => {
   return (
     <div className="space-y-6">
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-        <Title level={3} className="m-0">Tổng hợp Chủ đề (Smart View)</Title>
+        <div>
+          <div className="mb-2">
+            <BackButton to="/" size="small" />
+          </div>
+          <Title level={3} className="m-0">Tổng hợp Chủ đề (Smart View)</Title>
+        </div>
         <Space>
           <Tag color="blue">Dữ liệu Supabase</Tag>
         </Space>

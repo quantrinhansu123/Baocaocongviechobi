@@ -15,6 +15,7 @@ import {
   Spin,
   Empty,
 } from 'antd';
+import BackButton from '../components/BackButton';
 import {
   PlusOutlined,
   EditOutlined,
@@ -237,6 +238,9 @@ const AdminView: React.FC = () => {
     <div className="space-y-6">
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
+          <div className="mb-2">
+            <BackButton to="/" size="small" />
+          </div>
           <Title level={3} className="m-0 flex items-center gap-2">
             <SettingOutlined className="text-blue-600" />
             Trang Quản Trị Hệ Thống
