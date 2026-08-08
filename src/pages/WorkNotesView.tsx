@@ -212,6 +212,25 @@ const WorkNotesView: React.FC = () => {
     return groups;
   }, [timelineNotes]);
 
+  /** Số ý theo khối (tiêu đề cha) và theo phòng (thanh trái). */
+  const countByBlockKey = useMemo(() => {
+    const map: Record<string, number> = {};
+    for (const idea of timelineNotes) {
+      const key = idea.blockKey || 'unknown';
+      map[key] = (map[key] ?? 0) + 1;
+    }
+    return map;
+  }, [timelineNotes]);
+
+  const countByDeptKey = useMemo(() => {
+    const map: Record<string, number> = {};
+    for (const idea of timelineNotes) {
+      const key = idea.deptKey || 'unknown';
+      map[key] = (map[key] ?? 0) + 1;
+    }
+    return map;
+  }, [timelineNotes]);
+
   const updateIdea = (ideaId: string, patch: Partial<NoteIdea>) => {
     persist(notes.map(idea => (idea.id === ideaId ? { ...idea, ...patch } : idea)));
   };
@@ -337,6 +356,7 @@ const WorkNotesView: React.FC = () => {
         <div className="flex gap-2 min-w-max">
           {ORG_BLOCKS.map((block, index) => {
             const active = block.key === activeBlockKey;
+            const blockCount = countByBlockKey[block.key] ?? 0;
             return (
               <button
                 key={block.key}
@@ -349,6 +369,11 @@ const WorkNotesView: React.FC = () => {
                 }`}
               >
                 {ROMAN[index]}. {block.label}
+                {blockCount > 0 ? (
+                  <span className={`ml-2 font-bold ${active ? 'text-white/90' : 'text-[#F38320]'}`}>
+                    ({blockCount})
+                  </span>
+                ) : null}
               </button>
             );
           })}
@@ -361,11 +386,15 @@ const WorkNotesView: React.FC = () => {
             <p className="m-0 text-[11px] uppercase tracking-widest text-white/70 font-bold">Phòng ban</p>
             <p className="m-0 mt-1 text-sm font-extrabold">
               {roman}. {activeBlock?.label}
+              {(countByBlockKey[activeBlockKey] ?? 0) > 0 ? (
+                <span className="ml-2 text-[#F38320]">({countByBlockKey[activeBlockKey]})</span>
+              ) : null}
             </p>
           </div>
           <div className="py-1">
-            {leftDepts.map((dept, index) => {
+            {leftDepts.map(dept => {
               const active = dept.key === activeDeptKey;
+              const deptCount = countByDeptKey[dept.key] ?? 0;
               return (
                 <button
                   key={dept.key}
@@ -380,7 +409,14 @@ const WorkNotesView: React.FC = () => {
                       : 'border-transparent text-white/80 hover:bg-white/10'
                   }`}
                 >
-                  {dept.name}
+                  <span className="inline-flex items-center justify-between gap-2 w-full">
+                    <span className="min-w-0 truncate">{dept.name}</span>
+                    {deptCount > 0 ? (
+                      <span className={`shrink-0 ${active ? 'text-[#F38320]' : 'text-white/70'}`}>
+                        ({deptCount})
+                      </span>
+                    ) : null}
+                  </span>
                 </button>
               );
             })}
@@ -418,6 +454,7 @@ const WorkNotesView: React.FC = () => {
               ) : (
                 groupedNotes.map(group => {
                   const allHidden = group.ideas.every(idea => idea.hidden);
+                  const groupCount = group.ideas.length;
                   return (
                     <div
                       key={group.key}
@@ -433,6 +470,11 @@ const WorkNotesView: React.FC = () => {
                         }`}
                       >
                         {displayTitle(group.title)}
+                        {groupCount > 0 ? (
+                          <span className={`ml-2 ${allHidden ? 'text-gray-400' : 'text-[#F38320]'}`}>
+                            ({groupCount})
+                          </span>
+                        ) : null}
                       </h3>
 
                       <div className="space-y-2">

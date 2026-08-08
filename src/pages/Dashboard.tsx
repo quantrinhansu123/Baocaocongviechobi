@@ -956,7 +956,7 @@ const Dashboard: React.FC = () => {
             className="filter-select rounded-lg border-orange-400"
             style={{ width: 220 }}
             options={[
-              { value: 'all', label: 'Tất cả tiến độ' },
+              { value: 'all', label: 'Tất cả trạng thái' },
               { value: 'in_progress', label: ' Đang Làm' },
               { value: 'overdue', label: ' Quá Hạn' },
               { value: 'completed', label: ' Hoàn Thành' },
@@ -1011,7 +1011,7 @@ const Dashboard: React.FC = () => {
           className="filter-select rounded-sm"
           style={{ width: '100%' }}
           options={[
-            { value: 'all', label: 'Tất cả tiến độ' },
+            { value: 'all', label: 'Tất cả trạng thái' },
             { value: 'in_progress', label: ' Đang Làm' },
             { value: 'overdue', label: ' Quá Hạn' },
             { value: 'completed', label: ' Hoàn Thành' },
@@ -1064,7 +1064,7 @@ const Dashboard: React.FC = () => {
           className="filter-select rounded-sm"
           style={{ width: '100%' }}
           options={[
-            { value: 'all', label: 'Tất cả tiến độ' },
+            { value: 'all', label: 'Tất cả trạng thái' },
             { value: 'in_progress', label: ' Đang Làm' },
             { value: 'overdue', label: ' Quá Hạn' },
             { value: 'completed', label: ' Hoàn Thành' },
