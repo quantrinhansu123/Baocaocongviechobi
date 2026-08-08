@@ -31,15 +31,23 @@ export function isReportTableName(tableName?: string): boolean {
   return tableName.trim() === REPORT_TABLE_LOGICAL;
 }
 
+/** Bảng công việc I.1…IV.2 dùng khóa TT; còn lại (BC / phụ trợ / ghi chú) dùng id. */
+export function isTaskTableName(tableName?: string): boolean {
+  if (!tableName) {
+    return false;
+  }
+  return /^[IVX]+\.\d+$/i.test(tableName.trim());
+}
+
 export function getRowKeyColumn(tableName?: string): string {
-  return isReportTableName(tableName) ? REPORT_ROW_KEY_COLUMN : TASK_ROW_KEY_COLUMN;
+  return isTaskTableName(tableName) ? TASK_ROW_KEY_COLUMN : REPORT_ROW_KEY_COLUMN;
 }
 
 export function pickRowKey(sourceRow: Record<string, unknown>, tableName?: string): string | null {
-  if (isReportTableName(tableName)) {
-    return pickFromKeys(sourceRow, REPORT_ID_KEYS);
+  if (isTaskTableName(tableName)) {
+    return pickFromKeys(sourceRow, TASK_TT_KEYS);
   }
-  return pickFromKeys(sourceRow, TASK_TT_KEYS);
+  return pickFromKeys(sourceRow, REPORT_ID_KEYS);
 }
 
 export function hasRowKey(
@@ -73,7 +81,7 @@ export function applyRowKey(
 export function assertEditRow(row: Record<string, unknown>, tableName?: string): void {
   const column = getRowKeyColumn(tableName);
   if (!parseKeyValue(row[column]) && !pickRowKey(row, tableName)) {
-    const label = isReportTableName(tableName) ? 'id' : 'TT';
+    const label = isTaskTableName(tableName) ? 'TT' : 'id';
     throw new Error(`Không có khóa ${label} để cập nhật. Hãy F5 tải lại danh sách.`);
   }
 }

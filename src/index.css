@@ -71,12 +71,25 @@ body {
   border-bottom: 1px solid rgba(16, 24, 40, 0.06) !important;
 }
 
-.ant-table-thead > tr > th {
-  background-color: #fafbfc !important;
-  color: rgba(15, 23, 42, 0.55) !important;
-  font-weight: 600 !important;
+.ant-table-thead > tr > th,
+.ant-table-thead > tr > td {
+  background-color: #1E386B !important;
+  color: #F38320 !important;
+  font-weight: 700 !important;
   font-size: 12px !important;
   letter-spacing: 0.02em;
+  border-bottom-color: #1E386B !important;
+}
+
+.ant-table-thead > tr > th .ant-table-column-title,
+.ant-table-thead > tr > th .anticon,
+.ant-table-thead > tr > th .ant-table-column-sorter,
+.ant-table-thead > tr > th .ant-table-filter-trigger {
+  color: #F38320 !important;
+}
+
+.ant-table-thead > tr > th::before {
+  background-color: rgba(243, 131, 32, 0.35) !important;
 }
 
 .ant-table-tbody > tr > td {

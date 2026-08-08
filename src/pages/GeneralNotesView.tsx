@@ -1,17 +1,18 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { Button, Checkbox, Empty, Typography } from 'antd';
-import { CheckOutlined, PlusOutlined } from '@ant-design/icons';
+import { Button, Checkbox, Empty, Spin, Typography, message } from 'antd';
+import { CheckOutlined, CloudOutlined, CloudSyncOutlined, PlusOutlined } from '@ant-design/icons';
+import {
+  loadGeneralNotesFromSupabase,
+  syncGeneralNotesToSupabase,
+  type GeneralNoteIdea,
+} from '../services/workNotesData';
 
 const { Text } = Typography;
 
 const STORAGE_KEY = 'hobi-general-notes-v1';
+const SYNC_DEBOUNCE_MS = 600;
 
-type GeneralNote = {
-  id: string;
-  lines: string[];
-  hidden: boolean;
-  createdAt: number;
-};
+type GeneralNote = GeneralNoteIdea;
 
 function newNoteId() {
   return `gnote-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
@@ -64,13 +65,92 @@ const GeneralNotesView: React.FC = () => {
   const [notes, setNotes] = useState<GeneralNote[]>(() => loadNotes());
   const [showHidden, setShowHidden] = useState(false);
   const [focusNoteId, setFocusNoteId] = useState<string | null>(null);
+  const [loadingRemote, setLoadingRemote] = useState(true);
+  const [supabaseConnected, setSupabaseConnected] = useState<boolean | null>(null);
+  const [syncing, setSyncing] = useState(false);
   const textareaRefs = useRef<Record<string, HTMLTextAreaElement | null>>({});
+  const syncReadyRef = useRef(false);
+  const syncTimerRef = useRef<number | null>(null);
+  const notesRef = useRef(notes);
+  notesRef.current = notes;
+
+  useEffect(() => {
+    let cancelled = false;
+
+    async function hydrateFromSupabase() {
+      setLoadingRemote(true);
+      try {
+        const remote = await loadGeneralNotesFromSupabase();
+        if (cancelled) return;
+        setSupabaseConnected(true);
+        if (remote.length > 0) {
+          setNotes(remote);
+          saveNotes(remote);
+        } else {
+          const local = loadNotes();
+          if (local.length > 0) {
+            await syncGeneralNotesToSupabase(local);
+            if (!cancelled) {
+              message.success('Đã đẩy ghi chú chung từ máy lên Supabase.');
+            }
+          }
+        }
+      } catch {
+        if (!cancelled) {
+          setSupabaseConnected(false);
+          message.warning('Chưa kết nối Supabase — ghi chú đang lưu tạm trên máy.');
+        }
+      } finally {
+        if (!cancelled) {
+          setLoadingRemote(false);
+          syncReadyRef.current = true;
+        }
+      }
+    }
+
+    void hydrateFromSupabase();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   const persist = useCallback((next: GeneralNote[]) => {
     const sorted = [...next].sort((a, b) => a.createdAt - b.createdAt);
     setNotes(sorted);
     saveNotes(sorted);
   }, []);
+
+  useEffect(() => {
+    if (!syncReadyRef.current || supabaseConnected === false) {
+      return;
+    }
+
+    if (syncTimerRef.current) {
+      window.clearTimeout(syncTimerRef.current);
+    }
+
+    syncTimerRef.current = window.setTimeout(() => {
+      const snapshot = notesRef.current;
+      setSyncing(true);
+      void syncGeneralNotesToSupabase(snapshot)
+        .then(() => {
+          setSupabaseConnected(true);
+        })
+        .catch(error => {
+          setSupabaseConnected(false);
+          message.error(error instanceof Error ? error.message : 'Không đồng bộ được lên Supabase.');
+        })
+        .finally(() => {
+          setSyncing(false);
+        });
+    }, SYNC_DEBOUNCE_MS);
+
+    return () => {
+      if (syncTimerRef.current) {
+        window.clearTimeout(syncTimerRef.current);
+      }
+    };
+  }, [notes, supabaseConnected]);
 
   const timelineNotes = useMemo(() => {
     return notes
@@ -187,6 +267,21 @@ const GeneralNotesView: React.FC = () => {
             <h2 className="m-0 mt-0.5 text-base md:text-lg font-extrabold uppercase leading-snug truncate">
               Theo thứ tự gõ
             </h2>
+            <p className="m-0 mt-1 text-[11px] font-semibold uppercase tracking-wide text-white/90">
+              {syncing || loadingRemote ? (
+                <span>
+                  <CloudSyncOutlined className="mr-1" />
+                  Đang đồng bộ
+                </span>
+              ) : supabaseConnected ? (
+                <span>
+                  <CloudOutlined className="mr-1" />
+                  Supabase
+                </span>
+              ) : (
+                <span>Chưa kết nối Supabase</span>
+              )}
+            </p>
           </div>
           <Button
             type="default"
@@ -211,70 +306,72 @@ const GeneralNotesView: React.FC = () => {
         </div>
 
         <div className="flex-1 overflow-y-auto p-3 md:p-4 space-y-2 bg-[#fafafa]">
-          {timelineNotes.length === 0 ? (
-            <Empty
-              image={Empty.PRESENTED_IMAGE_SIMPLE}
-              description="Chưa có ghi chú — bấm Thêm ý để bắt đầu"
-            >
-              <Button type="primary" icon={<PlusOutlined />} onClick={() => appendNote('')}>
-                Thêm ý
-              </Button>
-            </Empty>
-          ) : (
-            timelineNotes.map(note => (
-              <div
-                key={note.id}
-                className={`flex items-start gap-2 rounded-lg border px-3 py-2 transition ${
-                  note.hidden
-                    ? 'bg-gray-100 border-gray-200 opacity-75'
-                    : 'bg-white border-gray-200 shadow-sm'
-                }`}
+          <Spin spinning={loadingRemote} tip="Đang tải từ Supabase...">
+            {timelineNotes.length === 0 && !loadingRemote ? (
+              <Empty
+                image={Empty.PRESENTED_IMAGE_SIMPLE}
+                description="Chưa có ghi chú — bấm Thêm ý để bắt đầu"
               >
-                <span
-                  className={`work-notes-bullet select-none mt-0.5 ${
-                    note.hidden ? 'text-gray-400' : 'text-[#1E386B]'
+                <Button type="primary" icon={<PlusOutlined />} onClick={() => appendNote('')}>
+                  Thêm ý
+                </Button>
+              </Empty>
+            ) : (
+              timelineNotes.map(note => (
+                <div
+                  key={note.id}
+                  className={`flex items-start gap-2 rounded-lg border px-3 py-2 transition ${
+                    note.hidden
+                      ? 'bg-gray-100 border-gray-200 opacity-75'
+                      : 'bg-white border-gray-200 shadow-sm'
                   }`}
-                  aria-hidden
                 >
-                  −
-                </span>
-                <textarea
-                  ref={node => {
-                    textareaRefs.current[note.id] = node;
-                  }}
-                  value={noteBodyText(note)}
-                  onChange={e => handleBodyChange(note.id, e.target.value)}
-                  onKeyDown={e => handleIdeaKeyDown(note.id, e)}
-                  rows={Math.max(1, note.lines.length)}
-                  spellCheck={false}
-                  disabled={note.hidden && !showHidden}
-                  className={`work-notes-idea-input flex-1 min-w-0 resize-none outline-none bg-transparent ${
-                    note.hidden ? 'line-through text-gray-400' : 'text-gray-900'
-                  }`}
-                  placeholder="Nội dung ghi chú..."
-                />
-                {note.hidden ? (
-                  <Button
-                    size="middle"
-                    className="work-notes-done-btn shrink-0 font-bold"
-                    onClick={() => updateNote(note.id, { hidden: false })}
+                  <span
+                    className={`work-notes-bullet select-none mt-0.5 ${
+                      note.hidden ? 'text-gray-400' : 'text-[#1E386B]'
+                    }`}
+                    aria-hidden
                   >
-                    Hiện lại
-                  </Button>
-                ) : (
-                  <Button
-                    type="primary"
-                    size="middle"
-                    icon={<CheckOutlined />}
-                    className="work-notes-done-btn shrink-0 font-bold"
-                    onClick={() => updateNote(note.id, { hidden: true })}
-                  >
-                    Chưa xong
-                  </Button>
-                )}
-              </div>
-            ))
-          )}
+                    −
+                  </span>
+                  <textarea
+                    ref={node => {
+                      textareaRefs.current[note.id] = node;
+                    }}
+                    value={noteBodyText(note)}
+                    onChange={e => handleBodyChange(note.id, e.target.value)}
+                    onKeyDown={e => handleIdeaKeyDown(note.id, e)}
+                    rows={Math.max(1, note.lines.length)}
+                    spellCheck={false}
+                    disabled={note.hidden && !showHidden}
+                    className={`work-notes-idea-input flex-1 min-w-0 resize-none outline-none bg-transparent ${
+                      note.hidden ? 'line-through text-gray-400' : 'text-gray-900'
+                    }`}
+                    placeholder="Nội dung ghi chú..."
+                  />
+                  {note.hidden ? (
+                    <Button
+                      size="middle"
+                      className="work-notes-done-btn shrink-0 font-bold"
+                      onClick={() => updateNote(note.id, { hidden: false })}
+                    >
+                      Hiện lại
+                    </Button>
+                  ) : (
+                    <Button
+                      type="primary"
+                      size="middle"
+                      icon={<CheckOutlined />}
+                      className="work-notes-done-btn shrink-0 font-bold"
+                      onClick={() => updateNote(note.id, { hidden: true })}
+                    >
+                      Chưa xong
+                    </Button>
+                  )}
+                </div>
+              ))
+            )}
+          </Spin>
         </div>
       </div>
     </div>

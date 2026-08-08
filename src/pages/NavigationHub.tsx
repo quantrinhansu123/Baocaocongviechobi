@@ -140,14 +140,14 @@ function ReportTable({
     <div className="overflow-x-auto">
       <table className="w-full text-sm border-collapse min-w-[1000px]">
         <thead>
-          <tr className="bg-gray-50 text-gray-600 border-b border-gray-200">
+          <tr className="bg-[#1E386B] text-[#F38320] border-b border-[#1E386B]">
             {(showRowActions
               ? ['#', 'TÊN BÁO CÁO', 'NỘI DUNG', 'NGÀY TẠO BÁO CÁO', 'NGÀY GỬI', 'KỲ', 'NGƯỜI GỬI', 'NGƯỜI NHẬN', 'LINK', 'THAO TÁC']
               : ['#', 'TÊN BÁO CÁO', 'NỘI DUNG', 'NGÀY TẠO BÁO CÁO', 'NGÀY GỬI', 'KỲ', 'NGƯỜI GỬI', 'NGƯỜI NHẬN', '']
             ).map(header => (
               <th
                 key={header || 'link'}
-                className="px-4 py-3 text-left text-[11px] font-bold uppercase tracking-wide whitespace-nowrap"
+                className="px-4 py-3 text-left text-[11px] font-bold uppercase tracking-wide whitespace-nowrap text-[#F38320]"
               >
                 {header}
               </th>

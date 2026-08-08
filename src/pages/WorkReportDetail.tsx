@@ -111,13 +111,13 @@ export default function ReportDetailScreen() {
         ) : (
         <table className="w-full text-left border-collapse">
           <thead>
-            <tr className="bg-[#1E386B] text-white">
-              <th className="p-4 font-semibold text-center w-16">STT</th>
-              <th className="p-4 font-semibold">Công việc</th>
-              <th className="p-4 font-semibold w-40">Người phụ trách</th>
-              <th className="p-4 font-semibold w-40">Deadline</th>
-              <th className="p-4 font-semibold w-40">Trạng thái</th>
-              <th className="p-4 font-semibold w-32">Ảnh hưởng</th>
+            <tr className="bg-[#1E386B] text-[#F38320]">
+              <th className="p-4 font-semibold text-center w-16 text-[#F38320]">STT</th>
+              <th className="p-4 font-semibold text-[#F38320]">Công việc</th>
+              <th className="p-4 font-semibold w-40 text-[#F38320]">Người phụ trách</th>
+              <th className="p-4 font-semibold w-40 text-[#F38320]">Deadline</th>
+              <th className="p-4 font-semibold w-40 text-[#F38320]">Trạng thái</th>
+              <th className="p-4 font-semibold w-32 text-[#F38320]">Ảnh hưởng</th>
             </tr>
           </thead>
           <tbody>

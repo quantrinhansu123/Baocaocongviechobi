@@ -8,6 +8,8 @@ export const AUXILIARY_TABLE_MAP: Record<string, string> = {
   'Phân quyền': 'phan_quyen',
   'BC chi tiết': 'bc_chi_tiet',
   'Cảnh báo': 'canh_bao',
+  'Ghi chú phòng ban': 'ghi_chu_phong_ban',
+  'Ghi chú chung': 'ghi_chu_chung',
 };
 
 export const AUXILIARY_LOGICAL_NAMES = Object.keys(AUXILIARY_TABLE_MAP);

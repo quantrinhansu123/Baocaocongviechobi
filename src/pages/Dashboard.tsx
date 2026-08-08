@@ -651,7 +651,21 @@ const Dashboard: React.FC = () => {
     </div>
   );
 
+  const LIST_PAGE_SIZE = 10;
+  const LIST_SCROLL_Y = 520;
+
+  const sttColumn = (page: number, pageSize: number) => ({
+    title: 'STT',
+    key: 'stt',
+    width: 64,
+    align: 'center' as const,
+    render: (_: unknown, __: DashboardTask, index: number) => (
+      <span className="font-bold text-[#F38320]">{(page - 1) * pageSize + index + 1}</span>
+    ),
+  });
+
   const overdueColumns = [
+    sttColumn(overduePage, LIST_PAGE_SIZE),
     {
       title: 'CÔNG VIỆC',
       dataIndex: 'name',
@@ -666,18 +680,21 @@ const Dashboard: React.FC = () => {
       title: 'PHÒNG BAN',
       dataIndex: 'department',
       key: 'department',
+      width: 170,
       render: (text: string) => <Tag>{text}</Tag>,
     },
-    { title: 'NGƯỜI PHỤ TRÁCH', dataIndex: 'assignee', key: 'assignee' },
+    { title: 'NGƯỜI PHỤ TRÁCH', dataIndex: 'assignee', key: 'assignee', width: 150 },
     {
       title: 'DEADLINE',
       dataIndex: 'deadline',
       key: 'deadline',
+      width: 120,
       render: (date: string) => <strong className="text-red-600">{date}</strong>,
     },
   ];
 
-  const taskListColumns = [
+  const buildTaskListColumns = (page: number, pageSize: number) => [
+    sttColumn(page, pageSize),
     {
       title: 'CÔNG VIỆC',
       dataIndex: 'name',
@@ -728,6 +745,7 @@ const Dashboard: React.FC = () => {
   ];
 
   const importantColumns = [
+    sttColumn(importantPage, LIST_PAGE_SIZE),
     {
       title: 'CÔNG VIỆC',
       dataIndex: 'name',
@@ -738,23 +756,26 @@ const Dashboard: React.FC = () => {
         </Tooltip>
       )
     },
-    { title: 'NGƯỜI PHỤ TRÁCH', dataIndex: 'assignee', key: 'assignee' },
+    { title: 'NGƯỜI PHỤ TRÁCH', dataIndex: 'assignee', key: 'assignee', width: 150 },
     {
       title: 'PHÒNG BAN',
       dataIndex: 'department',
       key: 'department',
+      width: 170,
       render: (text: string) => <Tag>{text}</Tag>
     },
     {
       title: 'DEADLINE',
       dataIndex: 'deadline',
       key: 'deadline',
+      width: 120,
       render: (date: string) => <strong className="text-[#1E386B]">{date}</strong>
     },
     {
       title: 'MỨC ĐỘ ẢNH HƯỞNG',
       dataIndex: 'impact',
       key: 'impact',
+      width: 170,
       render: (impact: number) => renderImpact(impact)
     },
   ];
@@ -1181,7 +1202,7 @@ const Dashboard: React.FC = () => {
           <div className="hidden md:block p-4">
             <Table
               dataSource={kpiDrillDownTasks}
-              columns={taskListColumns}
+              columns={buildTaskListColumns(kpiListPage, 8)}
               pagination={{
                 current: kpiListPage,
                 pageSize: 8,
@@ -1189,9 +1210,11 @@ const Dashboard: React.FC = () => {
                 size: 'small',
                 showSizeChanger: false,
               }}
-              scroll={{ x: 'max-content', y: 320 }}
-              size="small"
+              scroll={{ x: 'max-content', y: LIST_SCROLL_Y }}
+              size="middle"
               rowKey="id"
+              tableLayout="fixed"
+              className="w-full"
               onRow={record => ({ onClick: () => handleRowClick(record) })}
             />
           </div>
@@ -1233,15 +1256,24 @@ const Dashboard: React.FC = () => {
         styles={{ body: { padding: 0 } }}
       >
         {/* Desktop View: Table */}
-        <div className="hidden md:block p-4">
+        <div className="hidden md:block p-3 md:p-4">
           {displayOverdue.length > 0 ? (
             <Table
               dataSource={displayOverdue}
               columns={overdueColumns}
-              pagination={{ current: overduePage, pageSize: 3, onChange: setOverduePage, size: 'small', showSizeChanger: false }}
-              scroll={{ y: 300 }}
-              size="small"
+              pagination={{
+                current: overduePage,
+                pageSize: LIST_PAGE_SIZE,
+                onChange: setOverduePage,
+                size: 'small',
+                showSizeChanger: false,
+                showTotal: total => `Tổng ${total} việc`,
+              }}
+              scroll={{ x: 'max-content', y: LIST_SCROLL_Y }}
+              size="middle"
               rowKey="id"
+              tableLayout="fixed"
+              className="w-full dashboard-wide-table"
               onRow={(record) => ({ onClick: () => handleRowClick(record) })}
             />
           ) : <Empty description="Tuyệt vời! Không có công việc nào bị quá hạn." />}
@@ -1249,14 +1281,14 @@ const Dashboard: React.FC = () => {
 
         {/* Mobile View: Card List */}
         <div className="block md:hidden p-3 bg-red-50/30">
-          <div className="space-y-1.5 max-h-[380px] overflow-y-auto pr-1 dashboard-kpi-list-mobile">
-            {displayOverdue.length > 0 ? displayOverdue.slice((overduePage - 1) * 4, overduePage * 4).map(task => renderMobileTaskCard(task, 'red')) : <Empty description="Tuyệt vời! Không có công việc nào bị quá hạn." />}
+          <div className="space-y-1.5 max-h-[520px] overflow-y-auto pr-1 dashboard-kpi-list-mobile">
+            {displayOverdue.length > 0 ? displayOverdue.slice((overduePage - 1) * LIST_PAGE_SIZE, overduePage * LIST_PAGE_SIZE).map(task => renderMobileTaskCard(task, 'red')) : <Empty description="Tuyệt vời! Không có công việc nào bị quá hạn." />}
           </div>
           {displayOverdue.length > 0 && (
             <div className="mt-3 pt-3 border-t border-red-100 flex justify-center shrink-0">
               <Pagination
                 current={overduePage}
-                pageSize={4}
+                pageSize={LIST_PAGE_SIZE}
                 total={displayOverdue.length}
                 onChange={setOverduePage}
                 size="small"
@@ -1275,15 +1307,24 @@ const Dashboard: React.FC = () => {
         styles={{ body: { padding: 0 } }}
       >
         {/* Desktop View: Table */}
-        <div className="hidden md:block p-4">
+        <div className="hidden md:block p-3 md:p-4">
           {displayImportant.length > 0 ? (
             <Table
               dataSource={displayImportant}
               columns={importantColumns}
-              pagination={{ current: importantPage, pageSize: 3, onChange: setImportantPage, size: 'small', showSizeChanger: false }}
-              scroll={{ y: 300 }}
-              size="small"
+              pagination={{
+                current: importantPage,
+                pageSize: LIST_PAGE_SIZE,
+                onChange: setImportantPage,
+                size: 'small',
+                showSizeChanger: false,
+                showTotal: total => `Tổng ${total} việc`,
+              }}
+              scroll={{ x: 'max-content', y: LIST_SCROLL_Y }}
+              size="middle"
               rowKey="id"
+              tableLayout="fixed"
+              className="w-full dashboard-wide-table"
               onRow={(record) => ({ onClick: () => handleRowClick(record) })}
             />
           ) : <Empty description="Không có công việc quan trọng nào đang làm." />}
@@ -1291,14 +1332,14 @@ const Dashboard: React.FC = () => {
 
         {/* Mobile View: Card List */}
         <div className="block md:hidden p-3 bg-orange-50/30">
-          <div className="space-y-1.5 max-h-[380px] overflow-y-auto pr-1 dashboard-kpi-list-mobile">
-            {displayImportant.length > 0 ? displayImportant.slice((importantPage - 1) * 4, importantPage * 4).map(task => renderMobileTaskCard(task, 'orange')) : <Empty description="Không có công việc quan trọng nào đang làm." />}
+          <div className="space-y-1.5 max-h-[520px] overflow-y-auto pr-1 dashboard-kpi-list-mobile">
+            {displayImportant.length > 0 ? displayImportant.slice((importantPage - 1) * LIST_PAGE_SIZE, importantPage * LIST_PAGE_SIZE).map(task => renderMobileTaskCard(task, 'orange')) : <Empty description="Không có công việc quan trọng nào đang làm." />}
           </div>
           {displayImportant.length > 0 && (
             <div className="mt-3 pt-3 border-t border-orange-100 flex justify-center shrink-0">
               <Pagination
                 current={importantPage}
-                pageSize={4}
+                pageSize={LIST_PAGE_SIZE}
                 total={displayImportant.length}
                 onChange={setImportantPage}
                 size="small"
@@ -1687,8 +1728,10 @@ const Dashboard: React.FC = () => {
           <div className="mt-6">{kpisNode}</div>
           {kpiDrillDownNode ? <div className="mt-4">{kpiDrillDownNode}</div> : null}
           <Row gutter={[16, 16]} className="mt-6">
-            <Col xs={24} lg={16}>{listsNode}</Col>
-            <Col xs={24} lg={8}>{timelineNode}</Col>
+            <Col xs={24}>{listsNode}</Col>
+          </Row>
+          <Row gutter={[16, 16]} className="mt-6">
+            <Col xs={24}>{timelineNode}</Col>
           </Row>
           <Row className="mt-6">
             <Col xs={24}>{chartNode}</Col>
@@ -1885,19 +1928,21 @@ const Dashboard: React.FC = () => {
                 <>
                   <div className="hidden md:block chart-drill-table-wrap">
                     <Table
-                      className="chart-drill-table"
+                      className="chart-drill-table w-full"
                       dataSource={chartDrillTasks}
-                      columns={taskListColumns}
+                      columns={buildTaskListColumns(chartDrillPage, 10)}
                       pagination={{
                         current: chartDrillPage,
                         pageSize: 10,
                         onChange: setChartDrillPage,
                         size: 'default',
                         showSizeChanger: false,
+                        showTotal: total => `Tổng ${total} việc`,
                       }}
                       size="large"
                       rowKey="id"
-                      scroll={{ x: 'max-content' }}
+                      tableLayout="fixed"
+                      scroll={{ x: 'max-content', y: LIST_SCROLL_Y }}
                       onRow={record => ({
                         onClick: () => {
                           handleRowClick(record);

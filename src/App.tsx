@@ -54,8 +54,11 @@ export default function App() {
             boxShadowTertiary: '0 1px 2px 0 rgba(16, 24, 40, 0.05)',
           },
           Table: {
-            headerBg: '#fafbfc',
-            headerColor: 'rgba(15, 23, 42, 0.55)',
+            headerBg: '#1E386B',
+            headerColor: '#F38320',
+            headerSortActiveBg: '#1E386B',
+            headerSortHoverBg: '#243f75',
+            headerFilterHoverBg: '#243f75',
             rowHoverBg: '#f8fafc',
             borderColor: '#eef0f3',
             headerBorderRadius: 10,

@@ -1,22 +1,20 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { Button, Checkbox, Empty, Typography } from 'antd';
-import { CheckOutlined } from '@ant-design/icons';
+import { Button, Checkbox, Empty, Spin, Typography, message } from 'antd';
+import { CheckOutlined, CloudOutlined, CloudSyncOutlined } from '@ant-design/icons';
 import { ORG_BLOCKS } from '../data/orgBlocks';
+import {
+  loadWorkNotesFromSupabase,
+  syncWorkNotesToSupabase,
+  type WorkNoteIdea,
+} from '../services/workNotesData';
 
 const { Text } = Typography;
 
 const ROMAN = ['I', 'II', 'III', 'IV'] as const;
 const STORAGE_KEY = 'hobi-work-notes-v2';
+const SYNC_DEBOUNCE_MS = 600;
 
-type NoteIdea = {
-  id: string;
-  blockKey: string;
-  deptKey: string;
-  title: string;
-  lines: string[];
-  hidden: boolean;
-  createdAt: number;
-};
+type NoteIdea = WorkNoteIdea;
 
 function newIdeaId() {
   return `note-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
@@ -139,7 +137,14 @@ const WorkNotesView: React.FC = () => {
   const [notes, setNotes] = useState<NoteIdea[]>(() => loadNotes());
   const [showHidden, setShowHidden] = useState(false);
   const [focusIdeaId, setFocusIdeaId] = useState<string | null>(null);
+  const [loadingRemote, setLoadingRemote] = useState(true);
+  const [supabaseConnected, setSupabaseConnected] = useState<boolean | null>(null);
+  const [syncing, setSyncing] = useState(false);
   const textareaRefs = useRef<Record<string, HTMLTextAreaElement | null>>({});
+  const syncReadyRef = useRef(false);
+  const syncTimerRef = useRef<number | null>(null);
+  const notesRef = useRef(notes);
+  notesRef.current = notes;
 
   const activeBlock = useMemo(
     () => ORG_BLOCKS.find(block => block.key === activeBlockKey) ?? ORG_BLOCKS[0],
@@ -164,11 +169,83 @@ const WorkNotesView: React.FC = () => {
     });
   }, [leftDepts]);
 
+  useEffect(() => {
+    let cancelled = false;
+
+    async function hydrateFromSupabase() {
+      setLoadingRemote(true);
+      try {
+        const remote = await loadWorkNotesFromSupabase();
+        if (cancelled) return;
+        setSupabaseConnected(true);
+        if (remote.length > 0) {
+          setNotes(remote);
+          saveNotes(remote);
+        } else {
+          const local = loadNotes();
+          if (local.length > 0) {
+            await syncWorkNotesToSupabase(local);
+            if (!cancelled) {
+              message.success('Đã đẩy ghi chú phòng ban từ máy lên Supabase.');
+            }
+          }
+        }
+      } catch {
+        if (!cancelled) {
+          setSupabaseConnected(false);
+          message.warning('Chưa kết nối Supabase — ghi chú đang lưu tạm trên máy.');
+        }
+      } finally {
+        if (!cancelled) {
+          setLoadingRemote(false);
+          syncReadyRef.current = true;
+        }
+      }
+    }
+
+    void hydrateFromSupabase();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
   const persist = useCallback((next: NoteIdea[]) => {
     const sorted = [...next].sort((a, b) => a.createdAt - b.createdAt);
     setNotes(sorted);
     saveNotes(sorted);
   }, []);
+
+  useEffect(() => {
+    if (!syncReadyRef.current || supabaseConnected === false) {
+      return;
+    }
+
+    if (syncTimerRef.current) {
+      window.clearTimeout(syncTimerRef.current);
+    }
+
+    syncTimerRef.current = window.setTimeout(() => {
+      const snapshot = notesRef.current;
+      setSyncing(true);
+      void syncWorkNotesToSupabase(snapshot)
+        .then(() => {
+          setSupabaseConnected(true);
+        })
+        .catch(error => {
+          setSupabaseConnected(false);
+          message.error(error instanceof Error ? error.message : 'Không đồng bộ được lên Supabase.');
+        })
+        .finally(() => {
+          setSyncing(false);
+        });
+    }, SYNC_DEBOUNCE_MS);
+
+    return () => {
+      if (syncTimerRef.current) {
+        window.clearTimeout(syncTimerRef.current);
+      }
+    };
+  }, [notes, supabaseConnected]);
 
   const resolveDeptMeta = useCallback(
     (deptKey: string) => {
@@ -432,6 +509,21 @@ const WorkNotesView: React.FC = () => {
                   Theo thứ tự gõ
                 </h2>
               </div>
+              <div className="shrink-0 text-right text-[11px] font-semibold uppercase tracking-wide text-white/90">
+                {syncing || loadingRemote ? (
+                  <span>
+                    <CloudSyncOutlined className="mr-1" />
+                    Đang đồng bộ
+                  </span>
+                ) : supabaseConnected ? (
+                  <span>
+                    <CloudOutlined className="mr-1" />
+                    Supabase
+                  </span>
+                ) : (
+                  <span>Chưa kết nối Supabase</span>
+                )}
+              </div>
             </div>
 
             <div className="px-3 py-2 border-b border-gray-100 flex flex-wrap items-center gap-2 bg-slate-50">
@@ -446,7 +538,8 @@ const WorkNotesView: React.FC = () => {
             </div>
 
             <div className="flex-1 overflow-y-auto p-3 md:p-4 space-y-3 bg-[#fafafa]">
-              {groupedNotes.length === 0 ? (
+              <Spin spinning={loadingRemote} tip="Đang tải từ Supabase...">
+              {groupedNotes.length === 0 && !loadingRemote ? (
                 <Empty
                   image={Empty.PRESENTED_IMAGE_SIMPLE}
                   description="Chưa có ghi chú — chọn phòng bên trái để bắt đầu"
@@ -530,6 +623,7 @@ const WorkNotesView: React.FC = () => {
                   );
                 })
               )}
+              </Spin>
             </div>
           </div>
         </main>

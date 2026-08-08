@@ -31,6 +31,8 @@ drop table if exists public.thu_muc cascade;
 drop table if exists public.phan_quyen cascade;
 drop table if exists public.bc_chi_tiet cascade;
 drop table if exists public.canh_bao cascade;
+drop table if exists public.ghi_chu_phong_ban cascade;
+drop table if exists public.ghi_chu_chung cascade;
 
 -- 2) Bảng công việc chi tiết (I.1 … IV.2) — pk: tt
 create table public.i_1 (
@@ -345,6 +347,30 @@ create policy "anon_select_canh_bao" on public.canh_bao for select to anon using
 create policy "anon_insert_canh_bao" on public.canh_bao for insert to anon with check (true);
 create policy "anon_update_canh_bao" on public.canh_bao for update to anon using (true) with check (true);
 create policy "anon_delete_canh_bao" on public.canh_bao for delete to anon using (true);
+
+create table public.ghi_chu_phong_ban (
+  id text primary key,
+  data jsonb not null default '{}'::jsonb,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
+);
+alter table public.ghi_chu_phong_ban enable row level security;
+create policy "anon_select_ghi_chu_phong_ban" on public.ghi_chu_phong_ban for select to anon using (true);
+create policy "anon_insert_ghi_chu_phong_ban" on public.ghi_chu_phong_ban for insert to anon with check (true);
+create policy "anon_update_ghi_chu_phong_ban" on public.ghi_chu_phong_ban for update to anon using (true) with check (true);
+create policy "anon_delete_ghi_chu_phong_ban" on public.ghi_chu_phong_ban for delete to anon using (true);
+
+create table public.ghi_chu_chung (
+  id text primary key,
+  data jsonb not null default '{}'::jsonb,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
+);
+alter table public.ghi_chu_chung enable row level security;
+create policy "anon_select_ghi_chu_chung" on public.ghi_chu_chung for select to anon using (true);
+create policy "anon_insert_ghi_chu_chung" on public.ghi_chu_chung for insert to anon with check (true);
+create policy "anon_update_ghi_chu_chung" on public.ghi_chu_chung for update to anon using (true) with check (true);
+create policy "anon_delete_ghi_chu_chung" on public.ghi_chu_chung for delete to anon using (true);
 
 -- 4) Làm mới cache PostgREST
 notify pgrst, 'reload schema';

@@ -43,6 +43,8 @@ const auxiliaryTables = [
   'phan_quyen',
   'bc_chi_tiet',
   'canh_bao',
+  'ghi_chu_phong_ban',
+  'ghi_chu_chung',
 ];
 const reportTable = clean(process.env.SUPABASE_TABLE_BC_DINH_KY) || 'bc_dinh_ky';
 
