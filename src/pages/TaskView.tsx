@@ -1257,6 +1257,7 @@ const TaskView: React.FC = () => {
             name="tienDoPhanTram"
             label="Tiến độ CV (%)"
             initialValue={0}
+            extra="Lưu sẽ đồng bộ lên Supabase (key TIẾN ĐỘ CV trong data jsonb)."
             rules={[
               { required: true, message: 'Nhập tiến độ' },
               { type: 'number', min: 0, max: 100, message: 'Nhập từ 0 đến 100' },
@@ -1555,6 +1556,7 @@ const TaskView: React.FC = () => {
                       <Form.Item
                         name="tienDoPhanTram"
                         label="Tiến độ CV (%)"
+                        extra="Lưu sẽ đồng bộ lên Supabase (key TIẾN ĐỘ CV trong data jsonb)."
                         rules={[
                           { required: true, message: 'Nhập tiến độ' },
                           { type: 'number', min: 0, max: 100, message: 'Nhập từ 0 đến 100' },

@@ -91,6 +91,39 @@
     box-shadow: 4px 0 20px -10px rgba(8, 15, 33, 0.45);
 }
 
+.sidebar-sider-brand .ant-layout-sider-children {
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+    overflow: hidden;
+}
+
+.sidebar-sider-inner {
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+    min-height: 0;
+}
+
+.sidebar-menu-scroll {
+    flex: 1 1 auto;
+    min-height: 0;
+    overflow-y: auto;
+    overflow-x: hidden;
+}
+
+.sidebar-notes-footer {
+    flex-shrink: 0;
+    margin-top: auto;
+    padding: 8px 0 12px;
+    border-top: 1px solid rgba(255, 255, 255, 0.12);
+    background: rgba(0, 0, 0, 0.12);
+}
+
+.sidebar-notes-menu.ant-menu {
+    background: transparent !important;
+}
+
 .sidebar-report-menu.ant-menu-dark {
     background: transparent !important;
     padding: 4px 0;

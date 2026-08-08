@@ -35,6 +35,10 @@ drop table if exists public.ghi_chu_phong_ban cascade;
 drop table if exists public.ghi_chu_chung cascade;
 
 -- 2) Bảng công việc chi tiết (I.1 … IV.2) — pk: tt
+-- Dữ liệu nghiệp vụ nằm trong data (jsonb), gồm các key như:
+--   CÔNG VIỆC, NGƯỜI ĐƯỢC GIAO, Y/C XONG, TIẾN ĐỘ, TIẾN ĐỘ CV, Ngày hoàn thành, ...
+-- TIẾN ĐỘ CV = phần trăm 0–100 (thanh tiến trình trên app).
+-- Project cũ: chạy thêm supabase/migrate-tien-do-cv.sql để backfill key mặc định.
 create table public.i_1 (
   tt text primary key,
   data jsonb not null default '{}'::jsonb,

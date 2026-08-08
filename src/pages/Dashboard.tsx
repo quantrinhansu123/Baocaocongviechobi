@@ -2161,6 +2161,7 @@ const Dashboard: React.FC = () => {
                 <Form.Item
                   name="tienDoPhanTram"
                   label="Tiến độ CV (%)"
+                  extra="Lưu sẽ đồng bộ lên Supabase (key TIẾN ĐỘ CV trong data jsonb)."
                   rules={[
                     { required: true, message: 'Nhập tiến độ' },
                     { type: 'number', min: 0, max: 100, message: 'Nhập từ 0 đến 100' },

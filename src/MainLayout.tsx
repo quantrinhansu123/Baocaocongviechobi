@@ -143,18 +143,8 @@ const MainLayout: React.FC = () => {
     };
   }, []);
 
-  const menuItems: MenuProps['items'] = useMemo(
+  const mainMenuItems: MenuProps['items'] = useMemo(
     () => [
-      {
-        key: '/general-notes',
-        icon: <UnorderedListOutlined className="sidebar-nav-icon" />,
-        label: 'GHI CHÚ CHUNG',
-      },
-      {
-        key: '/work-notes',
-        icon: <FormOutlined className="sidebar-nav-icon" />,
-        label: 'GHI CHÚ PHÒNG BAN',
-      },
       { key: '/', icon: <DashboardOutlined className="sidebar-nav-icon" />, label: 'ĐIỀU HÀNH CÔNG VIỆC' },
       {
         key: '/tasks',
@@ -177,6 +167,22 @@ const MainLayout: React.FC = () => {
       },
     ],
     [incompleteByDept]
+  );
+
+  const notesMenuItems: MenuProps['items'] = useMemo(
+    () => [
+      {
+        key: '/general-notes',
+        icon: <UnorderedListOutlined className="sidebar-nav-icon" />,
+        label: 'GHI CHÚ CHUNG',
+      },
+      {
+        key: '/work-notes',
+        icon: <FormOutlined className="sidebar-nav-icon" />,
+        label: 'GHI CHÚ PHÒNG BAN',
+      },
+    ],
+    []
   );
 
   const selectedMenuKeys = useMemo(() => {
@@ -248,31 +254,47 @@ const MainLayout: React.FC = () => {
         collapsedWidth={80}
         className="shadow-lg hidden md:block sidebar-sider-brand"
       >
-        <div className={`h-16 flex items-center px-6 bg-[#F38320] transition-all duration-300 ${collapsed ? 'justify-center px-0' : ''}`}>
-          <div className="flex-shrink-0 h-10 w-10 flex items-center justify-center overflow-hidden mr-2 bg-white p-1 rounded-lg shadow-sm cursor-pointer" onClick={() => navigate('/')}>
-            <img
-              src={logo}
-              alt="Hobiwood Logo"
-              className="w-full h-auto object-contain"
+        <div className="sidebar-sider-inner">
+          <div className={`h-16 flex items-center px-6 bg-[#F38320] transition-all duration-300 shrink-0 ${collapsed ? 'justify-center px-0' : ''}`}>
+            <div className="flex-shrink-0 h-10 w-10 flex items-center justify-center overflow-hidden mr-2 bg-white p-1 rounded-lg shadow-sm cursor-pointer" onClick={() => navigate('/')}>
+              <img
+                src={logo}
+                alt="Hobiwood Logo"
+                className="w-full h-auto object-contain"
+              />
+            </div>
+            {!collapsed && (
+              <span className="font-bold text-lg text-[#1E386B] tracking-wider whitespace-nowrap overflow-hidden">
+                HOBI VIỆT NAM
+              </span>
+            )}
+          </div>
+          <div className="sidebar-menu-scroll">
+            <Menu
+              theme="dark"
+              mode="inline"
+              selectedKeys={selectedMenuKeys}
+              openKeys={menuOpenKeys}
+              onOpenChange={handleMenuOpenChange}
+              items={mainMenuItems}
+              onClick={handleMenuClick}
+              inlineIndent={14}
+              className="border-none mt-4 sidebar-report-menu"
             />
           </div>
-          {!collapsed && (
-            <span className="font-bold text-lg text-[#1E386B] tracking-wider whitespace-nowrap overflow-hidden">
-              HOBI VIỆT NAM
-            </span>
-          )}
+          <div className="sidebar-notes-footer">
+            <Menu
+              theme="dark"
+              mode="inline"
+              selectedKeys={selectedMenuKeys}
+              items={notesMenuItems}
+              onClick={handleMenuClick}
+              inlineIndent={14}
+              className="border-none sidebar-report-menu sidebar-notes-menu"
+              selectable
+            />
+          </div>
         </div>
-        <Menu
-          theme="dark"
-          mode="inline"
-          selectedKeys={selectedMenuKeys}
-          openKeys={menuOpenKeys}
-          onOpenChange={handleMenuOpenChange}
-          items={menuItems}
-          onClick={handleMenuClick}
-          inlineIndent={14}
-          className="border-none mt-4 sidebar-report-menu"
-        />
       </Sider>
 
       <Layout className="main flex flex-col min-w-0" style={{ flex: 1 }}>
@@ -345,25 +367,43 @@ const MainLayout: React.FC = () => {
           width={280}
           styles={{
             body: {
-              padding: '16px 0',
+              padding: 0,
               background: 'linear-gradient(180deg, #1E386B 0%, #152a47 100%)',
+              display: 'flex',
+              flexDirection: 'column',
+              height: '100%',
             },
             header: { backgroundColor: '#F38320', borderBottom: 'none', padding: '16px 24px' },
           }}
           closeIcon={<span className="text-white hover:text-gray-300 transition-colors text-lg">✖</span>}
         >
-          <Menu
-            theme="dark"
-            mode="inline"
-            selectedKeys={selectedMenuKeys}
-            openKeys={menuOpenKeys}
-            onOpenChange={handleMenuOpenChange}
-            items={menuItems}
-            onClick={handleMenuClick}
-            inlineIndent={14}
-            className="border-none sidebar-report-menu"
-            style={{ backgroundColor: 'transparent' }}
-          />
+          <div className="sidebar-menu-scroll flex-1 overflow-y-auto py-4">
+            <Menu
+              theme="dark"
+              mode="inline"
+              selectedKeys={selectedMenuKeys}
+              openKeys={menuOpenKeys}
+              onOpenChange={handleMenuOpenChange}
+              items={mainMenuItems}
+              onClick={handleMenuClick}
+              inlineIndent={14}
+              className="border-none sidebar-report-menu"
+              style={{ backgroundColor: 'transparent' }}
+            />
+          </div>
+          <div className="sidebar-notes-footer">
+            <Menu
+              theme="dark"
+              mode="inline"
+              selectedKeys={selectedMenuKeys}
+              items={notesMenuItems}
+              onClick={handleMenuClick}
+              inlineIndent={14}
+              className="border-none sidebar-report-menu sidebar-notes-menu"
+              style={{ backgroundColor: 'transparent' }}
+              selectable
+            />
+          </div>
         </Drawer>
 
         {/* --- CONTENT AREA --- */}
