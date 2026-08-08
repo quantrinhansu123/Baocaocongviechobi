@@ -241,22 +241,25 @@ const WorkNotesView: React.FC = () => {
     if (index < 0) return;
     const idea = notes[index];
 
-    if (event.key === ',') {
-      event.preventDefault();
+    // 2 dấu cách liên tiếp → xuống dòng cùng ý
+    if (event.key === ' ' || event.key === 'Spacebar') {
       const start = el.selectionStart;
       const end = el.selectionEnd;
       const value = el.value;
-      const nextValue = `${value.slice(0, start)}\n${value.slice(end)}`;
-      handleBodyChange(ideaId, nextValue);
-      requestAnimationFrame(() => {
-        const node = textareaRefs.current[ideaId];
-        if (!node) return;
-        const caret = start + 1;
-        node.selectionStart = caret;
-        node.selectionEnd = caret;
-        node.focus();
-      });
-      return;
+      if (start === end && start > 0 && value[start - 1] === ' ') {
+        event.preventDefault();
+        const nextValue = `${value.slice(0, start - 1)}\n${value.slice(end)}`;
+        handleBodyChange(ideaId, nextValue);
+        requestAnimationFrame(() => {
+          const node = textareaRefs.current[ideaId];
+          if (!node) return;
+          const caret = start;
+          node.selectionStart = caret;
+          node.selectionEnd = caret;
+          node.focus();
+        });
+        return;
+      }
     }
 
     if (event.key === 'Enter') {
@@ -398,7 +401,7 @@ const WorkNotesView: React.FC = () => {
             <div className="px-3 py-2 border-b border-gray-100 flex flex-wrap items-center gap-2 bg-slate-50">
               <Text type="secondary" className="text-xs md:text-sm font-medium">
                 List theo <strong>thứ tự gõ</strong> · thanh trên/trái chỉ chọn phòng để thêm ý ·{' '}
-                <strong>,</strong> xuống dòng cùng ý · <strong>Enter</strong> ý mới · <strong>Xong</strong> để ẩn
+                <strong>2 dấu cách</strong> xuống dòng cùng ý · <strong>Enter</strong> ý mới · <strong>Chưa xong</strong> để ẩn
               </Text>
               <label className="inline-flex items-center gap-1.5 text-xs md:text-sm font-semibold text-gray-600 ml-auto cursor-pointer select-none">
                 <Checkbox checked={showHidden} onChange={e => setShowHidden(e.target.checked)} />
@@ -475,7 +478,7 @@ const WorkNotesView: React.FC = () => {
                                 className="work-notes-done-btn shrink-0 font-bold"
                                 onClick={() => updateIdea(idea.id, { hidden: true })}
                               >
-                                Xong
+                                Chưa xong
                               </Button>
                             )}
                           </div>
