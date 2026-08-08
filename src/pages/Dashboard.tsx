@@ -40,6 +40,7 @@ import {
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, ResponsiveContainer, LabelList } from 'recharts';
 import { X, User, Star } from 'lucide-react';
 import TaskActionMenu from '../components/TaskActionMenu';
+import TaskCompleteTick from '../components/TaskCompleteTick';
 import { ORG_BLOCKS } from '../data/orgBlocks';
 import {
   buildDashboardBlockChartData,
@@ -364,19 +365,34 @@ const Dashboard: React.FC = () => {
       .catch(() => {});
   };
 
+  const renderCompleteTick = (task: DashboardTask) => (
+    <TaskCompleteTick
+      completed={task.status.includes('Hoàn thành')}
+      loading={completingTaskId === task.id}
+      disabled={supabaseConnected === false}
+      onComplete={() => void handleMarkComplete(task)}
+    />
+  );
+
   const renderTaskActions = (task: DashboardTask) => {
     const completed = task.status.includes('Hoàn thành');
     return (
       <TaskActionMenu
         completed={completed}
         disabled={supabaseConnected === false}
-        completing={completingTaskId === task.id}
         deleting={deletingTaskId === task.id}
-        onComplete={() => void handleMarkComplete(task)}
         onEdit={() => openTaskEdit(task)}
         onDelete={() => void handleDeleteTask(task)}
       />
     );
+  };
+
+  const completeColumn = {
+    title: 'HOÀN THÀNH',
+    key: 'complete',
+    width: 130,
+    align: 'center' as const,
+    render: (_: unknown, record: DashboardTask) => renderCompleteTick(record),
   };
 
   const blockDeptKeys = useMemo(() => {
@@ -585,7 +601,10 @@ const Dashboard: React.FC = () => {
               <User size={10} className="shrink-0" />
               {task.assignee}
             </span>
-            <span title={task.status}>{renderStatusCompact(task.status)}</span>
+            <span className="inline-flex items-center gap-1.5">
+              <span title={task.status}>{renderStatusCompact(task.status)}</span>
+              {renderCompleteTick(task)}
+            </span>
           </div>
           {task.impact >= 3 ? (
             <div className="task-impact" aria-label={`Mức ảnh hưởng ${task.impact}`}>
@@ -617,7 +636,7 @@ const Dashboard: React.FC = () => {
   const sttColumn = (page: number, pageSize: number) => ({
     title: 'STT',
     key: 'stt',
-    width: 64,
+    width: 72,
     align: 'center' as const,
     render: (_: unknown, __: DashboardTask, index: number) => (
       <span className="font-bold text-[#1E386B]">{(page - 1) * pageSize + index + 1}</span>
@@ -625,47 +644,51 @@ const Dashboard: React.FC = () => {
   });
 
   const overdueColumns = [
+    completeColumn,
     sttColumn(overduePage, LIST_PAGE_SIZE),
     {
       title: 'PHÒNG BAN',
       dataIndex: 'department',
       key: 'department',
-      width: 170,
+      width: 130,
       render: (text: string) => <Tag>{text}</Tag>,
     },
     {
       title: 'CÔNG VIỆC',
       dataIndex: 'name',
       key: 'name',
+      width: 280,
       render: (text: string, record: DashboardTask) => (
         <Tooltip title={record.desc} placement="topLeft">
           <Text strong className="text-red-600 cursor-pointer hover:underline">{text}</Text>
         </Tooltip>
       ),
     },
-    { title: 'NGƯỜI PHỤ TRÁCH', dataIndex: 'assignee', key: 'assignee', width: 150 },
+    { title: 'NGƯỜI PHỤ TRÁCH', dataIndex: 'assignee', key: 'assignee', width: 160 },
     {
       title: 'NGÀY HOÀN THÀNH',
       dataIndex: 'deadline',
       key: 'deadline',
-      width: 140,
+      width: 160,
       render: (date: string) => <strong className="text-red-600">{date}</strong>,
     },
   ];
 
   const buildTaskListColumns = (page: number, pageSize: number) => [
+    completeColumn,
     sttColumn(page, pageSize),
     {
       title: 'PHÒNG BAN',
       dataIndex: 'department',
       key: 'department',
-      width: 150,
+      width: 130,
       render: (text: string) => <Tag className="chart-drill-tag m-0">{text}</Tag>,
     },
     {
       title: 'CÔNG VIỆC',
       dataIndex: 'name',
       key: 'name',
+      width: 280,
       ellipsis: true,
       render: (text: string, record: DashboardTask) => (
         <Tooltip title={record.desc || text} placement="topLeft">
@@ -677,7 +700,7 @@ const Dashboard: React.FC = () => {
       title: 'NGƯỜI PHỤ TRÁCH',
       dataIndex: 'assignee',
       key: 'assignee',
-      width: 130,
+      width: 160,
       ellipsis: true,
       render: (text: string) => <span className="chart-drill-cell-text">{text}</span>,
     },
@@ -685,7 +708,7 @@ const Dashboard: React.FC = () => {
       title: 'NGÀY HOÀN THÀNH',
       dataIndex: 'deadline',
       key: 'deadline',
-      width: 140,
+      width: 160,
       render: (date: string) => <strong className="chart-drill-deadline">{date}</strong>,
     },
     {
@@ -705,37 +728,39 @@ const Dashboard: React.FC = () => {
   ];
 
   const importantColumns = [
+    completeColumn,
     sttColumn(importantPage, LIST_PAGE_SIZE),
     {
       title: 'PHÒNG BAN',
       dataIndex: 'department',
       key: 'department',
-      width: 170,
+      width: 130,
       render: (text: string) => <Tag>{text}</Tag>
     },
     {
       title: 'CÔNG VIỆC',
       dataIndex: 'name',
       key: 'name',
+      width: 280,
       render: (text: string, record: any) => (
         <Tooltip title={record.desc} placement="topLeft">
           <Text strong className="text-[#1E386B] cursor-pointer hover:underline">{text}</Text>
         </Tooltip>
       )
     },
-    { title: 'NGƯỜI PHỤ TRÁCH', dataIndex: 'assignee', key: 'assignee', width: 150 },
+    { title: 'NGƯỜI PHỤ TRÁCH', dataIndex: 'assignee', key: 'assignee', width: 160 },
     {
       title: 'NGÀY HOÀN THÀNH',
       dataIndex: 'deadline',
       key: 'deadline',
-      width: 140,
+      width: 160,
       render: (date: string) => <strong className="text-[#1E386B]">{date}</strong>
     },
     {
       title: 'MỨC ĐỘ ẢNH HƯỞNG',
       dataIndex: 'impact',
       key: 'impact',
-      width: 170,
+      width: 190,
       render: (impact: number) => renderImpact(impact)
     },
   ];
@@ -1934,7 +1959,10 @@ const Dashboard: React.FC = () => {
                                   : 'default'
                             )}
                           </div>
-                          <div className="flex justify-end px-1">{renderTaskActions(task)}</div>
+                          <div className="flex justify-end items-center gap-2 px-1">
+                            {renderCompleteTick(task)}
+                            {renderTaskActions(task)}
+                          </div>
                         </div>
                       ))}
                     {chartDrillTasks.length > 5 ? (

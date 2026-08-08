@@ -683,14 +683,34 @@ export function buildTienDoEditRow(
   tableName?: string
 ): Record<string, unknown> {
   const row: Record<string, unknown> = { ...sourceRow };
+  const tienDoKey = resolveTienDoColumnKey(sourceRow);
+  const ngayHtKey = resolveNgayHoanThanhColumnKey(sourceRow);
 
   const serialized = serializeTienDo(tienDo);
-  if (serialized) {
+  if (!serialized) {
+    throw new Error('Giá trị TIẾN ĐỘ không hợp lệ. Chỉ dùng: Đang làm, Hoàn thành hoặc Quá hạn.');
+  }
+
+  row[tienDoKey] = serialized;
+  // Đồng bộ cả key chuẩn nếu row đang dùng tên cột khác
+  if (tienDoKey !== COL_TIEN_DO) {
     row[COL_TIEN_DO] = serialized;
   }
 
-  if (tienDo.trim() === 'Hoàn thành' && !pickNgayHoanThanhFromRow(sourceRow)) {
-    row[COL_NGAY_HOAN_THANH] = formatRecordDate(completedAt);
+  if (tienDo.trim() === 'Hoàn thành') {
+    if (!pickNgayHoanThanhFromRow(sourceRow)) {
+      const stamp = formatRecordDate(completedAt);
+      row[ngayHtKey] = stamp;
+      if (ngayHtKey !== COL_NGAY_HOAN_THANH) {
+        row[COL_NGAY_HOAN_THANH] = stamp;
+      }
+    }
+  } else {
+    // Đổi sang trạng thái khác thì xóa ngày HT để tick/UI không kẹt ở "đã xong"
+    row[ngayHtKey] = null;
+    if (ngayHtKey !== COL_NGAY_HOAN_THANH) {
+      row[COL_NGAY_HOAN_THANH] = null;
+    }
   }
 
   return applyRowKey(row, sourceRow, explicitRowKey, tableName);

@@ -83,6 +83,9 @@ body {
   padding-top: 14px !important;
   padding-bottom: 14px !important;
   line-height: 1.45 !important;
+  white-space: nowrap !important;
+  overflow: visible !important;
+  text-overflow: clip !important;
 }
 
 .ant-table-thead > tr > th .ant-table-column-title,
@@ -91,6 +94,9 @@ body {
 .ant-table-thead > tr > th .ant-table-filter-trigger {
   color: #ffffff !important;
   font-weight: 900 !important;
+  white-space: nowrap !important;
+  overflow: visible !important;
+  text-overflow: clip !important;
 }
 
 .ant-table-thead > tr > th::before {
@@ -193,6 +199,45 @@ body {
 
 .task-overdue-blink {
   animation: task-overdue-blink 1s ease-in-out infinite;
+}
+
+.task-complete-tick-wrap {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.task-complete-tick.ant-btn {
+  width: 40px !important;
+  height: 40px !important;
+  padding: 0 !important;
+  border-radius: 10px !important;
+  color: #94a3b8 !important;
+  border: 2px solid #cbd5e1 !important;
+  background: #ffffff !important;
+}
+
+.task-complete-tick.ant-btn .anticon {
+  font-size: 22px !important;
+}
+
+.task-complete-tick.ant-btn:hover:not(:disabled) {
+  color: #16a34a !important;
+  border-color: #16a34a !important;
+  background: #f0fdf4 !important;
+}
+
+.task-complete-tick--done.ant-btn,
+.task-complete-tick--done.ant-btn:disabled {
+  color: #16a34a !important;
+  border-color: #16a34a !important;
+  background: #dcfce7 !important;
+  opacity: 1 !important;
+}
+
+.task-th-label {
+  display: inline-block;
+  white-space: nowrap;
 }
 
 .task-action-menu {
@@ -310,17 +355,12 @@ body {
   vertical-align: middle;
 }
 
-.task-table-compact .task-col-congviec,
-.task-table-compact .task-col-phongban,
-.task-table-compact .task-col-phutrach,
-.task-table-compact .task-col-giahan {
-  max-width: 0;
-}
-
 .task-table-compact .task-col-deadline,
 .task-table-compact .task-col-actions,
 .task-table-compact .task-col-ngayht,
-.task-table-compact .task-col-tiendo {
+.task-table-compact .task-col-tiendo,
+.task-table-compact .task-col-complete,
+.task-table-compact .task-col-stt {
   white-space: nowrap;
 }
 

@@ -28,6 +28,7 @@ import { Star } from 'lucide-react';
 import dayjs from 'dayjs';
 import BackButton from '../components/BackButton';
 import TaskActionMenu from '../components/TaskActionMenu';
+import TaskCompleteTick from '../components/TaskCompleteTick';
 import { ORG_BLOCKS } from '../data/orgBlocks';
 import type { TaskRecord } from '../types/task';
 import {
@@ -454,6 +455,32 @@ const TaskView: React.FC = () => {
     return mapped;
   }, [taskTable]);
 
+  const resolveDisplayTienDo = useCallback((t: TaskRecord): string => {
+    const stored = (t.tienDo || '').trim();
+    // Ưu tiên giá trị đã lưu trên Supabase để sửa cột Tiến độ có hiệu lực ngay
+    if (stored) {
+      const normalized = stored.toLowerCase();
+      if (
+        stored === 'Đang làm' ||
+        stored === 'Hoàn thành' ||
+        stored === 'Quá hạn' ||
+        stored === 'Chưa bắt đầu' ||
+        normalized.includes('gia hạn') ||
+        normalized === 'đang thực hiện'
+      ) {
+        return stored === 'Đang thực hiện' ? 'Đang làm' : stored;
+      }
+    }
+
+    return calculateAutomaticStatus({
+      deadline: t.ycXong,
+      giaHan1: t.giaHan1,
+      giaHan2: t.giaHan2,
+      giaHan3: t.giaHan3,
+      ngayHoanThanh: t.ngayGioHoanThanh,
+    });
+  }, []);
+
   const collectRowsForScope = useCallback(
     (scope: ListScope): TableRow[] => {
       const rows: TableRow[] = [];
@@ -462,16 +489,6 @@ const TaskView: React.FC = () => {
         const bucket: Record<string, TaskRecord> = tasksByDept[scope.deptKey] ?? {};
         const label = meta?.deptName ?? scope.deptKey;
         Object.entries(bucket).forEach(([taskKey, t]) => {
-          let computedTienDo = calculateAutomaticStatus({
-            deadline: t.ycXong,
-            giaHan1: t.giaHan1,
-            giaHan2: t.giaHan2,
-            giaHan3: t.giaHan3,
-            ngayHoanThanh: t.ngayGioHoanThanh,
-          });
-          if (computedTienDo === 'Hoàn thành' && t.tienDo && t.tienDo.toLowerCase().includes('gia hạn')) {
-            computedTienDo = t.tienDo as any;
-          }
           rows.push({
             key: taskKey,
             stt: t.stt,
@@ -482,7 +499,7 @@ const TaskView: React.FC = () => {
             giaHan1: t.giaHan1,
             giaHan2: t.giaHan2,
             giaHan3: t.giaHan3,
-            tienDo: computedTienDo,
+            tienDo: resolveDisplayTienDo(t),
             trangThai: t.trangThai,
             ngayHoanThanh: t.ngayGioHoanThanh,
             deptKey: scope.deptKey,
@@ -499,16 +516,6 @@ const TaskView: React.FC = () => {
         const label = meta?.deptName ?? dept.name;
         const bucket: Record<string, TaskRecord> = tasksByDept[dept.key] ?? {};
         Object.entries(bucket).forEach(([taskKey, t]) => {
-          let computedTienDo = calculateAutomaticStatus({
-            deadline: t.ycXong,
-            giaHan1: t.giaHan1,
-            giaHan2: t.giaHan2,
-            giaHan3: t.giaHan3,
-            ngayHoanThanh: t.ngayGioHoanThanh,
-          });
-          if (computedTienDo === 'Hoàn thành' && t.tienDo && t.tienDo.toLowerCase().includes('gia hạn')) {
-            computedTienDo = t.tienDo as any;
-          }
           rows.push({
             key: taskKey,
             stt: t.stt,
@@ -519,7 +526,7 @@ const TaskView: React.FC = () => {
             giaHan1: t.giaHan1,
             giaHan2: t.giaHan2,
             giaHan3: t.giaHan3,
-            tienDo: computedTienDo,
+            tienDo: resolveDisplayTienDo(t),
             trangThai: t.trangThai,
             ngayHoanThanh: t.ngayGioHoanThanh,
             deptKey: dept.key,
@@ -530,7 +537,7 @@ const TaskView: React.FC = () => {
       rows.sort((a, b) => a.stt - b.stt || a.phongBan.localeCompare(b.phongBan));
       return rows;
     },
-    [tasksByDept]
+    [tasksByDept, resolveDisplayTienDo]
   );
 
   const tableRows = useMemo(
@@ -740,29 +747,53 @@ const TaskView: React.FC = () => {
         return false;
       }
 
+      const currentDisplay = resolveDisplayTienDo(task);
+      if (currentDisplay === tienDo) {
+        return true;
+      }
+
       const sourceRow = await hydrateSourceRowKey(task.sourceRow, taskTable);
       if (!hasRowKey(sourceRow, task.rowKey, taskTable)) {
         message.error('Không tìm thấy khóa TT trên Supabase. F5 tải lại danh sách.');
         return false;
       }
 
-      if ((task.tienDo || 'Chưa bắt đầu') === tienDo) {
-        return true;
+      let editRow: Record<string, unknown>;
+      try {
+        editRow = buildTienDoEditRow(tienDo, sourceRow, new Date(), task.rowKey, taskTable);
+      } catch (error) {
+        message.error(error instanceof Error ? error.message : 'Giá trị TIẾN ĐỘ không hợp lệ.');
+        return false;
       }
 
-      const editRow = buildTienDoEditRow(
-        tienDo,
-        sourceRow,
-        new Date(),
-        task.rowKey,
-        taskTable
-      );
-      const tienDoWritten = Object.values(editRow).some(
-        value => value === 'Hoàn thành' || value === 'Đang thực hiện' || value === 'Quá hạn'
-      );
-      if (!tienDoWritten) {
-        message.error('Chỉ cập nhật được: Đang làm, Hoàn thành hoặc Quá hạn.');
-        return false;
+      // Cập nhật UI ngay để Select không bị nhảy lại giá trị cũ
+      const optimisticNgay =
+        tienDo === 'Hoàn thành'
+          ? task.ngayGioHoanThanh || formatTaskDate(dayjs())
+          : '';
+      setTasksByDept(prev => {
+        const next = cloneTasksMap(prev);
+        const current = next[deptKey]?.[taskKey];
+        if (!current) return prev;
+        next[deptKey][taskKey] = {
+          ...current,
+          tienDo,
+          ngayGioHoanThanh: optimisticNgay,
+          sourceRow: { ...current.sourceRow, ...editRow },
+        };
+        return next;
+      });
+      if (detailTask?.key === taskKey && detailTask.deptKey === deptKey) {
+        setDetailTask(prev =>
+          prev
+            ? {
+                ...prev,
+                tienDo,
+                ngayGioHoanThanh: optimisticNgay,
+              }
+            : prev
+        );
+        detailForm.setFieldsValue({ tienDo });
       }
 
       setSavingTienDoKey(taskKey);
@@ -777,13 +808,24 @@ const TaskView: React.FC = () => {
         message.success('Đã cập nhật TIẾN ĐỘ trên Supabase.');
         return true;
       } catch (error) {
+        // Rollback nếu lưu lỗi
+        await reloadTasks().catch(() => undefined);
         message.error(error instanceof Error ? error.message : 'Không thể cập nhật TIẾN ĐỘ trên Supabase.');
         return false;
       } finally {
         setSavingTienDoKey(null);
       }
     },
-    [taskTable, supabaseConnected, tasksByDept, detailTask, detailForm, reloadTasks, message]
+    [
+      taskTable,
+      supabaseConnected,
+      tasksByDept,
+      detailTask,
+      detailForm,
+      reloadTasks,
+      message,
+      resolveDisplayTienDo,
+    ]
   );
 
   const handleSaveTienDo = async () => {
@@ -908,17 +950,31 @@ const TaskView: React.FC = () => {
   const showDeptColumn = listScope?.kind === 'block';
 
   const tableColumns = useMemo<ColumnsType<TableRow>>(() => {
-    const th = (label: string) => (
-      <span className="uppercase tracking-wide text-[10px] font-semibold">{label}</span>
-    );
+    const th = (label: string) => <span className="task-th-label uppercase tracking-wide">{label}</span>;
 
     const columns: ColumnsType<TableRow> = [
+      {
+        title: th('Hoàn thành'),
+        key: 'complete',
+        width: 118,
+        align: 'center',
+        className: 'task-col-complete',
+        render: (_, record) => (
+          <TaskCompleteTick
+            completed={isTaskRecordCompleted(record)}
+            loading={completingTaskKey === record.key}
+            disabled={!supabaseConnected}
+            onComplete={() => void handleMarkComplete(record.key, record.deptKey)}
+          />
+        ),
+      },
       {
         title: th('STT'),
         dataIndex: 'stt',
         key: 'stt',
-        width: 48,
+        width: 64,
         align: 'center',
+        className: 'task-col-stt',
       },
     ];
 
@@ -927,7 +983,7 @@ const TaskView: React.FC = () => {
         title: th('Phòng ban'),
         dataIndex: 'phongBan',
         key: 'phongBan',
-        width: '11%',
+        width: 120,
         ellipsis: true,
         className: 'task-col-phongban',
       });
@@ -938,7 +994,7 @@ const TaskView: React.FC = () => {
         title: th('Công việc'),
         dataIndex: 'congViec',
         key: 'congViec',
-        width: showDeptColumn ? '24%' : '28%',
+        width: showDeptColumn ? 260 : 300,
         ellipsis: true,
         className: 'task-col-congviec',
         render: (text: string, record: TableRow) => (
@@ -962,7 +1018,7 @@ const TaskView: React.FC = () => {
         title: th('Phụ trách'),
         dataIndex: 'nguoiPhuTrach',
         key: 'nguoiPhuTrach',
-        width: showDeptColumn ? '12%' : '14%',
+        width: 120,
         ellipsis: true,
         className: 'task-col-phutrach',
       },
@@ -970,7 +1026,7 @@ const TaskView: React.FC = () => {
         title: th('Ngày hoàn thành'),
         dataIndex: 'deadline',
         key: 'deadline',
-        width: 100,
+        width: 160,
         className: 'task-col-deadline',
         render: (d: string, record: TableRow) => (
           <span className="whitespace-nowrap">{renderDateCell(d, record)}</span>
@@ -980,7 +1036,7 @@ const TaskView: React.FC = () => {
         title: th('GH 1'),
         dataIndex: 'giaHan1',
         key: 'giaHan1',
-        width: 88,
+        width: 78,
         align: 'center',
         className: 'task-col-giahan',
         render: (d: string, record: TableRow) => (
@@ -991,7 +1047,7 @@ const TaskView: React.FC = () => {
         title: th('GH 2'),
         dataIndex: 'giaHan2',
         key: 'giaHan2',
-        width: 88,
+        width: 78,
         align: 'center',
         className: 'task-col-giahan',
         render: (d: string, record: TableRow) => (
@@ -1002,7 +1058,7 @@ const TaskView: React.FC = () => {
         title: th('GH 3'),
         dataIndex: 'giaHan3',
         key: 'giaHan3',
-        width: 88,
+        width: 78,
         align: 'center',
         className: 'task-col-giahan',
         render: (d: string, record: TableRow) => (
@@ -1013,7 +1069,7 @@ const TaskView: React.FC = () => {
         title: th('Tiến độ'),
         dataIndex: 'tienDo',
         key: 'tienDo',
-        width: 118,
+        width: 120,
         align: 'center',
         className: 'task-col-tiendo',
         render: (value: string, record: TableRow) => {
@@ -1049,7 +1105,7 @@ const TaskView: React.FC = () => {
         title: th('Ngày đã hoàn thành'),
         dataIndex: 'ngayHoanThanh',
         key: 'ngayHoanThanh',
-        width: 108,
+        width: 180,
         align: 'center',
         className: 'task-col-ngayht',
         render: (value: string) => renderCompletionDateCell(value),
@@ -1066,9 +1122,7 @@ const TaskView: React.FC = () => {
             <TaskActionMenu
               completed={completed}
               disabled={!supabaseConnected}
-              completing={completingTaskKey === record.key}
               deleting={deletingTaskKey === record.key}
-              onComplete={() => void handleMarkComplete(record.key, record.deptKey)}
               onEdit={() => openDetail(record.key, record.deptKey)}
               onDelete={() => void handleDeleteTask(record.key, record.deptKey)}
             />
@@ -1241,7 +1295,7 @@ const TaskView: React.FC = () => {
                     pagination={false}
                     size="middle"
                     tableLayout="fixed"
-                    scroll={{ x: showDeptColumn ? 1284 : 1204 }}
+                    scroll={{ x: showDeptColumn ? 1520 : 1460 }}
                     locale={{ emptyText: 'Chưa có công việc' }}
                     onRow={record => {
                       const overdue =
@@ -1324,13 +1378,17 @@ const TaskView: React.FC = () => {
                             ) : null}
                           </div>
                         </button>
-                        <div className="mt-3 flex justify-end border-t border-gray-100 pt-3">
+                        <div className="mt-3 flex items-center justify-between gap-2 border-t border-gray-100 pt-3">
+                          <TaskCompleteTick
+                            completed={isTaskRecordCompleted(row)}
+                            loading={completingTaskKey === row.key}
+                            disabled={!supabaseConnected}
+                            onComplete={() => void handleMarkComplete(row.key, row.deptKey)}
+                          />
                           <TaskActionMenu
                             completed={isTaskRecordCompleted(row)}
                             disabled={!supabaseConnected}
-                            completing={completingTaskKey === row.key}
                             deleting={deletingTaskKey === row.key}
-                            onComplete={() => void handleMarkComplete(row.key, row.deptKey)}
                             onEdit={() => openDetail(row.key, row.deptKey)}
                             onDelete={() => void handleDeleteTask(row.key, row.deptKey)}
                           />
