@@ -1,4 +1,5 @@
 import { describeSupabaseConfiguration, isSupabaseConfigured } from './data/supabaseConfig';
+import { formatSupabaseConnectError } from './data/supabaseErrors';
 import {
   addSupabaseRows,
   deleteSupabaseRows,
@@ -75,7 +76,7 @@ export async function handleDataStatus(req: { url?: string }, res: Parameters<ty
       configured: true,
       connected: false,
       backend: 'supabase',
-      message: error instanceof Error ? error.message : 'Không thể kết nối Supabase.',
+      message: formatSupabaseConnectError(error),
     });
   }
 }
@@ -101,7 +102,7 @@ export async function handleDataFindGet(req: { url?: string }, res: Parameters<t
   } catch (error) {
     sendJson(res, 502, {
       table: tableName,
-      message: error instanceof Error ? error.message : 'Gọi Supabase thất bại.',
+      message: formatSupabaseConnectError(error),
     });
   }
 }

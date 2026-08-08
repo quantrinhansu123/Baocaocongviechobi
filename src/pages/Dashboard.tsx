@@ -660,7 +660,7 @@ const Dashboard: React.FC = () => {
     width: 64,
     align: 'center' as const,
     render: (_: unknown, __: DashboardTask, index: number) => (
-      <span className="font-bold text-[#F38320]">{(page - 1) * pageSize + index + 1}</span>
+      <span className="font-bold text-[#1E386B]">{(page - 1) * pageSize + index + 1}</span>
     ),
   });
 

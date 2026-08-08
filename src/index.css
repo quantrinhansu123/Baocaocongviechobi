@@ -73,23 +73,25 @@ body {
 
 .ant-table-thead > tr > th,
 .ant-table-thead > tr > td {
-  background-color: #1E386B !important;
-  color: #F38320 !important;
-  font-weight: 700 !important;
-  font-size: 12px !important;
-  letter-spacing: 0.02em;
-  border-bottom-color: #1E386B !important;
+  background-color: #0F274D !important;
+  color: #ffffff !important;
+  font-weight: 900 !important;
+  font-size: 15px !important;
+  letter-spacing: 0.04em;
+  text-shadow: 0 1px 0 rgba(0, 0, 0, 0.25);
+  border-bottom-color: #0F274D !important;
 }
 
 .ant-table-thead > tr > th .ant-table-column-title,
 .ant-table-thead > tr > th .anticon,
 .ant-table-thead > tr > th .ant-table-column-sorter,
 .ant-table-thead > tr > th .ant-table-filter-trigger {
-  color: #F38320 !important;
+  color: #ffffff !important;
+  font-weight: 900 !important;
 }
 
 .ant-table-thead > tr > th::before {
-  background-color: rgba(243, 131, 32, 0.35) !important;
+  background-color: rgba(255, 255, 255, 0.22) !important;
 }
 
 .ant-table-tbody > tr > td {
@@ -217,7 +219,8 @@ body {
 }
 
 .task-table-compact .ant-table-thead > tr > th {
-  font-size: 10px !important;
+  font-size: 14px !important;
+  font-weight: 900 !important;
   white-space: nowrap;
 }
 
