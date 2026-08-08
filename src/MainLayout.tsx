@@ -369,7 +369,7 @@ const MainLayout: React.FC = () => {
         collapsible
         collapsed={collapsed}
         theme="dark"
-        width={288}
+        width={320}
         collapsedWidth={80}
         className="shadow-lg hidden md:block sidebar-sider-brand"
       >
