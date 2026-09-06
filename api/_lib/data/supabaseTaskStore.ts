@@ -40,10 +40,23 @@ export function parseTtFromSelector(selector?: string): string | null {
 }
 
 function dbRowToRecord(row: DbTaskRow): Record<string, unknown> {
-  const tt = row.tt;
+  const pk = String(row.tt ?? '').trim();
+  const data = { ...(row.data ?? {}) };
+  // Seed thường để data.TT = "1","2"… trong khi khóa thật là sg-01 / demo-…
+  // Luôn lấy khóa Postgres; số thứ tự hiển thị giữ ở STT nếu khác pk.
+  const dataTt = pickTt(data);
+  if (dataTt && pk && dataTt !== pk) {
+    const hasStt = ['STT', 'Stt', 'stt'].some(key => {
+      const value = data[key];
+      return value !== null && value !== undefined && String(value).trim() !== '';
+    });
+    if (!hasStt) {
+      data.STT = dataTt;
+    }
+  }
   return {
-    ...row.data,
-    TT: pickTt(row.data) || tt,
+    ...data,
+    TT: pk || dataTt,
   };
 }
 

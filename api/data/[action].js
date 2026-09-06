@@ -328,10 +328,22 @@ function parseTtFromSelector(selector) {
   return null;
 }
 function dbRowToRecord2(row) {
-  const tt = row.tt;
+  const pk = String(row.tt ?? "").trim();
+  const data = { ...(row.data ?? {}) };
+  // Seed: data.TT thường là "1","2"… trong khi khóa Postgres là sg-01 / demo-…
+  const dataTt = pickTt(data);
+  if (dataTt && pk && dataTt !== pk) {
+    const hasStt = ["STT", "Stt", "stt"].some((key) => {
+      const value = data[key];
+      return value !== null && value !== void 0 && String(value).trim() !== "";
+    });
+    if (!hasStt) {
+      data.STT = dataTt;
+    }
+  }
   return {
-    ...row.data,
-    TT: pickTt(row.data) || tt
+    ...data,
+    TT: pk || dataTt
   };
 }
 function recordRowToDb(row) {
@@ -372,8 +384,16 @@ async function editSupabaseTaskRows(logicalTable, rows) {
   const supabase = getSupabaseClient();
   const updated = [];
   for (const row of rows) {
-    const { tt, data } = recordRowToDb(row);
-    const { data: saved, error } = await supabase.from(table).update({ data }).eq("tt", tt).select("tt,data").maybeSingle();
+    const { tt, data: patch } = recordRowToDb(row);
+    const { data: existing, error: fetchError } = await supabase.from(table).select("data").eq("tt", tt).maybeSingle();
+    if (fetchError) {
+      throwSupabaseError(fetchError.message, table);
+    }
+    const mergedData = {
+      ...(existing?.data ?? {}),
+      ...patch
+    };
+    const { data: saved, error } = await supabase.from(table).update({ data: mergedData }).eq("tt", tt).select("tt,data").maybeSingle();
     if (error) {
       throwSupabaseError(error.message, table);
     }

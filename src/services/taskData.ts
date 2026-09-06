@@ -581,7 +581,7 @@ export function mapRowToTaskRecord(
     deptKey,
     taskKey,
     task: {
-      stt: pickNumber(row, ['TT', 'STT', 'Stt', 'stt'], index + 1),
+      stt: pickNumber(row, ['STT', 'Stt', 'stt', 'TT'], index + 1),
       kyBaoCao: pickField(row, ['Kỳ báo cáo', 'Ky bao cao', 'KyBaoCao', 'kyBaoCao', 'Period']),
       congViec: pickField(row, ['CÔNG VIỆC', 'Công việc', 'Cong viec', 'CongViec', 'congViec', 'Task', 'Title']),
       nguoiGiao: pickField(row, [
