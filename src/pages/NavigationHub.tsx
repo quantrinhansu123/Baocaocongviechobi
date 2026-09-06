@@ -595,16 +595,18 @@ const NavigationHub: React.FC = () => {
   const openCreateModal = () => {
     setReportFormMode('create');
     setEditingReport(null);
-    form.resetFields();
-    form.setFieldsValue({
-      blockKey: activeBlockKey ?? undefined,
-      groupKey: activeGroupKey ?? undefined,
-      loaiBaoCao: activeGroup?.label ?? '',
-      kyBaoCao: kyLabelFromPeriodLabel(activePeriodLabel) || 'Tuần',
-      ngayBaoCao: dayjs(),
-      ngayUpdateLink: dayjs(),
-    });
     setReportFormOpen(true);
+    queueMicrotask(() => {
+      form.resetFields();
+      form.setFieldsValue({
+        blockKey: activeBlockKey ?? undefined,
+        groupKey: activeGroupKey ?? undefined,
+        loaiBaoCao: activeGroup?.label ?? '',
+        kyBaoCao: kyLabelFromPeriodLabel(activePeriodLabel) || 'Tuần',
+        ngayBaoCao: dayjs(),
+        ngayUpdateLink: dayjs(),
+      });
+    });
   };
 
   const openEditModal = (report: ReportRecord) => {
@@ -614,18 +616,20 @@ const NavigationHub: React.FC = () => {
     }
     setReportFormMode('edit');
     setEditingReport(report);
-    form.setFieldsValue({
-      loaiBaoCao: report.loaiBaoCao || activeGroup?.label || '',
-      tenBaoCao: report.name,
-      noidung: report.noidung,
-      kyBaoCao: report.ky,
-      ngayBaoCao: parseFormDate(report.ngay),
-      nguoiGui: report.nguoiGui,
-      nguoiNhan: report.nguoiNhan,
-      link: report.link,
-      ngayUpdateLink: parseFormDate(report.ngayTaoBaoCao),
-    });
     setReportFormOpen(true);
+    queueMicrotask(() => {
+      form.setFieldsValue({
+        loaiBaoCao: report.loaiBaoCao || activeGroup?.label || '',
+        tenBaoCao: report.name,
+        noidung: report.noidung,
+        kyBaoCao: report.ky,
+        ngayBaoCao: parseFormDate(report.ngay),
+        nguoiGui: report.nguoiGui,
+        nguoiNhan: report.nguoiNhan,
+        link: report.link,
+        ngayUpdateLink: parseFormDate(report.ngayTaoBaoCao),
+      });
+    });
   };
 
   const handleDeleteReport = async (report: ReportRecord) => {
@@ -785,7 +789,6 @@ const NavigationHub: React.FC = () => {
 
           setReportFormOpen(false);
           setEditingReport(null);
-          form.resetFields();
         } catch (error) {
           message.error(
             error instanceof Error
@@ -1024,8 +1027,8 @@ const NavigationHub: React.FC = () => {
         onCancel={() => {
           setReportFormOpen(false);
           setEditingReport(null);
-          form.resetFields();
         }}
+        afterClose={() => form.resetFields()}
         okText="Lưu"
         cancelText="Huỷ"
         confirmLoading={savingReport}

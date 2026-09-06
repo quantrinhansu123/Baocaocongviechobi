@@ -271,10 +271,10 @@
 
 .dashboard-mobile-task-card .task-status {
   display: inline-block;
-  font-size: 0.6875rem;
+  font-size: 0.75rem;
   font-weight: 700;
   line-height: 1.2;
-  padding: 0.2rem 0.45rem;
+  padding: 0.25rem 0.5rem;
   border-radius: 9999px;
   white-space: nowrap;
   flex-shrink: 0;
@@ -651,7 +651,8 @@
   font-weight: 800;
 }
 
-@media (max-width: 480px) {
+/* Mobile hẹp: donut trên, bar dưới — không chen ngang */
+@media (max-width: 767px) {
   .dashboard-chart-mobile-layout {
     grid-template-columns: 1fr;
     gap: 12px;
@@ -659,12 +660,14 @@
 
   .dashboard-chart-mobile-summary {
     display: flex;
-    flex-direction: row;
+    flex-direction: column;
     align-items: center;
     justify-content: center;
-    gap: 16px;
+    gap: 12px;
   }
+}
 
+@media (max-width: 480px) {
   .dashboard-chart-donut {
     width: 112px;
     height: 112px;
@@ -673,6 +676,13 @@
   .dashboard-chart-donut-center {
     inset: 22px;
   }
+}
+
+.dashboard-detail-sticky-footer {
+  padding: 10px 12px calc(10px + env(safe-area-inset-bottom, 0px));
+  border-top: 1px solid #e2e8f0;
+  background: #fff;
+  box-shadow: 0 -4px 12px rgba(15, 39, 77, 0.06);
 }
 
 /* Modal danh sách từ biểu đồ — chữ to/đậm hơn, nút thao tác lớn */

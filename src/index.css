@@ -631,9 +631,45 @@ body {
   padding: 8px 12px !important;
 }
 
-.task-detail-form .ant-input-number-group-addon {
-  font-size: 14px !important;
+.task-detail-form .ant-input.task-percent-suffix {
+  width: 42px !important;
+  min-width: 42px !important;
+  max-width: 42px !important;
+  text-align: center;
+  padding-inline: 0 !important;
   font-weight: 700;
+  color: #64748b;
+  background: #f4f7fb;
+  cursor: default;
+  pointer-events: none;
+}
+
+.task-doc-links {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.task-doc-links-row {
+  display: grid;
+  grid-template-columns: minmax(0, 0.9fr) minmax(0, 1.2fr) auto auto;
+  gap: 6px;
+  align-items: center;
+}
+
+.task-doc-links-add {
+  margin-top: 2px;
+}
+
+@media (max-width: 640px) {
+  .task-doc-links-row {
+    grid-template-columns: 1fr auto;
+  }
+
+  .task-doc-links-ten,
+  .task-doc-links-url {
+    grid-column: 1 / -1;
+  }
 }
 
 .task-form-section-title {

@@ -7,7 +7,7 @@ import {
   TASK_ROW_KEY_COLUMN,
 } from './rowKey';
 import { ORG_BLOCKS } from '../data/orgBlocks';
-import type { TaskRecord } from '../types/task';
+import type { TaskDocLink, TaskRecord } from '../types/task';
 import {
   formatRecordDate,
   formatUnknownAsDisplayDate,
@@ -177,8 +177,77 @@ function pickTienDoPhanTram(row: Record<string, unknown>): number {
 }
 
 const LINK_KQ_KEYS = ['LINK KQ', 'Link KQ', 'LinkKQ', 'linkKQ', 'Link'];
+const TAI_LIEU_LINKS_KEYS = [
+  'DANH SÁCH TÀI LIỆU',
+  'Danh sách tài liệu',
+  'Danh sach tai lieu',
+  'taiLieuLinks',
+  'TaiLieuLinks',
+];
+const NOI_DUNG_CAN_TAC_DONG_KEYS = [
+  'NỘI DUNG CẦN TÁC ĐỘNG',
+  'Nội dung cần tác động',
+  'Noi dung can tac dong',
+  'noiDungCanTacDong',
+  'NoiDungCanTacDong',
+];
 
 export { hasRowKey, pickRowKey, TASK_ROW_KEY_COLUMN } from './rowKey';
+
+export function normalizeTaiLieuLinks(
+  links: Array<{ ten?: string; link?: string } | null | undefined> | null | undefined
+): TaskDocLink[] {
+  if (!Array.isArray(links)) return [];
+  return links
+    .map(item => ({
+      ten: String(item?.ten ?? '').trim(),
+      link: String(item?.link ?? '').trim(),
+    }))
+    .filter(item => item.ten || item.link);
+}
+
+export function parseTaiLieuLinksFromRow(row: Record<string, unknown>): TaskDocLink[] {
+  const rawList = pickField(row, TAI_LIEU_LINKS_KEYS);
+  if (rawList) {
+    try {
+      const parsed = JSON.parse(rawList) as unknown;
+      if (Array.isArray(parsed)) {
+        const links = normalizeTaiLieuLinks(
+          parsed.map(item => {
+            if (!item || typeof item !== 'object') return null;
+            const rec = item as Record<string, unknown>;
+            return {
+              ten: String(rec.ten ?? rec.name ?? rec.LinkText ?? ''),
+              link: parseUrlField(String(rec.link ?? rec.url ?? rec.Url ?? '')),
+            };
+          })
+        );
+        if (links.length) return links;
+      }
+    } catch {
+      // fall through to single-link compat
+    }
+  }
+
+  const ten = pickField(row, [
+    'TÊN TÀI LIỆU',
+    'Tên tài liệu',
+    'Ten tai lieu',
+    'TenTaiLieu',
+    'tenTaiLieu',
+    'LinkText',
+    'Document name',
+  ]);
+  const link = parseUrlField(pickLinkKQRawValue(row));
+  if (ten || link) {
+    return [{ ten, link }];
+  }
+  return [];
+}
+
+export function primaryTaiLieuLink(links: TaskDocLink[]): TaskDocLink {
+  return links[0] ?? { ten: '', link: '' };
+}
 
 function parseUrlField(value: string): string {
   const trimmed = value.trim();
@@ -240,9 +309,18 @@ function resolveLinkKQ(value: string | undefined): string | null {
 
 function applyLinkKQToRow(row: Record<string, unknown>, explicitLink?: string): void {
   const resolved = resolveLinkKQ(explicitLink);
-  if (resolved) {
-    row[COL_LINK_KQ] = resolved;
-  }
+  row[COL_LINK_KQ] = resolved ?? '';
+}
+
+function applyTaiLieuLinksToRow(
+  row: Record<string, unknown>,
+  linksInput?: Array<{ ten?: string; link?: string }> | null
+): void {
+  const links = normalizeTaiLieuLinks(linksInput);
+  row['DANH SÁCH TÀI LIỆU'] = JSON.stringify(links);
+  const primary = primaryTaiLieuLink(links);
+  applyLinkKQToRow(row, primary.link || undefined);
+  row['TÊN TÀI LIỆU'] = primary.ten;
 }
 
 function buildTtSelector(tt: string): string {
@@ -659,6 +737,8 @@ export function mapRowToTaskRecord(
     Boolean(rawNgayHoanThanh);
 
   const ngayGioHoanThanh = rawNgayHoanThanh;
+  const taiLieuLinks = parseTaiLieuLinksFromRow(row);
+  const primaryLink = primaryTaiLieuLink(taiLieuLinks);
 
   return {
     deptKey,
@@ -691,22 +771,16 @@ export function mapRowToTaskRecord(
       giaHan2: pickFormattedDate(row, ['GIA HẠN 2', 'Gia hạn 2', 'Gia han 2', 'GiaHan2', 'giaHan2']),
       giaHan3: pickFormattedDate(row, ['GIA HẠN 3', 'Gia hạn 3', 'Gia han 3', 'GiaHan3', 'giaHan3']),
       ketQua: pickField(row, ['KẾT QUẢ', 'Kết quả', 'Ket qua', 'KetQua', 'ketQua', 'Result']),
-      linkKQ: parseUrlField(pickLinkKQRawValue(row)),
-      tenTaiLieu: pickField(row, [
-        'TÊN TÀI LIỆU',
-        'Tên tài liệu',
-        'Ten tai lieu',
-        'TenTaiLieu',
-        'tenTaiLieu',
-        'LinkText',
-        'Document name',
-      ]),
+      linkKQ: primaryLink.link,
+      tenTaiLieu: primaryLink.ten,
+      taiLieuLinks,
       tienDo: tienDoVal,
       tienDoPhanTram: isCompleted ? Math.max(pickTienDoPhanTram(row), 100) : pickTienDoPhanTram(row),
       trangThai: trangThaiVal,
       ngayGioHoanThanh,
       vuongMac: pickField(row, ['VƯỚNG MẮC', 'Vướng mắc', 'Vuong mac', 'VuongMac', 'vuongMac']),
       canLD: pickField(row, ['CẦN LĐ TÁC ĐỘNG', 'Cần LD', 'Can LD', 'CanLD', 'canLD']) || 'Không',
+      noiDungCanTacDong: pickField(row, NOI_DUNG_CAN_TAC_DONG_KEYS),
       anhHuong: pickNumber(row, ['MỨC ẢNH HƯỞNG', 'Ảnh hưởng', 'Anh huong', 'AnhHuong', 'anhHuong', 'Priority'], 1),
       rowKey: pickRowKey(row, tableName),
       sourceRow: { ...row },
@@ -745,6 +819,7 @@ export function buildTaskRow(input: {
   stt?: number;
   linkKQ?: string;
   tenTaiLieu?: string;
+  taiLieuLinks?: TaskDocLink[];
   tienDoPhanTram?: number;
 }): Record<string, unknown> {
   const row: Record<string, unknown> = {
@@ -758,11 +833,16 @@ export function buildTaskRow(input: {
     'GIA HẠN 2': formatRecordDate(input.giaHan2 ?? ''),
     'GIA HẠN 3': formatRecordDate(input.giaHan3 ?? ''),
     'CẦN LĐ TÁC ĐỘNG': 'Không',
+    'NỘI DUNG CẦN TÁC ĐỘNG': '',
     'MỨC ẢNH HƯỞNG': String(input.anhHuong),
     [COL_TIEN_DO_CV]: normalizeTienDoPhanTram(input.tienDoPhanTram ?? 0),
   };
-  applyLinkKQToRow(row, input.linkKQ);
-  row['TÊN TÀI LIỆU'] = (input.tenTaiLieu ?? '').trim();
+  const links =
+    input.taiLieuLinks ??
+    (input.linkKQ || input.tenTaiLieu
+      ? [{ ten: input.tenTaiLieu ?? '', link: input.linkKQ ?? '' }]
+      : []);
+  applyTaiLieuLinksToRow(row, links);
   return row;
 }
 
@@ -784,10 +864,17 @@ export function buildTaskEditRow(
   row['GIA HẠN 2'] = formatRecordDate(task.giaHan2);
   row['GIA HẠN 3'] = formatRecordDate(task.giaHan3);
   row['KẾT QUẢ'] = task.ketQua;
-  applyLinkKQToRow(row, task.linkKQ);
-  row['TÊN TÀI LIỆU'] = (task.tenTaiLieu || '').trim();
+  applyTaiLieuLinksToRow(
+    row,
+    task.taiLieuLinks?.length
+      ? task.taiLieuLinks
+      : task.linkKQ || task.tenTaiLieu
+        ? [{ ten: task.tenTaiLieu || '', link: task.linkKQ || '' }]
+        : []
+  );
   row['VƯỚNG MẮC'] = task.vuongMac;
   row['CẦN LĐ TÁC ĐỘNG'] = task.canLD.trim() || 'Không';
+  row['NỘI DUNG CẦN TÁC ĐỘNG'] = (task.noiDungCanTacDong || '').trim();
   row['MỨC ẢNH HƯỞNG'] = String(task.anhHuong);
 
   const tienDo = serializeTienDo(task.tienDo);

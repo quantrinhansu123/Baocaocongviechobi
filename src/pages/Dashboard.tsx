@@ -35,9 +35,7 @@ import {
   ClockCircleOutlined,
   DeleteOutlined,
   FireOutlined,
-  ExportOutlined,
   FileTextOutlined,
-  LinkOutlined,
 } from '@ant-design/icons';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, ResponsiveContainer, LabelList } from 'recharts';
 import { X, User, Star } from 'lucide-react';
@@ -64,14 +62,16 @@ import {
   type PersonnelSelectOption,
 } from '../services/auxiliaryData';
 import PersonnelMultiSelect from '../components/PersonnelMultiSelect';
+import TaskDocLinksField from '../components/TaskDocLinksField';
 import {
   buildCompleteTaskRow,
   buildTaskDeleteRow,
   buildTaskEditRow,
-  formatUrlValue,
   hasRowKey,
   hydrateSourceRowKey,
+  normalizeTaiLieuLinks,
   normalizeTienDoForForm,
+  primaryTaiLieuLink,
   TIEN_DO_EDIT_OPTIONS,
 } from '../services/taskData';
 import type { TaskRecord } from '../types/task';
@@ -374,10 +374,8 @@ const Dashboard: React.FC = () => {
   };
 
   useEffect(() => {
-    if (!selectedTask) {
-      detailForm.resetFields();
-      return;
-    }
+    // Form chỉ mount khi có selectedTask — không gọi API form khi chưa gắn
+    if (!selectedTask) return;
 
     detailForm.setFieldsValue({
       congViec: selectedTask.name,
@@ -389,12 +387,16 @@ const Dashboard: React.FC = () => {
       giaHan2: parseTaskDate(selectedTask.giaHan2) ?? undefined,
       giaHan3: parseTaskDate(selectedTask.giaHan3) ?? undefined,
       ketQua: selectedTask.ketQua || selectedTask.desc,
-      linkKQ: selectedTask.linkKQ,
-      tenTaiLieu: selectedTask.tenTaiLieu || '',
+      taiLieuLinks: selectedTask.taiLieuLinks?.length
+        ? selectedTask.taiLieuLinks
+        : selectedTask.linkKQ || selectedTask.tenTaiLieu
+          ? [{ ten: selectedTask.tenTaiLieu || '', link: selectedTask.linkKQ || '' }]
+          : [{ ten: '', link: '' }],
       tienDo: normalizeTienDoForForm(selectedTask.tienDo || selectedTask.status),
       tienDoPhanTram: selectedTask.tienDoPhanTram ?? 0,
       vuongMac: selectedTask.vuongMac || selectedTask.history,
       canLD: selectedTask.canLD || 'Không',
+      noiDungCanTacDong: selectedTask.noiDungCanTacDong || '',
       anhHuong: selectedTask.impact || 1,
     });
     // Chỉ nạp lại khi đổi công việc (theo id), tránh ghi đè khi đang gõ
@@ -509,6 +511,10 @@ const Dashboard: React.FC = () => {
           nextTienDo === 'Hoàn thành'
             ? Math.max(clampProgressPercent(values.tienDoPhanTram), 100)
             : clampProgressPercent(values.tienDoPhanTram);
+        const taiLieuLinks = normalizeTaiLieuLinks(
+          (values.taiLieuLinks as Array<{ ten?: string; link?: string }> | undefined) ?? []
+        );
+        const primaryLink = primaryTaiLieuLink(taiLieuLinks);
         const updatedTask: TaskRecord = {
           stt: 0,
           kyBaoCao: selectedTask.week,
@@ -521,8 +527,9 @@ const Dashboard: React.FC = () => {
           giaHan2: formatTaskDate(values.giaHan2),
           giaHan3: formatTaskDate(values.giaHan3),
           ketQua: (values.ketQua as string) || '',
-          linkKQ: (values.linkKQ as string) || '',
-          tenTaiLieu: (values.tenTaiLieu as string) || '',
+          linkKQ: primaryLink.link,
+          tenTaiLieu: primaryLink.ten,
+          taiLieuLinks,
           tienDo: nextTienDo,
           tienDoPhanTram: nextPercent,
           trangThai: '',
@@ -532,6 +539,7 @@ const Dashboard: React.FC = () => {
               : '',
           vuongMac: (values.vuongMac as string) || '',
           canLD: (values.canLD as string) || 'Không',
+          noiDungCanTacDong: (values.noiDungCanTacDong as string) || '',
           anhHuong: Number(values.anhHuong) || 1,
           rowKey: selectedTask.rowKey,
           sourceRow: selectedTask.sourceRow,
@@ -1801,7 +1809,7 @@ const Dashboard: React.FC = () => {
                     </div>
                     <div className="mt-auto flex items-center justify-between gap-2 pt-1">
                       <Tag
-                        className={`m-0 text-[10px] font-bold uppercase tracking-wide border-none px-2 py-0.5 ${
+                        className={`m-0 text-xs font-bold uppercase tracking-wide border-none px-2 py-0.5 ${
                           overdue
                             ? 'bg-red-50 text-red-600'
                             : 'bg-orange-50 text-orange-700'
@@ -1811,7 +1819,7 @@ const Dashboard: React.FC = () => {
                       </Tag>
                       <button
                         type="button"
-                        className="shrink-0 rounded-md bg-slate-100 px-2.5 py-1 text-[11px] font-semibold text-slate-600 transition hover:bg-emerald-50 hover:text-emerald-700"
+                        className="shrink-0 rounded-md bg-slate-100 px-2.5 py-1.5 text-xs font-semibold text-slate-600 transition hover:bg-emerald-50 hover:text-emerald-700 min-h-9"
                         onClick={e => {
                           e.stopPropagation();
                           handleResolveIssue(issue.id);
@@ -2065,7 +2073,7 @@ const Dashboard: React.FC = () => {
                                   ) : null}
                                   <div className="flex items-center justify-between gap-2">
                                     <Tag
-                                      className={`m-0 text-[10px] font-bold uppercase border-none px-2 py-0.5 ${
+                                      className={`m-0 text-xs font-bold uppercase border-none px-2 py-0.5 ${
                                         overdue ? 'bg-red-50 text-red-600' : 'bg-orange-50 text-orange-700'
                                       }`}
                                     >
@@ -2073,7 +2081,7 @@ const Dashboard: React.FC = () => {
                                     </Tag>
                                     <button
                                       type="button"
-                                      className="shrink-0 rounded-md bg-slate-100 px-2.5 py-1 text-[11px] font-semibold text-slate-600"
+                                      className="shrink-0 rounded-md bg-slate-100 px-2.5 py-1.5 text-xs font-semibold text-slate-600 min-h-9"
                                       onClick={e => {
                                         e.stopPropagation();
                                         handleResolveIssue(issue.id);
@@ -2318,7 +2326,7 @@ const Dashboard: React.FC = () => {
                 </div>
                 <Button
                   type="primary"
-                  className="bg-[#1E386B] border-[#1E386B]"
+                  className="bg-[#1E386B] border-[#1E386B] hidden sm:inline-flex"
                   loading={savingDetail}
                   onClick={handleDetailSave}
                   disabled={supabaseConnected === false}
@@ -2370,7 +2378,7 @@ const Dashboard: React.FC = () => {
                 form={detailForm}
                 layout="vertical"
                 size="large"
-                className="task-detail-form px-4 py-3 md:px-6 md:py-4"
+                className="task-detail-form px-4 py-3 md:px-6 md:py-4 pb-24 sm:pb-4"
               >
                 <div className="grid grid-cols-1 xl:grid-cols-12 gap-x-6 gap-y-3">
                   <div className="xl:col-span-7 space-y-3">
@@ -2456,46 +2464,7 @@ const Dashboard: React.FC = () => {
                         </Form.Item>
                         <div className="mb-0">
                           <p className="mb-1.5 text-sm font-medium text-[rgba(0,0,0,0.88)]">Link tài liệu</p>
-                          <div className="flex flex-col sm:flex-row gap-2 items-stretch sm:items-start">
-                            <Form.Item name="tenTaiLieu" className="mb-0 flex-1 min-w-0">
-                              <Input
-                                prefix={<FileTextOutlined className="text-gray-400" />}
-                                placeholder="Tên tài liệu"
-                                allowClear
-                              />
-                            </Form.Item>
-                            <Form.Item name="linkKQ" className="mb-0 flex-[1.2] min-w-0">
-                              <Input
-                                prefix={<LinkOutlined className="text-gray-400" />}
-                                placeholder="https://..."
-                                allowClear
-                              />
-                            </Form.Item>
-                            <Form.Item shouldUpdate={(prev, next) => prev.linkKQ !== next.linkKQ} className="mb-0 shrink-0">
-                              {() => {
-                                const raw = String(detailForm.getFieldValue('linkKQ') || '').trim();
-                                const disabled = !raw;
-                                return (
-                                  <Button
-                                    type="primary"
-                                    icon={<ExportOutlined />}
-                                    disabled={disabled}
-                                    className="bg-[#1E386B] border-[#1E386B]"
-                                    onClick={() => {
-                                      const url = formatUrlValue(raw);
-                                      if (!url) {
-                                        message.warning('Nhập link tài liệu trước.');
-                                        return;
-                                      }
-                                      window.open(url, '_blank', 'noopener,noreferrer');
-                                    }}
-                                  >
-                                    Mở
-                                  </Button>
-                                );
-                              }}
-                            </Form.Item>
-                          </div>
+                          <TaskDocLinksField name="taiLieuLinks" size="middle" />
                         </div>
                       </div>
                     </section>
@@ -2565,15 +2534,20 @@ const Dashboard: React.FC = () => {
                             getPopupContainer={trigger => trigger.parentElement ?? document.body}
                           />
                         </Form.Item>
-                        <Form.Item
-                          name="tienDoPhanTram"
-                          label="Tiến độ CV (%)"
-                          rules={[
-                            { required: true, message: 'Nhập tiến độ' },
-                            { type: 'number', min: 0, max: 100, message: 'Nhập từ 0 đến 100' },
-                          ]}
-                        >
-                          <InputNumber className="w-full" min={0} max={100} addonAfter="%" placeholder="0–100" />
+                        <Form.Item label="Tiến độ CV (%)" required>
+                          <Space.Compact className="w-full">
+                            <Form.Item
+                              name="tienDoPhanTram"
+                              noStyle
+                              rules={[
+                                { required: true, message: 'Nhập tiến độ' },
+                                { type: 'number', min: 0, max: 100, message: 'Nhập từ 0 đến 100' },
+                              ]}
+                            >
+                              <InputNumber className="w-full" min={0} max={100} placeholder="0–100" />
+                            </Form.Item>
+                            <Input className="task-percent-suffix" value="%" readOnly tabIndex={-1} />
+                          </Space.Compact>
                         </Form.Item>
                         <Form.Item
                           shouldUpdate={(prev, next) => prev.tienDoPhanTram !== next.tienDoPhanTram}
@@ -2586,13 +2560,23 @@ const Dashboard: React.FC = () => {
                             />
                           )}
                         </Form.Item>
-                        <Form.Item name="canLD" label="Cần LĐ tác động" className="sm:col-span-2 mb-0">
+                        <Form.Item name="canLD" label="Cần LĐ tác động" className="sm:col-span-2 mb-2">
                           <Select
                             options={[
                               { value: 'Không', label: 'Không' },
                               { value: 'Có', label: 'Có' },
                             ]}
                             getPopupContainer={trigger => trigger.parentElement ?? document.body}
+                          />
+                        </Form.Item>
+                        <Form.Item
+                          name="noiDungCanTacDong"
+                          label="Nội dung cần tác động"
+                          className="sm:col-span-2 mb-0"
+                        >
+                          <Input.TextArea
+                            rows={2}
+                            placeholder="Mô tả nội dung cần lãnh đạo tác động..."
                           />
                         </Form.Item>
                         {selectedTask.ngayHoanThanh ? (
@@ -2606,6 +2590,20 @@ const Dashboard: React.FC = () => {
                   </div>
                 </div>
               </Form>
+            </div>
+
+            <div className="sm:hidden dashboard-detail-sticky-footer shrink-0">
+              <Button
+                type="primary"
+                block
+                size="large"
+                className="bg-[#1E386B] border-[#1E386B] font-bold h-11"
+                loading={savingDetail}
+                onClick={handleDetailSave}
+                disabled={supabaseConnected === false}
+              >
+                Lưu
+              </Button>
             </div>
           </div>
           </ConfigProvider>

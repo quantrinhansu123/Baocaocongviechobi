@@ -12,13 +12,13 @@ import {
   Input,
   InputNumber,
   DatePicker,
+  Space,
 } from 'antd';
 import type { ColumnsType } from 'antd/es/table';
 import {
   CheckSquareOutlined,
   CheckCircleOutlined,
   PlusOutlined,
-  LinkOutlined,
   UserOutlined,
   CalendarOutlined,
   ClockCircleOutlined,
@@ -26,10 +26,7 @@ import {
   ThunderboltOutlined,
   ClearOutlined,
   CloseOutlined,
-  ExportOutlined,
-  FileTextOutlined,
   FolderOutlined,
-  MoreOutlined,
   SearchOutlined,
   InfoCircleOutlined,
   CheckOutlined,
@@ -62,6 +59,7 @@ import {
   type PersonnelSelectOption,
 } from '../services/auxiliaryData';
 import PersonnelMultiSelect from '../components/PersonnelMultiSelect';
+import TaskDocLinksField from '../components/TaskDocLinksField';
 import { useHeaderToolbar } from '../contexts/HeaderToolbarContext';
 import {
   buildCompleteTaskRow,
@@ -74,8 +72,9 @@ import {
   buildTienDoEditRow,
   isTaskRecordCompleted,
   mapRowsToTasksByDept,
+  normalizeTaiLieuLinks,
   normalizeTienDoForForm,
-  formatUrlValue,
+  primaryTaiLieuLink,
   resolveTaskTableName,
   resolveTaskTableNameFromDeptKey,
   TIEN_DO_EDIT_OPTIONS,
@@ -558,10 +557,8 @@ const TaskView: React.FC = () => {
   }, [blockKeyParam, deptKeyParam]);
 
   useEffect(() => {
-    if (!detailTask) {
-      detailForm.resetFields();
-      return;
-    }
+    // Form chỉ mount khi có detailTask — không gọi API form khi chưa gắn
+    if (!detailTask) return;
 
     detailForm.setFieldsValue({
       congViec: detailTask.congViec,
@@ -573,12 +570,16 @@ const TaskView: React.FC = () => {
       giaHan2: parseTaskDate(detailTask.giaHan2) ?? undefined,
       giaHan3: parseTaskDate(detailTask.giaHan3) ?? undefined,
       ketQua: detailTask.ketQua,
-      linkKQ: detailTask.linkKQ,
-      tenTaiLieu: detailTask.tenTaiLieu || '',
+      taiLieuLinks: detailTask.taiLieuLinks?.length
+        ? detailTask.taiLieuLinks
+        : detailTask.linkKQ || detailTask.tenTaiLieu
+          ? [{ ten: detailTask.tenTaiLieu || '', link: detailTask.linkKQ || '' }]
+          : [{ ten: '', link: '' }],
       tienDo: normalizeTienDoForForm(detailTask.tienDo),
       tienDoPhanTram: detailTask.tienDoPhanTram ?? 0,
       vuongMac: detailTask.vuongMac,
       canLD: detailTask.canLD,
+      noiDungCanTacDong: detailTask.noiDungCanTacDong || '',
       anhHuong: detailTask.anhHuong,
     });
   }, [detailTask, detailForm]);
@@ -806,15 +807,19 @@ const TaskView: React.FC = () => {
     : 'Danh sách công việc';
 
   const openCreateModal = (deptKey?: string) => {
-    form.resetFields();
     const targetDeptKey =
       deptKey ??
       deptKeyParam ??
       (listScope?.kind === 'dept' ? listScope.deptKey : undefined);
-    if (targetDeptKey) {
-      form.setFieldsValue({ deptKey: targetDeptKey });
-    }
     setCreateOpen(true);
+    // Đợi Modal/Form mount rồi mới gắn giá trị (tránh warning useForm chưa nối Form)
+    queueMicrotask(() => {
+      form.resetFields();
+      form.setFieldsValue({
+        ...(targetDeptKey ? { deptKey: targetDeptKey } : {}),
+        taiLieuLinks: [{ ten: '', link: '' }],
+      });
+    });
   };
 
   const canCreateTask = supabaseConnected === true;
@@ -883,8 +888,9 @@ const TaskView: React.FC = () => {
               giaHan3,
               anhHuong: Number(values.anhHuong),
               stt: nextStt,
-              linkKQ: values.linkKQ as string | undefined,
-              tenTaiLieu: values.tenTaiLieu as string | undefined,
+              taiLieuLinks: normalizeTaiLieuLinks(
+                (values.taiLieuLinks as Array<{ ten?: string; link?: string }> | undefined) ?? []
+              ),
               tienDoPhanTram: clampProgressPercent(values.tienDoPhanTram),
             }),
             targetTable
@@ -900,7 +906,6 @@ const TaskView: React.FC = () => {
           message.success('Đã thêm công việc mới vào Supabase.');
           invalidateDashboardTasksCache();
           setCreateOpen(false);
-          form.resetFields();
         } catch (error) {
           message.error(error instanceof Error ? error.message : 'Không thể thêm dòng trên Supabase.');
         } finally {
@@ -939,6 +944,11 @@ const TaskView: React.FC = () => {
           return;
         }
 
+        const taiLieuLinks = normalizeTaiLieuLinks(
+          (values.taiLieuLinks as Array<{ ten?: string; link?: string }> | undefined) ?? []
+        );
+        const primaryLink = primaryTaiLieuLink(taiLieuLinks);
+
         const updatedTask: TaskRecord = {
           ...detailTask,
           congViec: values.congViec as string,
@@ -950,8 +960,9 @@ const TaskView: React.FC = () => {
           giaHan2: formatTaskDate(values.giaHan2),
           giaHan3: formatTaskDate(values.giaHan3),
           ketQua: values.ketQua as string,
-          linkKQ: values.linkKQ as string,
-          tenTaiLieu: (values.tenTaiLieu as string) || '',
+          linkKQ: primaryLink.link,
+          tenTaiLieu: primaryLink.ten,
+          taiLieuLinks,
           tienDo: (values.tienDo as string) || detailTask.tienDo,
           tienDoPhanTram:
             (values.tienDo as string) === 'Hoàn thành'
@@ -969,6 +980,7 @@ const TaskView: React.FC = () => {
                 : detailTask.ngayGioHoanThanh,
           vuongMac: values.vuongMac as string,
           canLD: values.canLD as string,
+          noiDungCanTacDong: (values.noiDungCanTacDong as string) || '',
           anhHuong: Number(values.anhHuong),
         };
 
@@ -1248,11 +1260,11 @@ const TaskView: React.FC = () => {
           options={WEEK_OPTIONS}
           placeholder="Tuần"
           size="small"
-          className="w-[112px] sm:w-[180px] md:w-56"
+          className="w-[100px] sm:w-[180px] md:w-56 max-w-[42vw]"
           getPopupContainer={trigger => trigger.parentElement ?? document.body}
         />
         {supabaseConnected === true ? (
-          <Tag color="success" className="m-0 shrink-0 hidden sm:inline-flex">
+          <Tag color="success" className="m-0 shrink-0 hidden md:inline-flex">
             Supabase
           </Tag>
         ) : supabaseConnected === false ? (
@@ -1314,7 +1326,7 @@ const TaskView: React.FC = () => {
             <Button
               type="primary"
               size="small"
-              className="bg-[#F38320] border-[#F38320] font-semibold"
+              className="bg-[#F38320] border-[#F38320] font-semibold hidden sm:inline-flex"
               loading={savingDetail}
               onClick={handleDetailSave}
             >
@@ -1351,7 +1363,7 @@ const TaskView: React.FC = () => {
             <Button
               type="primary"
               size="small"
-              className="bg-[#F38320] border-[#F38320] font-semibold"
+              className="bg-[#F38320] border-[#F38320] font-semibold hidden sm:inline-flex"
               loading={savingDetail}
               onClick={handleDetailSave}
             >
@@ -1606,13 +1618,12 @@ const TaskView: React.FC = () => {
         onOk={handleCreateSubmit}
         onCancel={() => {
           setCreateOpen(false);
-          form.resetFields();
         }}
+        afterClose={() => form.resetFields()}
         okText="Lưu"
         cancelText="Huỷ"
         confirmLoading={creatingTask}
         destroyOnHidden
-        forceRender
         width={720}
         styles={{ body: { paddingTop: 8 } }}
       >
@@ -1706,22 +1717,27 @@ const TaskView: React.FC = () => {
               <DatePicker className="w-full" format="DD/MM/YYYY" />
             </Form.Item>
             <Form.Item
-              name="tienDoPhanTram"
               label="Tiến độ CV (%)"
-              initialValue={0}
+              required
               extra="Lưu sẽ đồng bộ lên Supabase (key TIẾN ĐỘ CV trong data jsonb)."
-              rules={[
-                { required: true, message: 'Nhập tiến độ' },
-                { type: 'number', min: 0, max: 100, message: 'Nhập từ 0 đến 100' },
-              ]}
             >
-              <InputNumber className="w-full" min={0} max={100} addonAfter="%" placeholder="0–100" />
+              <Space.Compact className="w-full">
+                <Form.Item
+                  name="tienDoPhanTram"
+                  noStyle
+                  initialValue={0}
+                  rules={[
+                    { required: true, message: 'Nhập tiến độ' },
+                    { type: 'number', min: 0, max: 100, message: 'Nhập từ 0 đến 100' },
+                  ]}
+                >
+                  <InputNumber className="w-full" min={0} max={100} placeholder="0–100" />
+                </Form.Item>
+                <Input className="task-percent-suffix" value="%" readOnly tabIndex={-1} />
+              </Space.Compact>
             </Form.Item>
-            <Form.Item name="tenTaiLieu" label="Tên tài liệu" className="sm:col-span-1">
-              <Input placeholder="VD: Báo cáo tuần 36" allowClear />
-            </Form.Item>
-            <Form.Item name="linkKQ" label="Link tài liệu" className="sm:col-span-1">
-              <Input placeholder="https://..." allowClear />
+            <Form.Item label="Link tài liệu" className="sm:col-span-2 mb-2">
+              <TaskDocLinksField name="taiLieuLinks" size="middle" />
             </Form.Item>
             <div className="sm:col-span-2">
               <p className="text-[11px] font-bold uppercase tracking-wide text-[#0f274d] mb-2">Gia hạn</p>
@@ -1851,11 +1867,20 @@ const TaskView: React.FC = () => {
                       const active = selected?.key === row.key;
                       const badge = listBadgeMeta(row.tienDo);
                       const deptMeta = findDeptMeta(row.deptKey);
+                      const progress = clampProgressPercent(row.tienDoPhanTram);
+                      const progressCls =
+                        progress >= 100
+                          ? 'task-list-progress-tag--done'
+                          : progress >= 60
+                            ? 'task-list-progress-tag--high'
+                            : progress > 0
+                              ? 'task-list-progress-tag--mid'
+                              : 'task-list-progress-tag--low';
                       return (
                         <button
                           key={row.key}
                           type="button"
-                          className={`task-list-item${active ? ' is-active' : ''}`}
+                          className={`task-list-item task-list-card${active ? ' is-active' : ''}`}
                           onClick={() => openDetail(row.key, row.deptKey)}
                         >
                           <div className="task-list-item-top">
@@ -1878,21 +1903,34 @@ const TaskView: React.FC = () => {
                             >
                               {done ? <CheckOutlined /> : null}
                             </span>
-                            <p className="task-list-name" title={row.congViec}>
-                              {row.congViec}
-                            </p>
-                            <span className="task-md-person-avatar" style={{ width: 28, height: 28, fontSize: 12 }}>
-                              {personInitial(row.nguoiPhuTrach)}
-                            </span>
-                          </div>
-                          <div className="task-list-item-meta">
-                            <span className={`task-list-badge ${badge.cls}`}>{badge.label}</span>
-                            <span className="task-list-sub truncate">
-                              {(deptMeta?.deptName || row.phongBan || row.deptKey) +
-                                (row.ngayGiao
-                                  ? ` | bắt đầu ${normalizeDisplayDate(row.ngayGiao) || row.ngayGiao}`
-                                  : '')}
-                            </span>
+                            <div className="task-list-card-body">
+                              <div className="task-list-card-head">
+                                <p className="task-list-name" title={row.congViec}>
+                                  {row.congViec}
+                                </p>
+                                <span className="task-md-person-avatar task-list-card-avatar">
+                                  {personInitial(row.nguoiPhuTrach)}
+                                </span>
+                              </div>
+                              <div className="task-list-item-meta">
+                                <span className={`task-list-badge ${badge.cls}`}>{badge.label}</span>
+                                <span
+                                  className={`task-list-progress-tag ${progressCls}`}
+                                  title={`Tiến độ hoàn thành ${progress}%`}
+                                >
+                                  {progress}%
+                                </span>
+                                <span className="task-list-sub truncate">
+                                  {(deptMeta?.deptName || row.phongBan || row.deptKey) +
+                                    (row.ngayGiao
+                                      ? ` · ${normalizeDisplayDate(row.ngayGiao) || row.ngayGiao}`
+                                      : '')}
+                                </span>
+                              </div>
+                              <div className="task-list-card-progress">
+                                <TaskProgressBar value={progress} showInfo={false} className="task-list-card-progress-bar" />
+                              </div>
+                            </div>
                           </div>
                         </button>
                       );
@@ -1916,18 +1954,13 @@ const TaskView: React.FC = () => {
                   <div className="task-md-main">
                     <div className="task-md-head">
                       <p className="task-md-head-title">Chi tiết công việc</p>
-                      <div className="flex items-center gap-1 text-slate-400">
-                        <Button type="text" size="small" icon={<MoreOutlined />} />
-                        <Button type="text" size="small" icon={<LinkOutlined />} />
-                        <Button type="text" size="small" icon={<CalendarOutlined />} />
-                        <Button type="text" size="small" icon={<Star size={14} />} />
-                        <Button
-                          type="text"
-                          size="small"
-                          icon={<CloseOutlined />}
-                          onClick={() => setDetailTask(null)}
-                        />
-                      </div>
+                      <Button
+                        type="text"
+                        size="small"
+                        icon={<CloseOutlined />}
+                        onClick={() => setDetailTask(null)}
+                        aria-label="Đóng chi tiết"
+                      />
                     </div>
 
                     <div className="task-md-body">
@@ -2031,112 +2064,12 @@ const TaskView: React.FC = () => {
                           );
                         }}
                       </Form.Item>
-
-                      <section className="task-md-section">
-                        <p className="task-md-section-title">Mô tả & vướng mắc</p>
-                        <Form.Item name="vuongMac" className="mb-1">
-                          <Input.TextArea
-                            rows={2}
-                            placeholder="Vướng mắc cần hỗ trợ..."
-                          />
-                        </Form.Item>
-                        <p className="task-md-section-title mt-2 mb-1">Link tài liệu</p>
-                        <div className="flex flex-wrap gap-1.5 items-start">
-                          <Form.Item name="tenTaiLieu" className="mb-0 flex-1 min-w-[120px]">
-                            <Input
-                              size="small"
-                              prefix={<FileTextOutlined className="text-gray-400" />}
-                              placeholder="Tên tài liệu"
-                              allowClear
-                            />
-                          </Form.Item>
-                          <Form.Item name="linkKQ" className="mb-0 flex-[1.2] min-w-[140px]">
-                            <Input
-                              size="small"
-                              prefix={<LinkOutlined className="text-gray-400" />}
-                              placeholder="https://..."
-                              allowClear
-                            />
-                          </Form.Item>
-                          <Form.Item
-                            shouldUpdate={(prev, next) => prev.linkKQ !== next.linkKQ}
-                            className="mb-0"
-                          >
-                            {() => {
-                              const raw = String(detailForm.getFieldValue('linkKQ') || '').trim();
-                              return (
-                                <Button
-                                  size="small"
-                                  type="primary"
-                                  icon={<ExportOutlined />}
-                                  disabled={!raw}
-                                  className="bg-[#1E386B] border-[#1E386B]"
-                                  onClick={() => {
-                                    const url = formatUrlValue(raw);
-                                    if (!url) return;
-                                    window.open(url, '_blank', 'noopener,noreferrer');
-                                  }}
-                                >
-                                  Mở
-                                </Button>
-                              );
-                            }}
-                          </Form.Item>
-                        </div>
-                      </section>
-
-                      <section className="task-md-section">
-                        <div className="flex items-center justify-between gap-2 mb-1">
-                          <p className="task-md-section-title m-0">Kết quả công việc</p>
-                          <Button
-                            type="link"
-                            size="small"
-                            className="task-md-update-btn font-semibold px-0 h-auto"
-                            loading={savingDetail}
-                            onClick={handleDetailSave}
-                          >
-                            Cập nhật
-                          </Button>
-                        </div>
-                        <Form.Item name="ketQua" className="mb-0">
-                          <Input.TextArea rows={2} placeholder="Kết quả đạt được..." />
-                        </Form.Item>
-                      </section>
-
-                      <section className="task-md-section">
-                        <p className="task-md-section-title">Thời hạn & gia hạn</p>
-                        <div className="grid grid-cols-2 gap-x-2 gap-y-0">
-                          <Form.Item name="ngayGiao" label="Ngày giao" className="mb-1">
-                            <DatePicker className="w-full" format="DD/MM/YYYY" size="small" />
-                          </Form.Item>
-                          <Form.Item name="canLD" label="Cần LĐ tác động" className="mb-1">
-                            <Select
-                              size="small"
-                              options={[
-                                { value: 'Không', label: 'Không' },
-                                { value: 'Có', label: 'Có' },
-                              ]}
-                            />
-                          </Form.Item>
-                        </div>
-                        <div className="grid grid-cols-3 gap-x-2">
-                          <Form.Item name="giaHan1" label="GH 1" className="mb-0">
-                            <DatePicker className="w-full" format="DD/MM/YYYY" size="small" />
-                          </Form.Item>
-                          <Form.Item name="giaHan2" label="GH 2" className="mb-0">
-                            <DatePicker className="w-full" format="DD/MM/YYYY" size="small" />
-                          </Form.Item>
-                          <Form.Item name="giaHan3" label="GH 3" className="mb-0">
-                            <DatePicker className="w-full" format="DD/MM/YYYY" size="small" />
-                          </Form.Item>
-                        </div>
-                      </section>
                     </div>
                   </div>
 
                   <aside className="task-md-aside">
                     <div className="task-md-aside-card task-md-goal-alert">
-                      <InfoCircleOutlined className="text-sky-500" />
+                      <InfoCircleOutlined />
                       <span>Chưa liên kết với mục tiêu / Lựa chọn mục tiêu</span>
                     </div>
 
@@ -2170,26 +2103,17 @@ const TaskView: React.FC = () => {
                     </div>
 
                     <div className="task-md-aside-card">
-                      <div
-                        className="task-md-meta-row"
-                        style={{ gridTemplateColumns: '22px 1fr', border: 0, padding: '2px 0' }}
-                      >
-                        <ClockCircleOutlined className="task-md-meta-icon" />
-                        <div>
+                      <p className="task-md-aside-label">Thời gian</p>
+                      <div className="task-md-time-grid">
+                        <div className="task-md-time-item">
                           <span className="task-md-meta-label">TG tạo</span>
-                          <p className="m-0 text-[12px] font-semibold leading-tight" style={{ color: 'var(--tv-cobalt)' }}>
+                          <p className="task-md-time-value">
                             {normalizeDisplayDate(selected.ngayGiao) || selected.ngayGiao || '—'}
                           </p>
                         </div>
-                      </div>
-                      <div
-                        className="task-md-meta-row"
-                        style={{ gridTemplateColumns: '22px 1fr', border: 0, padding: '2px 0' }}
-                      >
-                        <ClockCircleOutlined className="task-md-meta-icon" />
-                        <div>
+                        <div className="task-md-time-item">
                           <span className="task-md-meta-label">TG cập nhật</span>
-                          <p className="m-0 text-[12px] font-semibold leading-tight" style={{ color: 'var(--tv-cobalt)' }}>
+                          <p className="task-md-time-value">
                             {normalizeDisplayDate(selected.ngayGioHoanThanh) ||
                               selected.ngayGioHoanThanh ||
                               '—'}
@@ -2200,32 +2124,40 @@ const TaskView: React.FC = () => {
 
                     <div className="task-md-aside-card">
                       <p className="task-md-aside-label">Tiến độ & ảnh hưởng</p>
-                      <Form.Item
-                        name="tienDoPhanTram"
-                        label="Tiến độ CV"
-                        className="mb-1"
-                        rules={[
-                          { required: true, message: 'Nhập tiến độ' },
-                          { type: 'number', min: 0, max: 100, message: '0–100' },
-                        ]}
-                      >
-                        <InputNumber className="w-full" min={0} max={100} addonAfter="%" size="small" />
-                      </Form.Item>
-                      <Form.Item
-                        shouldUpdate={(prev, next) => prev.tienDoPhanTram !== next.tienDoPhanTram}
-                        className="mb-1"
-                      >
-                        {() => (
-                          <TaskProgressBar
-                            value={clampProgressPercent(detailForm.getFieldValue('tienDoPhanTram'))}
-                            className="max-w-none"
-                          />
-                        )}
-                      </Form.Item>
+                      <div className="task-md-progress-block task-md-progress-block--row">
+                        <span className="task-md-progress-caption">
+                          Tiến độ <span className="text-red-500">*</span>
+                        </span>
+                        <Form.Item
+                          shouldUpdate={(prev, next) => prev.tienDoPhanTram !== next.tienDoPhanTram}
+                          noStyle
+                        >
+                          {() => (
+                            <TaskProgressBar
+                              value={clampProgressPercent(detailForm.getFieldValue('tienDoPhanTram'))}
+                              className="task-md-progress-bar-inline"
+                              showInfo={false}
+                            />
+                          )}
+                        </Form.Item>
+                        <Space.Compact size="small" className="task-md-progress-compact">
+                          <Form.Item
+                            name="tienDoPhanTram"
+                            noStyle
+                            rules={[
+                              { required: true, message: 'Nhập tiến độ' },
+                              { type: 'number', min: 0, max: 100, message: '0–100' },
+                            ]}
+                          >
+                            <InputNumber min={0} max={100} controls={false} />
+                          </Form.Item>
+                          <Input className="task-percent-suffix" value="%" readOnly tabIndex={-1} />
+                        </Space.Compact>
+                      </div>
                       <Form.Item
                         name="anhHuong"
                         label="Mức ảnh hưởng"
-                        className="mb-0"
+                        className="mb-0 mt-2"
                         rules={[{ required: true, message: 'Chọn mức độ' }]}
                       >
                         <Select
@@ -2239,6 +2171,56 @@ const TaskView: React.FC = () => {
                     </div>
 
                     <div className="task-md-aside-card">
+                      <p className="task-md-aside-label">Thông tin khác</p>
+                      <Form.Item name="vuongMac" label="Vướng mắc" className="mb-2">
+                        <Input.TextArea rows={2} placeholder="Vướng mắc cần hỗ trợ..." />
+                      </Form.Item>
+                      <Form.Item name="ketQua" label="Kết quả công việc" className="mb-2">
+                        <Input.TextArea rows={2} placeholder="Kết quả đạt được..." />
+                      </Form.Item>
+                      <p className="task-md-field-caption">Link tài liệu</p>
+                      <div className="mb-2">
+                        <TaskDocLinksField name="taiLieuLinks" size="small" />
+                      </div>
+                      <div className="grid grid-cols-2 gap-x-2">
+                        <Form.Item name="ngayGiao" label="Ngày giao" className="mb-2">
+                          <DatePicker className="w-full" format="DD/MM/YYYY" size="small" />
+                        </Form.Item>
+                        <Form.Item name="canLD" label="Cần LĐ tác động" className="mb-2">
+                          <Select
+                            size="small"
+                            options={[
+                              { value: 'Không', label: 'Không' },
+                              { value: 'Có', label: 'Có' },
+                            ]}
+                          />
+                        </Form.Item>
+                      </div>
+                      <Form.Item
+                        name="noiDungCanTacDong"
+                        label="Nội dung cần tác động"
+                        className="mb-2"
+                      >
+                        <Input.TextArea
+                          rows={2}
+                          placeholder="Mô tả nội dung cần lãnh đạo tác động..."
+                        />
+                      </Form.Item>
+                      <p className="task-md-field-caption">Gia hạn</p>
+                      <div className="grid grid-cols-3 gap-x-2">
+                        <Form.Item name="giaHan1" label="GH 1" className="mb-0">
+                          <DatePicker className="w-full" format="DD/MM/YYYY" size="small" />
+                        </Form.Item>
+                        <Form.Item name="giaHan2" label="GH 2" className="mb-0">
+                          <DatePicker className="w-full" format="DD/MM/YYYY" size="small" />
+                        </Form.Item>
+                        <Form.Item name="giaHan3" label="GH 3" className="mb-0">
+                          <DatePicker className="w-full" format="DD/MM/YYYY" size="small" />
+                        </Form.Item>
+                      </div>
+                    </div>
+
+                    <div className="task-md-aside-card">
                       <p className="task-md-aside-label">Lịch sử hoạt động</p>
                       <div className="task-md-activity-empty">
                         Chưa có lịch sử hoạt động cho công việc này.
@@ -2247,6 +2229,19 @@ const TaskView: React.FC = () => {
                   </aside>
                 </div>
               </Form>
+              <div className="task-md-sticky-save sm:hidden shrink-0">
+                <Button
+                  type="primary"
+                  block
+                  size="large"
+                  className="bg-[#F38320] border-[#F38320] font-bold h-11"
+                  loading={savingDetail}
+                  onClick={handleDetailSave}
+                  disabled={!supabaseConnected}
+                >
+                  Lưu
+                </Button>
+              </div>
             </div>
           ) : (
             <div className="task-md-detail is-mobile-hidden">

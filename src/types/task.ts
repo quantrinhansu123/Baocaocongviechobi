@@ -12,8 +12,10 @@ export type TaskRecord = {
   giaHan3: string;
   ketQua: string;
   linkKQ: string;
-  /** Tên tài liệu gắn với linkKQ */
+  /** Tên tài liệu gắn với linkKQ (link đầu tiên — tương thích cũ) */
   tenTaiLieu: string;
+  /** Nhiều link tài liệu */
+  taiLieuLinks: TaskDocLink[];
   tienDo: string;
   /** Phần trăm tiến độ công việc (0–100) */
   tienDoPhanTram: number;
@@ -21,8 +23,15 @@ export type TaskRecord = {
   ngayGioHoanThanh: string;
   vuongMac: string;
   canLD: string;
+  /** Chi tiết khi cần lãnh đạo tác động */
+  noiDungCanTacDong: string;
   anhHuong: number;
   /** Khóa dòng (cột TT) — dùng khi Edit/Delete */
   rowKey?: string | null;
   sourceRow?: Record<string, unknown>;
+};
+
+export type TaskDocLink = {
+  ten: string;
+  link: string;
 };

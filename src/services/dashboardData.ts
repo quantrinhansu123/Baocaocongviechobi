@@ -200,10 +200,12 @@ export type DashboardTask = {
   ketQua: string;
   linkKQ: string;
   tenTaiLieu: string;
+  taiLieuLinks: { ten: string; link: string }[];
   tienDo: string;
   tienDoPhanTram: number;
   vuongMac: string;
   canLD: string;
+  noiDungCanTacDong: string;
   ngayHoanThanh: string;
   rowKey?: string | null;
   sourceRow?: Record<string, unknown>;
@@ -315,10 +317,16 @@ function mapTaskRecordToDashboardTask(
     ketQua: task.ketQua || '',
     linkKQ: task.linkKQ || '',
     tenTaiLieu: task.tenTaiLieu || '',
+    taiLieuLinks: task.taiLieuLinks?.length
+      ? task.taiLieuLinks
+      : task.linkKQ || task.tenTaiLieu
+        ? [{ ten: task.tenTaiLieu || '', link: task.linkKQ || '' }]
+        : [],
     tienDo: task.tienDo || '',
     tienDoPhanTram: task.tienDoPhanTram ?? 0,
     vuongMac: task.vuongMac || '',
     canLD: task.canLD || 'Không',
+    noiDungCanTacDong: task.noiDungCanTacDong || '',
     ngayHoanThanh: task.ngayGioHoanThanh || '',
     rowKey: task.rowKey,
     sourceRow: task.sourceRow,

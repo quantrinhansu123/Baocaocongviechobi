@@ -99,23 +99,27 @@ const PersonnelView: React.FC = () => {
 
   const openCreate = () => {
     setEditing(null);
-    form.resetFields();
-    form.setFieldsValue({ status: 'Đang làm' });
     setModalOpen(true);
+    queueMicrotask(() => {
+      form.resetFields();
+      form.setFieldsValue({ status: 'Đang làm' });
+    });
   };
 
   const openEdit = (record: PersonnelRecord) => {
     setEditing(record);
-    form.setFieldsValue({
-      name: record.name,
-      department: record.department,
-      position: record.position,
-      email: record.email,
-      phone: record.phone,
-      status: record.status || 'Đang làm',
-      joinDate: record.joinDate,
-    });
     setModalOpen(true);
+    queueMicrotask(() => {
+      form.setFieldsValue({
+        name: record.name,
+        department: record.department,
+        position: record.position,
+        email: record.email,
+        phone: record.phone,
+        status: record.status || 'Đang làm',
+        joinDate: record.joinDate,
+      });
+    });
   };
 
   const handleSave = async () => {
@@ -142,7 +146,6 @@ const PersonnelView: React.FC = () => {
       }
       setModalOpen(false);
       setEditing(null);
-      form.resetFields();
       await refresh();
     } catch (error) {
       if (error && typeof error === 'object' && 'errorFields' in error) {
@@ -306,8 +309,8 @@ const PersonnelView: React.FC = () => {
         onCancel={() => {
           setModalOpen(false);
           setEditing(null);
-          form.resetFields();
         }}
+        afterClose={() => form.resetFields()}
         onOk={() => void handleSave()}
         okText="Lưu"
         cancelText="Hủy"
