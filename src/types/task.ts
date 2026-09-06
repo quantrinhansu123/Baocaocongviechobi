@@ -3,6 +3,8 @@ export type TaskRecord = {
   kyBaoCao: string;
   congViec: string;
   nguoiGiao: string;
+  /** Danh sách người theo dõi (họ tên) */
+  nguoiTheoDoi: string[];
   ngayGiao: string;
   ycXong: string;
   giaHan1: string;
@@ -10,6 +12,8 @@ export type TaskRecord = {
   giaHan3: string;
   ketQua: string;
   linkKQ: string;
+  /** Tên tài liệu gắn với linkKQ */
+  tenTaiLieu: string;
   tienDo: string;
   /** Phần trăm tiến độ công việc (0–100) */
   tienDoPhanTram: number;

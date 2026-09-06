@@ -13,7 +13,6 @@ import {
   Space,
   Select,
   Typography,
-  Timeline,
   Tooltip,
   Empty,
   Spin,
@@ -28,6 +27,7 @@ import {
   Input,
   DatePicker,
   InputNumber,
+  ConfigProvider,
 } from 'antd';
 import {
   CheckCircleOutlined,
@@ -35,7 +35,9 @@ import {
   ClockCircleOutlined,
   DeleteOutlined,
   FireOutlined,
+  ExportOutlined,
   FileTextOutlined,
+  LinkOutlined,
 } from '@ant-design/icons';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, ResponsiveContainer, LabelList } from 'recharts';
 import { X, User, Star } from 'lucide-react';
@@ -58,14 +60,19 @@ import { deleteDataRow, editDataRow, fetchDataStatus } from '../services/dataApi
 import {
   loadPersonnelSelectOptions,
   mergePersonnelOption,
+  mergePersonnelOptions,
   type PersonnelSelectOption,
 } from '../services/auxiliaryData';
+import PersonnelMultiSelect from '../components/PersonnelMultiSelect';
 import {
   buildCompleteTaskRow,
   buildTaskDeleteRow,
   buildTaskEditRow,
+  formatUrlValue,
   hasRowKey,
   hydrateSourceRowKey,
+  normalizeTienDoForForm,
+  TIEN_DO_EDIT_OPTIONS,
 } from '../services/taskData';
 import type { TaskRecord } from '../types/task';
 import { formatTaskDate, normalizeDisplayDate, parseTaskDate } from '../utils/taskDate';
@@ -105,6 +112,34 @@ function isStackEndSegment(
     return key === 'Hoàn thành';
   }
   return false;
+}
+
+/** Nhãn phòng ban trên trục Y — luôn 1 dòng, không wrap */
+function ChartDeptTick(props: {
+  x?: number;
+  y?: number;
+  payload?: { value?: string };
+  fill?: string;
+  fontSize?: number;
+}) {
+  const { x = 0, y = 0, payload, fill = '#1E386B', fontSize = 12 } = props;
+  const label = payload?.value ?? '';
+  return (
+    <g transform={`translate(${x},${y})`}>
+      <title>{label}</title>
+      <text
+        x={-4}
+        y={0}
+        dy={4}
+        textAnchor="end"
+        fill={fill}
+        fontSize={fontSize}
+        fontWeight={700}
+      >
+        {label}
+      </text>
+    </g>
+  );
 }
 
 function createStackTotalLabel(rows: DashboardChartRow[]) {
@@ -157,6 +192,114 @@ function createCompletedStackLabel() {
   };
 }
 
+type StatusBarChartProps = {
+  data: DashboardChartRow[];
+  height: number;
+  maxValue: number;
+  isMobile: boolean;
+  stackTotalLabel: (props: StackBarLabelProps) => React.ReactNode;
+  onBarClick: (data: { payload?: DashboardChartRow }) => void;
+};
+
+/** Memo để mở popup không vẽ lại toàn bộ Recharts (tránh click bị đơ). */
+const StatusBarChart = memo(function StatusBarChart({
+  data,
+  height,
+  maxValue,
+  isMobile,
+  stackTotalLabel,
+  onBarClick,
+}: StatusBarChartProps) {
+  const minHeight = isMobile ? 200 : 220;
+  return (
+    <div style={{ height, minHeight }} className="dashboard-chart-wrap">
+      <ResponsiveContainer width="100%" height={height} minHeight={minHeight}>
+        <BarChart
+          layout="vertical"
+          data={data}
+          margin={{
+            top: 8,
+            right: isMobile ? 8 : 24,
+            left: 4,
+            bottom: 8,
+          }}
+          barCategoryGap="18%"
+          barSize={isMobile ? 12 : 14}
+        >
+          <CartesianGrid strokeDasharray="3 3" horizontal={false} stroke="#E5E7EB" />
+          <XAxis
+            type="number"
+            allowDecimals={false}
+            domain={[0, maxValue + 1]}
+            axisLine={false}
+            tickLine={false}
+            tick={{ fontSize: isMobile ? 10 : 12, fill: '#6B7280' }}
+            label={{
+              value: 'Số công việc',
+              position: 'insideBottom',
+              offset: -2,
+              style: { fontSize: 11, fill: '#9CA3AF' },
+            }}
+          />
+          <YAxis
+            type="category"
+            dataKey="shortName"
+            width={isMobile ? 130 : 168}
+            axisLine={false}
+            tickLine={false}
+            interval={0}
+            tick={<ChartDeptTick fontSize={isMobile ? 10 : 12} />}
+          />
+          <RechartsTooltip
+            cursor={{ fill: 'rgba(30, 56, 107, 0.06)' }}
+            labelFormatter={(_label, payload) => payload?.[0]?.payload?.name ?? _label}
+            formatter={(value: number, name: string) => [`${value} việc`, name]}
+            contentStyle={{
+              borderRadius: '8px',
+              border: '1px solid #F3F4F6',
+              boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)',
+              fontSize: 12,
+            }}
+            isAnimationActive={false}
+          />
+          <Bar
+            dataKey="Hoàn thành"
+            name="Hoàn thành"
+            fill="#10b981"
+            stackId="status"
+            radius={[0, 0, 0, 0]}
+            cursor="pointer"
+            isAnimationActive={false}
+            onClick={onBarClick}
+          />
+          <Bar
+            dataKey="Đang làm"
+            name="Đang làm"
+            fill="#F38320"
+            stackId="status"
+            radius={[0, 0, 0, 0]}
+            cursor="pointer"
+            isAnimationActive={false}
+            onClick={onBarClick}
+          />
+          <Bar
+            dataKey="Quá hạn"
+            name="Quá hạn"
+            fill="#ef4444"
+            stackId="status"
+            radius={[0, 4, 4, 0]}
+            cursor="pointer"
+            isAnimationActive={false}
+            onClick={onBarClick}
+          >
+            <LabelList content={stackTotalLabel} />
+          </Bar>
+        </BarChart>
+      </ResponsiveContainer>
+    </div>
+  );
+});
+
 const ROMAN = ['I', 'II', 'III', 'IV'] as const;
 
 const DEPARTMENT_FILTER_OPTIONS = [
@@ -202,6 +345,11 @@ const Dashboard: React.FC = () => {
     [personnelOptions, selectedTask?.assignee]
   );
 
+  const dashboardFollowerOptions = useMemo(
+    () => mergePersonnelOptions(personnelOptions, selectedTask?.followers),
+    [personnelOptions, selectedTask?.followers]
+  );
+
   useEffect(() => {
     let cancelled = false;
     void loadPersonnelSelectOptions()
@@ -230,18 +378,11 @@ const Dashboard: React.FC = () => {
       detailForm.resetFields();
       return;
     }
-    const statusValue = (() => {
-      const raw = (selectedTask.tienDo || selectedTask.status || '').trim();
-      if (raw === 'Đang thực hiện') return 'Đang làm';
-      if (raw === 'Đang làm' || raw === 'Hoàn thành' || raw === 'Quá hạn') return raw;
-      if (raw.includes('Hoàn thành')) return 'Hoàn thành';
-      if (raw === 'Quá hạn') return 'Quá hạn';
-      return 'Đang làm';
-    })();
 
     detailForm.setFieldsValue({
       congViec: selectedTask.name,
       nguoiGiao: selectedTask.assignee === '—' ? '' : selectedTask.assignee,
+      nguoiTheoDoi: selectedTask.followers ?? [],
       ngayGiao: parseTaskDate(selectedTask.ngayGiao) ?? undefined,
       ycXong: parseTaskDate(selectedTask.ycXong) ?? undefined,
       giaHan1: parseTaskDate(selectedTask.giaHan1) ?? undefined,
@@ -249,13 +390,15 @@ const Dashboard: React.FC = () => {
       giaHan3: parseTaskDate(selectedTask.giaHan3) ?? undefined,
       ketQua: selectedTask.ketQua || selectedTask.desc,
       linkKQ: selectedTask.linkKQ,
-      tienDo: statusValue,
+      tenTaiLieu: selectedTask.tenTaiLieu || '',
+      tienDo: normalizeTienDoForForm(selectedTask.tienDo || selectedTask.status),
       tienDoPhanTram: selectedTask.tienDoPhanTram ?? 0,
       vuongMac: selectedTask.vuongMac || selectedTask.history,
       canLD: selectedTask.canLD || 'Không',
       anhHuong: selectedTask.impact || 1,
     });
-  }, [selectedTask, detailForm]);
+    // Chỉ nạp lại khi đổi công việc (theo id), tránh ghi đè khi đang gõ
+  }, [selectedTask?.id, detailForm]);
 
   const reloadDashboardTasks = async () => {
     const tasks = await loadDashboardTasks({ force: true });
@@ -360,7 +503,8 @@ const Dashboard: React.FC = () => {
           return;
         }
 
-        const nextTienDo = (values.tienDo as string) || selectedTask.tienDo || 'Đang làm';
+        const nextTienDo =
+          (values.tienDo as string) || selectedTask.tienDo || 'Đang thực hiện';
         const nextPercent =
           nextTienDo === 'Hoàn thành'
             ? Math.max(clampProgressPercent(values.tienDoPhanTram), 100)
@@ -370,6 +514,7 @@ const Dashboard: React.FC = () => {
           kyBaoCao: selectedTask.week,
           congViec: values.congViec as string,
           nguoiGiao: values.nguoiGiao as string,
+          nguoiTheoDoi: (values.nguoiTheoDoi as string[] | undefined) ?? [],
           ngayGiao: formatTaskDate(values.ngayGiao),
           ycXong: formatTaskDate(values.ycXong),
           giaHan1: formatTaskDate(values.giaHan1),
@@ -377,6 +522,7 @@ const Dashboard: React.FC = () => {
           giaHan3: formatTaskDate(values.giaHan3),
           ketQua: (values.ketQua as string) || '',
           linkKQ: (values.linkKQ as string) || '',
+          tenTaiLieu: (values.tenTaiLieu as string) || '',
           tienDo: nextTienDo,
           tienDoPhanTram: nextPercent,
           trangThai: '',
@@ -404,13 +550,11 @@ const Dashboard: React.FC = () => {
             selectedTask.table
           );
           await editDataRow(editRow, selectedTask.table);
-          const tasks = await reloadDashboardTasks();
-          const refreshed = tasks.find(item => item.id === selectedTask.id);
-          if (refreshed) {
-            setSelectedTask(refreshed);
-          }
+          await reloadDashboardTasks();
           message.success('Đã cập nhật Supabase.');
           invalidateDashboardTasksCache();
+          // Lưu xong tự thoát form chi tiết
+          setSelectedTask(null);
         } catch (error) {
           message.error(error instanceof Error ? error.message : 'Không thể cập nhật Supabase.');
         } finally {
@@ -443,10 +587,15 @@ const Dashboard: React.FC = () => {
   };
 
   const completeColumn = {
-    title: 'HOÀN THÀNH',
+    title: (
+      <Tooltip title="Hoàn thành">
+        <span>HT</span>
+      </Tooltip>
+    ),
     key: 'complete',
-    width: 130,
+    width: 48,
     align: 'center' as const,
+    className: 'dashboard-col-complete',
     render: (_: unknown, record: DashboardTask) => renderCompleteTick(record),
   };
 
@@ -527,7 +676,12 @@ const Dashboard: React.FC = () => {
       if (filterPriority === 'low') matchPriority = task.impact <= 2;
 
       let matchStatus = true;
-      if (filterStatus === 'in_progress') matchStatus = task.status === 'Đang làm';
+      if (filterStatus === 'in_progress') {
+        matchStatus =
+          task.status === 'Đang làm' ||
+          task.status === 'Đang thực hiện' ||
+          task.status === 'Tạm dừng';
+      }
       if (filterStatus === 'overdue') matchStatus = task.status === 'Quá hạn';
       if (filterStatus === 'completed') matchStatus = task.status.includes('Hoàn thành');
       if (filterStatus === 'ext_1') matchStatus = task.status === 'Hoàn thành gia hạn 1';
@@ -659,9 +813,23 @@ const Dashboard: React.FC = () => {
         </span>
       );
     }
+    if (status === 'Hủy' || status === 'Huỷ') {
+      return (
+        <span className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-slate-100 text-slate-700 rounded-full text-sm font-bold">
+          <span className="w-2.5 h-2.5 rounded-full bg-slate-500" /> Hủy
+        </span>
+      );
+    }
+    if (status === 'Tạm dừng') {
+      return (
+        <span className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-amber-100 text-amber-800 rounded-full text-sm font-bold">
+          <span className="w-2.5 h-2.5 rounded-full bg-amber-500" /> Tạm dừng
+        </span>
+      );
+    }
     return (
       <span className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-orange-100 text-[#1E386B] rounded-full text-sm font-bold">
-        <span className="w-2.5 h-2.5 rounded-full bg-[#F38320]" /> Đang làm
+        <span className="w-2.5 h-2.5 rounded-full bg-[#F38320]" /> Đang thực hiện
       </span>
     );
   };
@@ -673,7 +841,13 @@ const Dashboard: React.FC = () => {
     if (status === 'Quá hạn') {
       return <span className="task-status task-status--overdue">Quá hạn</span>;
     }
-    return <span className="task-status task-status--progress">Đang làm</span>;
+    if (status === 'Hủy' || status === 'Huỷ') {
+      return <span className="task-status task-status--cancelled">Hủy</span>;
+    }
+    if (status === 'Tạm dừng') {
+      return <span className="task-status task-status--paused">Tạm dừng</span>;
+    }
+    return <span className="task-status task-status--progress">Đang thực hiện</span>;
   };
 
   const renderMobileTaskCard = (task: DashboardTask, accent?: 'red' | 'orange' | 'default') => {
@@ -696,7 +870,7 @@ const Dashboard: React.FC = () => {
             {task.name}
           </p>
           <div className="task-meta-row">
-            <Tag className="task-tag" title={task.department}>
+            <Tag className="task-tag dept-name-tag" title={task.department}>
               {task.department}
             </Tag>
             <span className={`task-deadline ${deadlineClass}`}>Ngày hoàn thành: {task.deadline}</span>
@@ -731,9 +905,9 @@ const Dashboard: React.FC = () => {
   };
 
   const renderImpact = (level: number) => (
-    <div className="flex gap-1">
+    <div className="flex gap-0.5 justify-center">
       {[...Array(4)].map((_, i) => (
-        <Star key={i} size={16} className={i < level ? 'fill-[#F38320] text-[#1E386B]' : 'text-gray-300'} />
+        <Star key={i} size={13} className={i < level ? 'fill-[#F38320] text-[#1E386B]' : 'text-gray-300'} />
       ))}
     </div>
   );
@@ -744,11 +918,41 @@ const Dashboard: React.FC = () => {
   const sttColumn = (page: number, pageSize: number) => ({
     title: 'STT',
     key: 'stt',
-    width: 80,
+    width: 56,
     align: 'center' as const,
     render: (_: unknown, __: DashboardTask, index: number) => (
-      <span className="font-bold text-[#1E386B] text-base">{(page - 1) * pageSize + index + 1}</span>
+      <span className="font-bold text-[#1E386B] text-sm">{(page - 1) * pageSize + index + 1}</span>
     ),
+  });
+
+  const renderDeptTag = (text: string) => (
+    <Tag className="dept-name-tag m-0" title={text}>
+      {text}
+    </Tag>
+  );
+
+  const renderTaskNameCell = (
+    text: string,
+    record: DashboardTask,
+    options?: { danger?: boolean }
+  ) => (
+    <Tooltip title={record.desc || text} placement="topLeft">
+      <span
+        className={`dashboard-task-name${options?.danger ? ' dashboard-task-name--danger' : ''}`}
+      >
+        {text}
+      </span>
+    </Tooltip>
+  );
+
+  const taskNameColumn = (options?: { danger?: boolean; width?: number }) => ({
+    title: 'CÔNG VIỆC',
+    dataIndex: 'name',
+    key: 'name',
+    width: options?.width ?? 380,
+    className: 'dashboard-col-task',
+    render: (text: string, record: DashboardTask) =>
+      renderTaskNameCell(text, record, { danger: options?.danger }),
   });
 
   const overdueColumns = [
@@ -758,41 +962,38 @@ const Dashboard: React.FC = () => {
       title: 'PHÒNG BAN',
       dataIndex: 'department',
       key: 'department',
-      width: 180,
-      render: (text: string) => <Tag className="text-sm px-2 py-1 m-0">{text}</Tag>,
+      width: 120,
+      ellipsis: true,
+      render: (text: string) => renderDeptTag(text),
     },
-    {
-      title: 'CÔNG VIỆC',
-      dataIndex: 'name',
-      key: 'name',
-      width: 360,
-      render: (text: string, record: DashboardTask) => (
-        <Tooltip title={record.desc} placement="topLeft">
-          <Text strong className="text-red-600 cursor-pointer hover:underline text-base leading-snug">
-            {text}
-          </Text>
-        </Tooltip>
-      ),
-    },
+    taskNameColumn({ danger: true, width: 380 }),
     {
       title: 'NGƯỜI PHỤ TRÁCH',
       dataIndex: 'assignee',
       key: 'assignee',
-      width: 190,
-      render: (text: string) => <span className="text-base font-semibold text-[#0f274d]">{text}</span>,
+      width: 108,
+      ellipsis: true,
+      className: 'dashboard-col-assignee',
+      render: (text: string) => <span className="text-sm font-semibold text-[#0f274d]">{text}</span>,
     },
     {
-      title: 'NGÀY HOÀN THÀNH',
+      title: (
+        <Tooltip title="Ngày hoàn thành">
+          <span>NGÀY HT</span>
+        </Tooltip>
+      ),
       dataIndex: 'deadline',
       key: 'deadline',
-      width: 170,
-      render: (date: string) => <strong className="text-red-600 text-base">{date}</strong>,
+      width: 96,
+      align: 'center' as const,
+      className: 'dashboard-col-deadline',
+      render: (date: string) => <strong className="text-red-600 text-sm">{date}</strong>,
     },
     {
       title: 'TIẾN ĐỘ CV',
       dataIndex: 'tienDoPhanTram',
       key: 'tienDoPhanTram',
-      width: 180,
+      width: 120,
       align: 'center' as const,
       render: (value: number) => <TaskProgressBar value={value} />,
     },
@@ -805,41 +1006,37 @@ const Dashboard: React.FC = () => {
       title: 'PHÒNG BAN',
       dataIndex: 'department',
       key: 'department',
-      width: 130,
-      render: (text: string) => <Tag className="chart-drill-tag m-0">{text}</Tag>,
+      width: 120,
+      render: (text: string) => renderDeptTag(text),
     },
-    {
-      title: 'CÔNG VIỆC',
-      dataIndex: 'name',
-      key: 'name',
-      width: 280,
-      ellipsis: true,
-      render: (text: string, record: DashboardTask) => (
-        <Tooltip title={record.desc || text} placement="topLeft">
-          <span className="chart-drill-task-name text-[#1E386B] cursor-pointer hover:underline">{text}</span>
-        </Tooltip>
-      ),
-    },
+    taskNameColumn({ width: 360 }),
     {
       title: 'NGƯỜI PHỤ TRÁCH',
       dataIndex: 'assignee',
       key: 'assignee',
-      width: 160,
+      width: 108,
       ellipsis: true,
+      className: 'dashboard-col-assignee',
       render: (text: string) => <span className="chart-drill-cell-text">{text}</span>,
     },
     {
-      title: 'NGÀY HOÀN THÀNH',
+      title: (
+        <Tooltip title="Ngày hoàn thành">
+          <span>NGÀY HT</span>
+        </Tooltip>
+      ),
       dataIndex: 'deadline',
       key: 'deadline',
-      width: 160,
+      width: 96,
+      align: 'center' as const,
+      className: 'dashboard-col-deadline',
       render: (date: string) => <strong className="chart-drill-deadline">{date}</strong>,
     },
     {
       title: 'TIẾN ĐỘ CV',
       dataIndex: 'tienDoPhanTram',
       key: 'tienDoPhanTram',
-      width: 150,
+      width: 120,
       align: 'center' as const,
       render: (value: number) => <TaskProgressBar value={value} />,
     },
@@ -847,13 +1044,13 @@ const Dashboard: React.FC = () => {
       title: 'TRẠNG THÁI',
       dataIndex: 'status',
       key: 'status',
-      width: 130,
+      width: 110,
       render: (status: string) => renderStatus(status),
     },
     {
       title: '',
       key: 'actions',
-      width: 64,
+      width: 52,
       align: 'center' as const,
       render: (_: unknown, record: DashboardTask) => renderTaskActions(record),
     },
@@ -866,49 +1063,52 @@ const Dashboard: React.FC = () => {
       title: 'PHÒNG BAN',
       dataIndex: 'department',
       key: 'department',
-      width: 180,
-      render: (text: string) => <Tag className="text-sm px-2 py-1 m-0">{text}</Tag>,
+      width: 120,
+      ellipsis: true,
+      render: (text: string) => renderDeptTag(text),
     },
-    {
-      title: 'CÔNG VIỆC',
-      dataIndex: 'name',
-      key: 'name',
-      width: 360,
-      render: (text: string, record: any) => (
-        <Tooltip title={record.desc} placement="topLeft">
-          <Text strong className="text-[#1E386B] cursor-pointer hover:underline text-base leading-snug">
-            {text}
-          </Text>
-        </Tooltip>
-      ),
-    },
+    taskNameColumn({ width: 380 }),
     {
       title: 'NGƯỜI PHỤ TRÁCH',
       dataIndex: 'assignee',
       key: 'assignee',
-      width: 190,
-      render: (text: string) => <span className="text-base font-semibold text-[#0f274d]">{text}</span>,
+      width: 108,
+      ellipsis: true,
+      className: 'dashboard-col-assignee',
+      render: (text: string) => <span className="text-sm font-semibold text-[#0f274d]">{text}</span>,
     },
     {
-      title: 'NGÀY HOÀN THÀNH',
+      title: (
+        <Tooltip title="Ngày hoàn thành">
+          <span>NGÀY HT</span>
+        </Tooltip>
+      ),
       dataIndex: 'deadline',
       key: 'deadline',
-      width: 170,
-      render: (date: string) => <strong className="text-base text-[#1E386B]">{date}</strong>,
+      width: 96,
+      align: 'center' as const,
+      className: 'dashboard-col-deadline',
+      render: (date: string) => <strong className="text-sm text-[#1E386B]">{date}</strong>,
     },
     {
       title: 'TIẾN ĐỘ CV',
       dataIndex: 'tienDoPhanTram',
       key: 'tienDoPhanTram',
-      width: 180,
+      width: 120,
       align: 'center' as const,
       render: (value: number) => <TaskProgressBar value={value} />,
     },
     {
-      title: 'MỨC ĐỘ ẢNH HƯỞNG',
+      title: (
+        <Tooltip title="Mức độ ảnh hưởng">
+          <span>ẢH</span>
+        </Tooltip>
+      ),
       dataIndex: 'impact',
       key: 'impact',
-      width: 190,
+      width: 88,
+      align: 'center' as const,
+      className: 'dashboard-col-impact',
       render: (impact: number) => renderImpact(impact),
     },
   ];
@@ -968,7 +1168,6 @@ const Dashboard: React.FC = () => {
     () => createStackTotalLabel(chartDataRecharts),
     [chartDataRecharts]
   );
-  const completedStackLabel = useMemo(() => createCompletedStackLabel(), []);
 
   const chartDrillTasks = useMemo(() => {
     if (!chartDrillDown) return [];
@@ -1009,28 +1208,38 @@ const Dashboard: React.FC = () => {
     setChartDrillPage(1);
   }, [chartDrillDown]);
 
-  const openChartGroupPopup = (data: { payload?: DashboardChartRow }) => {
+  const openChartGroupPopup = useCallback((data: { payload?: DashboardChartRow }) => {
     const row = data?.payload;
     if (!row?.deptKey) return;
-    setChartDrillDown(null);
-    setChartGroupPopup({
-      groupKey: row.deptKey,
-      groupName: row.name,
+    startTransition(() => {
+      setChartDrillDown(null);
+      setChartGroupPopup({
+        groupKey: row.deptKey,
+        groupName: row.name,
+      });
     });
-  };
+  }, []);
 
-  const openChartStatusTasks = (status: DashboardChartStatus) => {
-    if (!chartGroupPopup) return;
-    if (!chartGroupStatusCounts[status]) return;
-    setChartDrillDown({
-      ...chartGroupPopup,
-      status,
-    });
-  };
+  const openChartStatusTasks = useCallback(
+    (status: DashboardChartStatus) => {
+      if (!chartGroupPopup) return;
+      if (!chartGroupStatusCounts[status]) return;
+      startTransition(() => {
+        setChartDrillDown({
+          ...chartGroupPopup,
+          status,
+        });
+      });
+    },
+    [chartGroupPopup, chartGroupStatusCounts]
+  );
 
-  const handleChartBarClick = (_status: DashboardChartStatus) => (data: { payload?: DashboardChartRow }) => {
-    openChartGroupPopup(data);
-  };
+  const handleChartBarClick = useCallback(
+    (data: { payload?: DashboardChartRow }) => {
+      openChartGroupPopup(data);
+    },
+    [openChartGroupPopup]
+  );
 
   const chartTitle =
     chartGroupMode === 'block'
@@ -1426,191 +1635,202 @@ const Dashboard: React.FC = () => {
       </div>
     ) : null;
 
-  const listsNode = (
-    <div className="space-y-3 md:space-y-5">
-      <Card
-        title={<span className="text-red-600 font-bold uppercase text-lg md:text-xl tracking-wide"><ClockCircleOutlined className="mr-2" />Danh sách việc quá hạn</span>}
-        variant="borderless"
-        className="shadow-sm border border-red-100 dashboard-list-card"
-        styles={{ body: { padding: 0 }, header: { minHeight: 56, paddingInline: 20 } }}
-      >
-        {/* Desktop View: Table */}
-        <div className="hidden md:block p-4 md:p-5">
-          {displayOverdue.length > 0 ? (
-            <Table
-              dataSource={displayOverdue}
-              columns={overdueColumns}
-              pagination={{
-                current: overduePage,
-                pageSize: LIST_PAGE_SIZE,
-                onChange: setOverduePage,
-                size: 'default',
-                showSizeChanger: false,
-                showTotal: total => `Tổng ${total} việc`,
-              }}
-              scroll={{ x: 1600, y: LIST_SCROLL_Y }}
-              size="middle"
-              rowKey="id"
-              tableLayout="fixed"
-              className="w-full dashboard-wide-table"
-              onRow={(record) => ({ onClick: () => handleRowClick(record) })}
+  const overdueNode = (
+    <Card
+      title={<span className="text-red-600 font-bold uppercase text-lg md:text-xl tracking-wide"><ClockCircleOutlined className="mr-2" />Danh sách việc quá hạn</span>}
+      variant="borderless"
+      className="shadow-sm border border-red-100 dashboard-list-card h-full"
+      styles={{ body: { padding: 0 }, header: { minHeight: 56, paddingInline: 20 } }}
+    >
+      {/* Desktop View: Table */}
+      <div className="hidden md:block p-4 md:p-5">
+        {displayOverdue.length > 0 ? (
+          <Table
+            dataSource={displayOverdue}
+            columns={overdueColumns}
+            pagination={{
+              current: overduePage,
+              pageSize: LIST_PAGE_SIZE,
+              onChange: setOverduePage,
+              size: 'default',
+              showSizeChanger: false,
+              showTotal: total => `Tổng ${total} việc`,
+            }}
+            scroll={{ x: 1020, y: LIST_SCROLL_Y }}
+            size="small"
+            rowKey="id"
+            tableLayout="fixed"
+            className="w-full dashboard-wide-table"
+            onRow={(record) => ({ onClick: () => handleRowClick(record) })}
+          />
+        ) : <Empty description="Tuyệt vời! Không có công việc nào bị quá hạn." />}
+      </div>
+
+      {/* Mobile View: Card List */}
+      <div className="block md:hidden p-3 bg-red-50/30">
+        <div className="space-y-1.5 max-h-[640px] overflow-y-auto pr-1 dashboard-kpi-list-mobile dashboard-scroll">
+          {displayOverdue.length > 0 ? displayOverdue.slice((overduePage - 1) * LIST_PAGE_SIZE, overduePage * LIST_PAGE_SIZE).map(task => renderMobileTaskCard(task, 'red')) : <Empty description="Tuyệt vời! Không có công việc nào bị quá hạn." />}
+        </div>
+        {displayOverdue.length > 0 && (
+          <div className="mt-3 pt-3 border-t border-red-100 flex justify-center shrink-0">
+            <Pagination
+              current={overduePage}
+              pageSize={LIST_PAGE_SIZE}
+              total={displayOverdue.length}
+              onChange={setOverduePage}
+              size="small"
+              showSizeChanger={false}
             />
-          ) : <Empty description="Tuyệt vời! Không có công việc nào bị quá hạn." />}
-        </div>
-
-        {/* Mobile View: Card List */}
-        <div className="block md:hidden p-3 bg-red-50/30">
-          <div className="space-y-1.5 max-h-[640px] overflow-y-auto pr-1 dashboard-kpi-list-mobile dashboard-scroll">
-            {displayOverdue.length > 0 ? displayOverdue.slice((overduePage - 1) * LIST_PAGE_SIZE, overduePage * LIST_PAGE_SIZE).map(task => renderMobileTaskCard(task, 'red')) : <Empty description="Tuyệt vời! Không có công việc nào bị quá hạn." />}
           </div>
-          {displayOverdue.length > 0 && (
-            <div className="mt-3 pt-3 border-t border-red-100 flex justify-center shrink-0">
-              <Pagination
-                current={overduePage}
-                pageSize={LIST_PAGE_SIZE}
-                total={displayOverdue.length}
-                onChange={setOverduePage}
-                size="small"
-                showSizeChanger={false}
-              />
-            </div>
-          )}
-        </div>
-      </Card>
+        )}
+      </div>
+    </Card>
+  );
 
-      {/* VIỆC ẢNH HƯỞNG CAO */}
-      <Card
-        title={<span className="text-orange-600 font-bold uppercase text-lg md:text-xl tracking-wide"><FireOutlined className="mr-2" />Việc ảnh hưởng cao đang làm (mức 3-4)</span>}
-        variant="borderless"
-        className="shadow-sm border border-orange-100 dashboard-list-card"
-        styles={{ body: { padding: 0 }, header: { minHeight: 56, paddingInline: 20 } }}
-      >
-        {/* Desktop View: Table */}
-        <div className="hidden md:block p-4 md:p-5">
-          {displayImportant.length > 0 ? (
-            <Table
-              dataSource={displayImportant}
-              columns={importantColumns}
-              pagination={{
-                current: importantPage,
-                pageSize: LIST_PAGE_SIZE,
-                onChange: setImportantPage,
-                size: 'default',
-                showSizeChanger: false,
-                showTotal: total => `Tổng ${total} việc`,
-              }}
-              scroll={{ x: 1800, y: LIST_SCROLL_Y }}
-              size="middle"
-              rowKey="id"
-              tableLayout="fixed"
-              className="w-full dashboard-wide-table"
-              onRow={(record) => ({ onClick: () => handleRowClick(record) })}
+  const importantNode = (
+    <Card
+      title={<span className="text-orange-600 font-bold uppercase text-lg md:text-xl tracking-wide"><FireOutlined className="mr-2" />Việc ảnh hưởng cao đang làm (mức 3-4)</span>}
+      variant="borderless"
+      className="shadow-sm border border-orange-100 dashboard-list-card h-full"
+      styles={{ body: { padding: 0 }, header: { minHeight: 56, paddingInline: 20 } }}
+    >
+      {/* Desktop View: Table */}
+      <div className="hidden md:block p-4 md:p-5">
+        {displayImportant.length > 0 ? (
+          <Table
+            dataSource={displayImportant}
+            columns={importantColumns}
+            pagination={{
+              current: importantPage,
+              pageSize: LIST_PAGE_SIZE,
+              onChange: setImportantPage,
+              size: 'default',
+              showSizeChanger: false,
+              showTotal: total => `Tổng ${total} việc`,
+            }}
+            scroll={{ x: 1100, y: LIST_SCROLL_Y }}
+            size="small"
+            rowKey="id"
+            tableLayout="fixed"
+            className="w-full dashboard-wide-table"
+            onRow={(record) => ({ onClick: () => handleRowClick(record) })}
+          />
+        ) : <Empty description="Không có công việc quan trọng nào đang làm." />}
+      </div>
+
+      {/* Mobile View: Card List */}
+      <div className="block md:hidden p-3 bg-orange-50/30">
+        <div className="space-y-1.5 max-h-[520px] overflow-y-auto pr-1 dashboard-kpi-list-mobile">
+          {displayImportant.length > 0 ? displayImportant.slice((importantPage - 1) * LIST_PAGE_SIZE, importantPage * LIST_PAGE_SIZE).map(task => renderMobileTaskCard(task, 'orange')) : <Empty description="Không có công việc quan trọng nào đang làm." />}
+        </div>
+        {displayImportant.length > 0 && (
+          <div className="mt-3 pt-3 border-t border-orange-100 flex justify-center shrink-0">
+            <Pagination
+              current={importantPage}
+              pageSize={LIST_PAGE_SIZE}
+              total={displayImportant.length}
+              onChange={setImportantPage}
+              size="small"
+              showSizeChanger={false}
             />
-          ) : <Empty description="Không có công việc quan trọng nào đang làm." />}
-        </div>
-
-        {/* Mobile View: Card List */}
-        <div className="block md:hidden p-3 bg-orange-50/30">
-          <div className="space-y-1.5 max-h-[520px] overflow-y-auto pr-1 dashboard-kpi-list-mobile">
-            {displayImportant.length > 0 ? displayImportant.slice((importantPage - 1) * LIST_PAGE_SIZE, importantPage * LIST_PAGE_SIZE).map(task => renderMobileTaskCard(task, 'orange')) : <Empty description="Không có công việc quan trọng nào đang làm." />}
           </div>
-          {displayImportant.length > 0 && (
-            <div className="mt-3 pt-3 border-t border-orange-100 flex justify-center shrink-0">
-              <Pagination
-                current={importantPage}
-                pageSize={LIST_PAGE_SIZE}
-                total={displayImportant.length}
-                onChange={setImportantPage}
-                size="small"
-                showSizeChanger={false}
-              />
-            </div>
-          )}
-        </div>
-      </Card>
-    </div>
+        )}
+      </div>
+    </Card>
   );
 
   const timelineNode = (
     <Card
       title={<span className="text-red-600 font-bold">⚠️ CÁC CÔNG VIỆC VƯỚNG MẮC</span>}
       variant="borderless"
-      className="shadow-sm h-full border border-red-100 flex flex-col"
+      className="shadow-sm h-full min-h-[320px] border border-red-100 flex flex-col"
       styles={{ body: { flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' } }}
     >
       {displayIssues.length > 0 ? (
-        <div className="flex flex-col h-full">
-          {/* Desktop View: Timeline */}
-          <div className="hidden md:block flex-1 overflow-y-auto pr-2">
-            <Timeline
-              items={displayIssues.slice((issuePage - 1) * 3, issuePage * 3).map(issue => ({
-                color: issue.status === 'Quá hạn' ? 'red' : 'orange',
-                children: (
+        <div className="flex flex-col h-full min-h-0">
+          <div className="flex-1 overflow-y-auto pr-1 dashboard-scroll">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              {displayIssues.slice((issuePage - 1) * 6, issuePage * 6).map(issue => {
+                const overdue = issue.status === 'Quá hạn';
+                return (
                   <div
-                    className="pb-4 cursor-pointer hover:bg-gray-100 p-2 -ml-2 rounded-lg transition-colors relative group"
+                    key={issue.id}
+                    role="button"
+                    tabIndex={0}
                     onClick={() => handleRowClick(issue)}
+                    onKeyDown={e => {
+                      if (e.key === 'Enter' || e.key === ' ') {
+                        e.preventDefault();
+                        handleRowClick(issue);
+                      }
+                    }}
+                    className={`dashboard-issue-card group relative flex flex-col gap-2 rounded-xl border bg-white p-3 pl-3.5 shadow-sm cursor-pointer transition-all duration-150 hover:-translate-y-0.5 hover:shadow-md active:scale-[0.99] ${
+                      overdue
+                        ? 'border-red-200 hover:border-red-300'
+                        : 'border-orange-200 hover:border-orange-300'
+                    }`}
                   >
-                    <div className="font-bold text-[#1677ff] hover:underline text-sm mb-1">
-                      {issue.name}
+                    <span
+                      className={`absolute left-0 top-2 bottom-2 w-1 rounded-full ${
+                        overdue ? 'bg-red-500' : 'bg-[#F38320]'
+                      }`}
+                      aria-hidden
+                    />
+                    <div className="flex items-start gap-2 min-w-0">
+                      <span
+                        className={`mt-0.5 shrink-0 inline-flex h-5 w-5 items-center justify-center rounded-full border-2 ${
+                          overdue ? 'border-red-400 bg-red-50' : 'border-orange-400 bg-orange-50'
+                        }`}
+                        aria-hidden
+                      />
+                      <div className="min-w-0 flex-1">
+                        <p
+                          className={`m-0 font-bold text-sm leading-snug line-clamp-2 group-hover:underline ${
+                            overdue ? 'text-red-600' : 'text-[#1E386B]'
+                          }`}
+                        >
+                          {issue.name}
+                        </p>
+                        {issue.history ? (
+                          <p className="m-0 mt-1 text-xs text-gray-600 line-clamp-2 leading-relaxed">
+                            {issue.history}
+                          </p>
+                        ) : null}
+                      </div>
                     </div>
-                    <p className="text-sm text-gray-600 m-0 line-clamp-2">{issue.history}</p>
-                    {/* Nút Đã giải quyết */}
-                    <div className="mt-2 flex justify-end items-center">
+                    <div className="mt-auto flex items-center justify-between gap-2 pt-1">
                       <Tag
-                        // icon={<CheckOutlined style={{ fontSize: '11px' }} />}
-                        className="m-0 bg-green-50 text-green-600 border-none rounded text-[11px] px-2 py-0.5 cursor-pointer hover:bg-green-100 font-semibold"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          handleResolveIssue(issue.id);
-                        }}
+                        className={`m-0 text-[10px] font-bold uppercase tracking-wide border-none px-2 py-0.5 ${
+                          overdue
+                            ? 'bg-red-50 text-red-600'
+                            : 'bg-orange-50 text-orange-700'
+                        }`}
                       >
-                         Đã Giải quyết
+                        {overdue ? 'Quá hạn' : 'Vướng mắc'}
                       </Tag>
-                    </div>
-                  </div>
-                ),
-              }))}
-            />
-          </div>
-
-          {/* Mobile View: Card List */}
-          <div className="block md:hidden flex-1 overflow-y-auto pr-1">
-            <div className="space-y-3">
-              {displayIssues.slice((issuePage - 1) * 3, issuePage * 3).map(issue => (
-                <div
-                  key={issue.id}
-                  onClick={() => handleRowClick(issue)}
-                  className="dashboard-mobile-task-card relative bg-white shadow-sm border border-red-100 overflow-hidden active:scale-[0.98] transition-transform cursor-pointer group"
-                >
-                  <div className="absolute left-0 top-0 bottom-0 w-1 bg-red-500"></div>
-                  <div className="flex flex-col pl-2">
-                    <Text strong className="task-title text-red-600 line-clamp-2">{issue.name}</Text>
-                    <p className="text-xs text-gray-600 m-0 line-clamp-2">{issue.history}</p>
-                    {/* Nút Đã giải quyết - Mobile */}
-                    <div className="mt-2 flex justify-end items-center">
-                      <Tag
-                        // icon={<CheckOutlined style={{ fontSize: '11px' }} />}
-                        className="m-0 bg-green-50 text-green-600 border-none rounded text-[11px] px-2 py-0.5 cursor-pointer hover:bg-green-100 font-semibold"
-                        onClick={(e) => {
+                      <button
+                        type="button"
+                        className="shrink-0 rounded-md bg-slate-100 px-2.5 py-1 text-[11px] font-semibold text-slate-600 transition hover:bg-emerald-50 hover:text-emerald-700"
+                        onClick={e => {
                           e.stopPropagation();
                           handleResolveIssue(issue.id);
                         }}
                       >
                         Đã Giải quyết
-                      </Tag>
+                      </button>
                     </div>
                   </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
           </div>
 
-          <div className="mt-2 pt-3 border-t border-gray-100 flex justify-center shrink-0">
+          <div className="mt-3 pt-3 border-t border-gray-100 flex justify-center shrink-0">
             <Pagination
               current={issuePage}
-              pageSize={3}
+              pageSize={6}
               total={displayIssues.length}
-              onChange={(page) => setIssuePage(page)}
+              onChange={page => setIssuePage(page)}
               size="small"
               showSizeChanger={false}
             />
@@ -1626,12 +1846,16 @@ const Dashboard: React.FC = () => {
     <Card
       title={chartTitle}
       variant="borderless"
-      className="shadow-sm border border-gray-100 dashboard-chart-card"
+      className="shadow-sm border border-gray-100 dashboard-chart-card h-full"
       extra={
         <Segmented
           size="small"
           value={chartGroupMode}
-          onChange={value => setChartGroupMode(value as 'dept' | 'block')}
+          onChange={value => {
+            startTransition(() => {
+              setChartGroupMode(value as 'dept' | 'block');
+            });
+          }}
           options={[
             { label: 'Theo khối', value: 'block' },
             { label: 'Theo phòng ban', value: 'dept' },
@@ -1676,90 +1900,14 @@ const Dashboard: React.FC = () => {
                   overflowY: chartDataRecharts.length > 6 ? 'auto' : 'visible',
                 }}
               >
-                <div style={{ height: chartHeight, minHeight: 200 }} className="dashboard-chart-wrap">
-                  <ResponsiveContainer width="100%" height={chartHeight} minHeight={200}>
-                    <BarChart
-                      layout="vertical"
-                      data={chartDataRecharts}
-                      margin={{
-                        top: 8,
-                        right: 8,
-                        left: 4,
-                        bottom: 8,
-                      }}
-                      barCategoryGap="18%"
-                      barSize={12}
-                    >
-                      <CartesianGrid strokeDasharray="3 3" horizontal={false} stroke="#E5E7EB" />
-                      <XAxis
-                        type="number"
-                        allowDecimals={false}
-                        domain={[0, chartMaxValue + 1]}
-                        axisLine={false}
-                        tickLine={false}
-                        tick={{ fontSize: 10, fill: '#6B7280' }}
-                        label={{
-                          value: 'Số công việc',
-                          position: 'insideBottom',
-                          offset: -2,
-                          style: { fontSize: 11, fill: '#9CA3AF' },
-                        }}
-                      />
-                      <YAxis
-                        type="category"
-                        dataKey="shortName"
-                        width={88}
-                        axisLine={false}
-                        tickLine={false}
-                        tick={{ fontSize: 9, fill: '#1E386B', fontWeight: 600 }}
-                      />
-                      <RechartsTooltip
-                        cursor={{ fill: 'rgba(30, 56, 107, 0.06)' }}
-                        labelFormatter={(_label, payload) => payload?.[0]?.payload?.name ?? _label}
-                        formatter={(value: number, name: string) => [`${value} việc`, name]}
-                        contentStyle={{
-                          borderRadius: '8px',
-                          border: '1px solid #F3F4F6',
-                          boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)',
-                          fontSize: 12,
-                        }}
-                      />
-                      <Bar
-                        dataKey="Hoàn thành"
-                        name="Hoàn thành"
-                        fill="#10b981"
-                        stackId="status"
-                        radius={[0, 0, 0, 0]}
-                        cursor="pointer"
-                        onClick={handleChartBarClick('Hoàn thành')}
-                      >
-                        <LabelList content={stackTotalLabel} />
-                      </Bar>
-                      <Bar
-                        dataKey="Đang làm"
-                        name="Đang làm"
-                        fill="#F38320"
-                        stackId="status"
-                        radius={[0, 0, 0, 0]}
-                        cursor="pointer"
-                        onClick={handleChartBarClick('Đang làm')}
-                      >
-                        <LabelList content={stackTotalLabel} />
-                      </Bar>
-                      <Bar
-                        dataKey="Quá hạn"
-                        name="Quá hạn"
-                        fill="#ef4444"
-                        stackId="status"
-                        radius={[0, 4, 4, 0]}
-                        cursor="pointer"
-                        onClick={handleChartBarClick('Quá hạn')}
-                      >
-                        <LabelList content={stackTotalLabel} />
-                      </Bar>
-                    </BarChart>
-                  </ResponsiveContainer>
-                </div>
+                <StatusBarChart
+                  data={chartDataRecharts}
+                  height={chartHeight}
+                  maxValue={chartMaxValue}
+                  isMobile
+                  stackTotalLabel={stackTotalLabel}
+                  onBarClick={handleChartBarClick}
+                />
               </div>
             </div>
           </div>
@@ -1802,90 +1950,14 @@ const Dashboard: React.FC = () => {
                   overflowY: chartDataRecharts.length > 6 ? 'auto' : 'visible',
                 }}
               >
-                <div style={{ height: chartHeight, minHeight: 220 }} className="dashboard-chart-wrap">
-                  <ResponsiveContainer width="100%" height={chartHeight} minHeight={220}>
-                    <BarChart
-                      layout="vertical"
-                      data={chartDataRecharts}
-                      margin={{
-                        top: 8,
-                        right: 24,
-                        left: 4,
-                        bottom: 8,
-                      }}
-                      barCategoryGap="18%"
-                      barSize={14}
-                    >
-                      <CartesianGrid strokeDasharray="3 3" horizontal={false} stroke="#E5E7EB" />
-                      <XAxis
-                        type="number"
-                        allowDecimals={false}
-                        domain={[0, chartMaxValue + 1]}
-                        axisLine={false}
-                        tickLine={false}
-                        tick={{ fontSize: 12, fill: '#6B7280' }}
-                        label={{
-                          value: 'Số công việc',
-                          position: 'insideBottom',
-                          offset: -2,
-                          style: { fontSize: 11, fill: '#9CA3AF' },
-                        }}
-                      />
-                      <YAxis
-                        type="category"
-                        dataKey="shortName"
-                        width={128}
-                        axisLine={false}
-                        tickLine={false}
-                        tick={{ fontSize: 11, fill: '#1E386B', fontWeight: 600 }}
-                      />
-                      <RechartsTooltip
-                        cursor={{ fill: 'rgba(30, 56, 107, 0.06)' }}
-                        labelFormatter={(_label, payload) => payload?.[0]?.payload?.name ?? _label}
-                        formatter={(value: number, name: string) => [`${value} việc`, name]}
-                        contentStyle={{
-                          borderRadius: '8px',
-                          border: '1px solid #F3F4F6',
-                          boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)',
-                          fontSize: 12,
-                        }}
-                      />
-                      <Bar
-                        dataKey="Hoàn thành"
-                        name="Hoàn thành"
-                        fill="#10b981"
-                        stackId="status"
-                        radius={[0, 0, 0, 0]}
-                        cursor="pointer"
-                        onClick={handleChartBarClick('Hoàn thành')}
-                      >
-                        <LabelList content={stackTotalLabel} />
-                      </Bar>
-                      <Bar
-                        dataKey="Đang làm"
-                        name="Đang làm"
-                        fill="#F38320"
-                        stackId="status"
-                        radius={[0, 0, 0, 0]}
-                        cursor="pointer"
-                        onClick={handleChartBarClick('Đang làm')}
-                      >
-                        <LabelList content={stackTotalLabel} />
-                      </Bar>
-                      <Bar
-                        dataKey="Quá hạn"
-                        name="Quá hạn"
-                        fill="#ef4444"
-                        stackId="status"
-                        radius={[0, 4, 4, 0]}
-                        cursor="pointer"
-                        onClick={handleChartBarClick('Quá hạn')}
-                      >
-                        <LabelList content={stackTotalLabel} />
-                      </Bar>
-                    </BarChart>
-                  </ResponsiveContainer>
-                </div>
+                <StatusBarChart
+                  data={chartDataRecharts}
+                  height={chartHeight}
+                  maxValue={chartMaxValue}
+                  isMobile={false}
+                  stackTotalLabel={stackTotalLabel}
+                  onBarClick={handleChartBarClick}
+                />
               </div>
             </div>
           </div>
@@ -1897,6 +1969,7 @@ const Dashboard: React.FC = () => {
   );
 
   return (
+    <>
     <Spin spinning={tasksLoading} tip="Đang tải dữ liệu Supabase...">
       <div className="dashboard-container space-y-4 md:space-y-6 bg-gray-50 min-h-screen p-3 md:p-6 relative">
       
@@ -1906,14 +1979,15 @@ const Dashboard: React.FC = () => {
           {desktopFiltersNode}
           <div className="mt-6">{kpisNode}</div>
           {kpiDrillDownNode ? <div className="mt-4">{kpiDrillDownNode}</div> : null}
-          <Row gutter={[16, 16]} className="mt-6">
-            <Col xs={24}>{listsNode}</Col>
+          <Row gutter={[16, 16]} className="mt-6 items-stretch">
+            <Col xs={24} lg={12}>{chartNode}</Col>
+            <Col xs={24} lg={12}>{timelineNode}</Col>
           </Row>
           <Row gutter={[16, 16]} className="mt-6">
-            <Col xs={24}>{timelineNode}</Col>
+            <Col xs={24}>{importantNode}</Col>
           </Row>
-          <Row className="mt-6">
-            <Col xs={24}>{chartNode}</Col>
+          <Row gutter={[16, 16]} className="mt-6">
+            <Col xs={24}>{overdueNode}</Col>
           </Row>
         </div>
       )}
@@ -1943,8 +2017,9 @@ const Dashboard: React.FC = () => {
                 children: (
                   <div className="space-y-2">
                     {alertFiltersNode}
-                    {listsNode}
                     {timelineNode}
+                    {importantNode}
+                    {overdueNode}
                   </div>
                 )
               },
@@ -1960,37 +2035,61 @@ const Dashboard: React.FC = () => {
                     >
                       {displayIssues.length > 0 ? (
                         <>
-                          <div className="space-y-2 flex-1 overflow-y-auto">
-                            {displayIssues.slice((issuePage - 1) * 5, issuePage * 5).map(issue => (
-                              <div
-                                key={issue.id}
-                                onClick={() => handleRowClick(issue)}
-                                className="relative bg-white rounded-lg p-3 shadow-sm border border-red-100 overflow-hidden active:scale-[0.98] transition-transform cursor-pointer group"
-                              >
-                                <div className="absolute left-0 top-0 bottom-0 w-1 bg-red-500"></div>
-                                <div className="flex items-start justify-between gap-2 pl-2">
-                                  <div className="flex flex-col flex-1 min-w-0">
-                                    <Text strong className="text-red-600 text-sm leading-tight mb-1 line-clamp-1">{issue.name}</Text>
-                                    <p className="text-xs text-gray-600 m-0 line-clamp-1">{issue.history}</p>
-                                  </div>
-                                  <Tag
-                                    className="shrink-0 bg-green-50 text-green-600 border-none text-[10px] px-2 py-0.5 rounded-full whitespace-nowrap font-semibold cursor-pointer hover:bg-green-100"
-                                    onClick={(e) => {
-                                      e.stopPropagation();
-                                      handleResolveIssue(issue.id);
-                                    }}
+                          <div className="grid grid-cols-1 gap-2.5 flex-1 overflow-y-auto dashboard-scroll pr-0.5">
+                            {displayIssues.slice((issuePage - 1) * 6, issuePage * 6).map(issue => {
+                              const overdue = issue.status === 'Quá hạn';
+                              return (
+                                <div
+                                  key={issue.id}
+                                  onClick={() => handleRowClick(issue)}
+                                  className={`dashboard-issue-card relative flex flex-col gap-2 rounded-xl border bg-white p-3 pl-3.5 shadow-sm cursor-pointer active:scale-[0.99] transition-transform ${
+                                    overdue ? 'border-red-200' : 'border-orange-200'
+                                  }`}
+                                >
+                                  <span
+                                    className={`absolute left-0 top-2 bottom-2 w-1 rounded-full ${
+                                      overdue ? 'bg-red-500' : 'bg-[#F38320]'
+                                    }`}
+                                    aria-hidden
+                                  />
+                                  <p
+                                    className={`m-0 font-bold text-sm leading-snug line-clamp-2 ${
+                                      overdue ? 'text-red-600' : 'text-[#1E386B]'
+                                    }`}
                                   >
-                                    Giải
-                                  </Tag>
+                                    {issue.name}
+                                  </p>
+                                  {issue.history ? (
+                                    <p className="m-0 text-xs text-gray-600 line-clamp-2">{issue.history}</p>
+                                  ) : null}
+                                  <div className="flex items-center justify-between gap-2">
+                                    <Tag
+                                      className={`m-0 text-[10px] font-bold uppercase border-none px-2 py-0.5 ${
+                                        overdue ? 'bg-red-50 text-red-600' : 'bg-orange-50 text-orange-700'
+                                      }`}
+                                    >
+                                      {overdue ? 'Quá hạn' : 'Vướng mắc'}
+                                    </Tag>
+                                    <button
+                                      type="button"
+                                      className="shrink-0 rounded-md bg-slate-100 px-2.5 py-1 text-[11px] font-semibold text-slate-600"
+                                      onClick={e => {
+                                        e.stopPropagation();
+                                        handleResolveIssue(issue.id);
+                                      }}
+                                    >
+                                      Đã Giải quyết
+                                    </button>
+                                  </div>
                                 </div>
-                              </div>
-                            ))}
+                              );
+                            })}
                           </div>
                           {displayIssues.length > 0 && (
                             <div className="mt-2 pt-2 border-t border-red-100 flex justify-center shrink-0">
                               <Pagination
                                 current={issuePage}
-                                pageSize={5}
+                                pageSize={6}
                                 total={displayIssues.length}
                                 onChange={setIssuePage}
                                 size="small"
@@ -2010,6 +2109,8 @@ const Dashboard: React.FC = () => {
           />
         </div>
       )}
+      </div>
+    </Spin>
 
       {/* --- POPUP TRẠNG THÁI TỪ BIỂU ĐỒ --- */}
       {chartGroupPopup && !chartDrillDown && (
@@ -2179,6 +2280,7 @@ const Dashboard: React.FC = () => {
       {/* --- MODAL CHI TIẾT / SỬA TRỰC TIẾP --- */}
       {selectedTask && (
         <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-[9999] p-2 md:p-4">
+          <ConfigProvider theme={{ token: { zIndexPopupBase: 11000 } }}>
           <div className="bg-white rounded-xl shadow-xl w-full max-w-[96vw] h-[94vh] flex flex-col">
             <div className="bg-[#F38320] text-white p-4 md:p-5 flex flex-wrap justify-between items-start gap-3 rounded-t-xl shrink-0">
               <div className="min-w-0 flex-1 flex items-start gap-3">
@@ -2227,7 +2329,7 @@ const Dashboard: React.FC = () => {
                   okButtonProps={{ danger: true, loading: deletingTaskId === selectedTask.id }}
                   onConfirm={() => void handleDeleteTask(selectedTask)}
                   disabled={supabaseConnected === false}
-                  zIndex={11000}
+                  zIndex={12000}
                   getPopupContainer={() => document.body}
                 >
                   <Button
@@ -2267,7 +2369,14 @@ const Dashboard: React.FC = () => {
                           rules={[{ required: true, message: 'Nhập công việc' }]}
                           className="sm:col-span-2"
                         >
-                          <Input.TextArea rows={4} placeholder="Mô tả công việc" />
+                          <Input.TextArea rows={3} placeholder="Mô tả công việc" />
+                        </Form.Item>
+                        <Form.Item
+                          name="vuongMac"
+                          label="Vướng mắc"
+                          className="sm:col-span-2"
+                        >
+                          <Input.TextArea rows={3} placeholder="Khó khăn cần hỗ trợ..." />
                         </Form.Item>
                         <Form.Item
                           name="nguoiGiao"
@@ -2280,6 +2389,7 @@ const Dashboard: React.FC = () => {
                             optionFilterProp="label"
                             options={dashboardAssigneeOptions}
                             optionLabelProp="value"
+                            getPopupContainer={trigger => trigger.parentElement ?? document.body}
                             optionRender={option => {
                               const data = option.data as PersonnelSelectOption;
                               return (
@@ -2302,23 +2412,77 @@ const Dashboard: React.FC = () => {
                           />
                         </Form.Item>
                         <Form.Item name="anhHuong" label="Mức ảnh hưởng">
-                          <Select options={[1, 2, 3, 4].map(level => ({ value: level, label: `${level} sao` }))} />
+                          <Select
+                            options={[1, 2, 3, 4].map(level => ({ value: level, label: `${level} sao` }))}
+                            getPopupContainer={trigger => trigger.parentElement ?? document.body}
+                          />
+                        </Form.Item>
+                        <Form.Item name="nguoiTheoDoi" label="Người theo dõi" className="sm:col-span-2 mb-0">
+                          <PersonnelMultiSelect
+                            options={dashboardFollowerOptions}
+                            placeholder={
+                              dashboardFollowerOptions.length
+                                ? 'Tick chọn một hoặc nhiều người theo dõi'
+                                : 'Chưa có nhân sự — thêm ở mục Nhân sự'
+                            }
+                            notFoundContent={
+                              dashboardFollowerOptions.length ? 'Không khớp' : 'Chưa có dữ liệu nhân sự'
+                            }
+                            getPopupContainer={trigger => trigger.parentElement ?? document.body}
+                          />
                         </Form.Item>
                       </div>
                     </section>
 
                     <section className="task-form-panel">
-                      <p className="task-form-section-title">3. Kết quả & vướng mắc</p>
-                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-4">
+                      <p className="task-form-section-title">3. Kết quả & tài liệu</p>
+                      <div className="grid grid-cols-1 gap-x-4">
                         <Form.Item name="ketQua" label="Kết quả">
-                          <Input.TextArea rows={5} placeholder="Kết quả đạt được..." />
+                          <Input.TextArea rows={4} placeholder="Kết quả đạt được..." />
                         </Form.Item>
-                        <Form.Item name="vuongMac" label="Vướng mắc">
-                          <Input.TextArea rows={5} placeholder="Khó khăn cần hỗ trợ..." />
-                        </Form.Item>
-                        <Form.Item name="linkKQ" label="Link KQ" className="sm:col-span-2 mb-0">
-                          <Input placeholder="https://..." allowClear />
-                        </Form.Item>
+                        <div className="mb-0">
+                          <p className="mb-1.5 text-sm font-medium text-[rgba(0,0,0,0.88)]">Link tài liệu</p>
+                          <div className="flex flex-col sm:flex-row gap-2 items-stretch sm:items-start">
+                            <Form.Item name="tenTaiLieu" className="mb-0 flex-1 min-w-0">
+                              <Input
+                                prefix={<FileTextOutlined className="text-gray-400" />}
+                                placeholder="Tên tài liệu"
+                                allowClear
+                              />
+                            </Form.Item>
+                            <Form.Item name="linkKQ" className="mb-0 flex-[1.2] min-w-0">
+                              <Input
+                                prefix={<LinkOutlined className="text-gray-400" />}
+                                placeholder="https://..."
+                                allowClear
+                              />
+                            </Form.Item>
+                            <Form.Item shouldUpdate={(prev, next) => prev.linkKQ !== next.linkKQ} className="mb-0 shrink-0">
+                              {() => {
+                                const raw = String(detailForm.getFieldValue('linkKQ') || '').trim();
+                                const disabled = !raw;
+                                return (
+                                  <Button
+                                    type="primary"
+                                    icon={<ExportOutlined />}
+                                    disabled={disabled}
+                                    className="bg-[#1E386B] border-[#1E386B]"
+                                    onClick={() => {
+                                      const url = formatUrlValue(raw);
+                                      if (!url) {
+                                        message.warning('Nhập link tài liệu trước.');
+                                        return;
+                                      }
+                                      window.open(url, '_blank', 'noopener,noreferrer');
+                                    }}
+                                  >
+                                    Mở
+                                  </Button>
+                                );
+                              }}
+                            </Form.Item>
+                          </div>
+                        </div>
                       </div>
                     </section>
                   </div>
@@ -2328,21 +2492,46 @@ const Dashboard: React.FC = () => {
                       <p className="task-form-section-title">2. Thời hạn</p>
                       <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-3">
                         <Form.Item name="ngayGiao" label="Ngày giao">
-                          <DatePicker className="w-full" format="DD/MM/YYYY" placeholder="Chọn ngày" />
+                          <DatePicker
+                            className="w-full"
+                            format="DD/MM/YYYY"
+                            placeholder="Chọn ngày"
+                            getPopupContainer={trigger => trigger.parentElement ?? document.body}
+                          />
                         </Form.Item>
                         <Form.Item name="ycXong" label="Ngày hoàn thành">
-                          <DatePicker className="w-full" format="DD/MM/YYYY" placeholder="Chọn ngày" />
+                          <DatePicker
+                            className="w-full"
+                            format="DD/MM/YYYY"
+                            placeholder="Chọn ngày"
+                            getPopupContainer={trigger => trigger.parentElement ?? document.body}
+                          />
                         </Form.Item>
                       </div>
                       <div className="grid grid-cols-3 gap-x-2 rounded-lg border border-slate-200 bg-slate-50 px-2.5 pt-2 pb-0">
                         <Form.Item name="giaHan1" label="Gia hạn 1" className="mb-2">
-                          <DatePicker className="w-full" format="DD/MM/YYYY" placeholder="—" />
+                          <DatePicker
+                            className="w-full"
+                            format="DD/MM/YYYY"
+                            placeholder="—"
+                            getPopupContainer={trigger => trigger.parentElement ?? document.body}
+                          />
                         </Form.Item>
                         <Form.Item name="giaHan2" label="Gia hạn 2" className="mb-2">
-                          <DatePicker className="w-full" format="DD/MM/YYYY" placeholder="—" />
+                          <DatePicker
+                            className="w-full"
+                            format="DD/MM/YYYY"
+                            placeholder="—"
+                            getPopupContainer={trigger => trigger.parentElement ?? document.body}
+                          />
                         </Form.Item>
                         <Form.Item name="giaHan3" label="Gia hạn 3" className="mb-2">
-                          <DatePicker className="w-full" format="DD/MM/YYYY" placeholder="—" />
+                          <DatePicker
+                            className="w-full"
+                            format="DD/MM/YYYY"
+                            placeholder="—"
+                            getPopupContainer={trigger => trigger.parentElement ?? document.body}
+                          />
                         </Form.Item>
                       </div>
                     </section>
@@ -2356,12 +2545,10 @@ const Dashboard: React.FC = () => {
                           rules={[{ required: true, message: 'Chọn trạng thái' }]}
                         >
                           <Select
-                            options={[
-                              { value: 'Đang làm', label: 'Đang làm' },
-                              { value: 'Hoàn thành', label: 'Hoàn thành' },
-                              { value: 'Quá hạn', label: 'Quá hạn' },
-                            ]}
+                            options={[...TIEN_DO_EDIT_OPTIONS]}
+                            placeholder="Chọn trạng thái"
                             disabled={supabaseConnected === false}
+                            getPopupContainer={trigger => trigger.parentElement ?? document.body}
                           />
                         </Form.Item>
                         <Form.Item
@@ -2391,6 +2578,7 @@ const Dashboard: React.FC = () => {
                               { value: 'Không', label: 'Không' },
                               { value: 'Có', label: 'Có' },
                             ]}
+                            getPopupContainer={trigger => trigger.parentElement ?? document.body}
                           />
                         </Form.Item>
                         {selectedTask.ngayHoanThanh ? (
@@ -2406,10 +2594,10 @@ const Dashboard: React.FC = () => {
               </Form>
             </div>
           </div>
+          </ConfigProvider>
         </div>
       )}
-      </div>
-    </Spin>
+    </>
   );
 };
 

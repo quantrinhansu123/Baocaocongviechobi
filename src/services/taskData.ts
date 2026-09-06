@@ -429,6 +429,48 @@ function pickField(row: Record<string, unknown>, keys: string[]): string {
   return '';
 }
 
+function normalizeNameList(value: unknown): string[] {
+  if (value === null || value === undefined) return [];
+  if (Array.isArray(value)) {
+    return value
+      .map(item => String(item ?? '').trim())
+      .filter(Boolean)
+      .filter((name, index, list) => list.indexOf(name) === index);
+  }
+  const text = String(value).trim();
+  if (!text) return [];
+  // Hỗ trợ chuỗi "A, B; C" hoặc JSON array dạng text
+  if (text.startsWith('[') && text.endsWith(']')) {
+    try {
+      return normalizeNameList(JSON.parse(text));
+    } catch {
+      // fall through
+    }
+  }
+  return text
+    .split(/[,;|]/)
+    .map(part => part.trim())
+    .filter(Boolean)
+    .filter((name, index, list) => list.indexOf(name) === index);
+}
+
+function pickStringList(row: Record<string, unknown>, keys: string[]): string[] {
+  for (const key of keys) {
+    if (!(key in row)) continue;
+    const list = normalizeNameList(row[key]);
+    if (list.length) return list;
+  }
+
+  const normalizedTargets = new Set(keys.map(normalizeColumnKey).filter(Boolean));
+  for (const [key, value] of Object.entries(row)) {
+    if (!normalizedTargets.has(normalizeColumnKey(key))) continue;
+    const list = normalizeNameList(value);
+    if (list.length) return list;
+  }
+
+  return [];
+}
+
 function pickNumber(row: Record<string, unknown>, keys: string[], fallback = 1): number {
   const raw = pickField(row, keys);
   if (!raw) {
@@ -438,7 +480,33 @@ function pickNumber(row: Record<string, unknown>, keys: string[], fallback = 1):
   return Number.isFinite(parsed) ? parsed : fallback;
 }
 
-const VALID_TIEN_DO_VALUES = new Set(['Đang thực hiện', 'Hoàn thành', 'Quá hạn']);
+/** Trạng thái chọn được trên form sửa CV */
+export const TIEN_DO_EDIT_OPTIONS = [
+  { value: 'Đang thực hiện', label: 'Đang thực hiện' },
+  { value: 'Hoàn thành', label: 'Hoàn thành' },
+  { value: 'Hủy', label: 'Hủy' },
+  { value: 'Tạm dừng', label: 'Tạm dừng' },
+] as const;
+
+const VALID_TIEN_DO_VALUES = new Set([
+  'Đang thực hiện',
+  'Hoàn thành',
+  'Hủy',
+  'Huỷ',
+  'Tạm dừng',
+  'Quá hạn', // legacy / tự tính
+]);
+
+/** Chuẩn hóa giá trị TIẾN ĐỘ để hiển thị trên form Select */
+export function normalizeTienDoForForm(value: string | undefined): string {
+  const trimmed = (value ?? '').trim();
+  if (!trimmed) return 'Đang thực hiện';
+  if (trimmed === 'Đang làm' || trimmed === 'Đang thực hiện') return 'Đang thực hiện';
+  if (trimmed === 'Hoàn thành' || trimmed.toLowerCase().includes('hoàn thành')) return 'Hoàn thành';
+  if (trimmed === 'Hủy' || trimmed === 'Huỷ') return 'Hủy';
+  if (trimmed === 'Tạm dừng') return 'Tạm dừng';
+  return 'Đang thực hiện';
+}
 
 export function normalizeTienDo(value: string): string {
   const trimmed = value.trim();
@@ -446,11 +514,22 @@ export function normalizeTienDo(value: string): string {
     return 'Chưa bắt đầu';
   }
 
-  if (trimmed === 'Đang thực hiện') {
-    return 'Đang làm';
+  if (trimmed === 'Đang làm') {
+    return 'Đang thực hiện';
   }
 
-  if (trimmed === 'Đang làm' || trimmed === 'Hoàn thành' || trimmed === 'Quá hạn' || trimmed === 'Chưa bắt đầu') {
+  if (trimmed === 'Huỷ') {
+    return 'Hủy';
+  }
+
+  if (
+    trimmed === 'Đang thực hiện' ||
+    trimmed === 'Hoàn thành' ||
+    trimmed === 'Hủy' ||
+    trimmed === 'Tạm dừng' ||
+    trimmed === 'Quá hạn' ||
+    trimmed === 'Chưa bắt đầu'
+  ) {
     return trimmed;
   }
 
@@ -465,6 +544,10 @@ export function serializeTienDo(value: string | undefined): string | undefined {
 
   if (trimmed === 'Đang làm') {
     return 'Đang thực hiện';
+  }
+
+  if (trimmed === 'Huỷ') {
+    return 'Hủy';
   }
 
   if (VALID_TIEN_DO_VALUES.has(trimmed)) {
@@ -593,6 +676,15 @@ export function mapRowToTaskRecord(
         'Assignee',
         'Người phụ trách',
       ]),
+      nguoiTheoDoi: pickStringList(row, [
+        'NGƯỜI THEO DÕI',
+        'Người theo dõi',
+        'Nguoi theo doi',
+        'NguoiTheoDoi',
+        'nguoiTheoDoi',
+        'Followers',
+        'Watchers',
+      ]),
       ngayGiao: pickFormattedDate(row, ['NGÀY GIAO', 'Ngày giao', 'Ngay giao', 'NgayGiao', 'ngayGiao', 'Start date']),
       ycXong: deadlineVal,
       giaHan1: pickFormattedDate(row, ['GIA HẠN 1', 'Gia hạn 1', 'Gia han 1', 'GiaHan1', 'giaHan1']),
@@ -600,6 +692,15 @@ export function mapRowToTaskRecord(
       giaHan3: pickFormattedDate(row, ['GIA HẠN 3', 'Gia hạn 3', 'Gia han 3', 'GiaHan3', 'giaHan3']),
       ketQua: pickField(row, ['KẾT QUẢ', 'Kết quả', 'Ket qua', 'KetQua', 'ketQua', 'Result']),
       linkKQ: parseUrlField(pickLinkKQRawValue(row)),
+      tenTaiLieu: pickField(row, [
+        'TÊN TÀI LIỆU',
+        'Tên tài liệu',
+        'Ten tai lieu',
+        'TenTaiLieu',
+        'tenTaiLieu',
+        'LinkText',
+        'Document name',
+      ]),
       tienDo: tienDoVal,
       tienDoPhanTram: isCompleted ? Math.max(pickTienDoPhanTram(row), 100) : pickTienDoPhanTram(row),
       trangThai: trangThaiVal,
@@ -634,6 +735,7 @@ export function buildTaskRow(input: {
   deptKey: string;
   congViec: string;
   nguoiPhuTrach: string;
+  nguoiTheoDoi?: string[];
   deadline: string;
   giaHan1?: string;
   giaHan2?: string;
@@ -642,12 +744,14 @@ export function buildTaskRow(input: {
   kyBaoCao?: string;
   stt?: number;
   linkKQ?: string;
+  tenTaiLieu?: string;
   tienDoPhanTram?: number;
 }): Record<string, unknown> {
   const row: Record<string, unknown> = {
     TT: input.stt != null ? String(input.stt) : '',
     'CÔNG VIỆC': input.congViec,
     'NGƯỜI ĐƯỢC GIAO': input.nguoiPhuTrach,
+    'NGƯỜI THEO DÕI': normalizeNameList(input.nguoiTheoDoi ?? []),
     'NGÀY GIAO': formatRecordDate(new Date()),
     'Y/C XONG': formatRecordDate(input.deadline),
     'GIA HẠN 1': formatRecordDate(input.giaHan1 ?? ''),
@@ -658,6 +762,7 @@ export function buildTaskRow(input: {
     [COL_TIEN_DO_CV]: normalizeTienDoPhanTram(input.tienDoPhanTram ?? 0),
   };
   applyLinkKQToRow(row, input.linkKQ);
+  row['TÊN TÀI LIỆU'] = (input.tenTaiLieu ?? '').trim();
   return row;
 }
 
@@ -672,6 +777,7 @@ export function buildTaskEditRow(
 
   row['CÔNG VIỆC'] = task.congViec;
   row['NGƯỜI ĐƯỢC GIAO'] = task.nguoiGiao;
+  row['NGƯỜI THEO DÕI'] = normalizeNameList(task.nguoiTheoDoi);
   row['NGÀY GIAO'] = formatRecordDate(task.ngayGiao);
   row['Y/C XONG'] = formatRecordDate(task.ycXong);
   row['GIA HẠN 1'] = formatRecordDate(task.giaHan1);
@@ -679,6 +785,7 @@ export function buildTaskEditRow(
   row['GIA HẠN 3'] = formatRecordDate(task.giaHan3);
   row['KẾT QUẢ'] = task.ketQua;
   applyLinkKQToRow(row, task.linkKQ);
+  row['TÊN TÀI LIỆU'] = (task.tenTaiLieu || '').trim();
   row['VƯỚNG MẮC'] = task.vuongMac;
   row['CẦN LĐ TÁC ĐỘNG'] = task.canLD.trim() || 'Không';
   row['MỨC ẢNH HƯỞNG'] = String(task.anhHuong);
@@ -783,7 +890,9 @@ export function buildTienDoEditRow(
 
   const serialized = serializeTienDo(tienDo);
   if (!serialized) {
-    throw new Error('Giá trị TIẾN ĐỘ không hợp lệ. Chỉ dùng: Đang làm, Hoàn thành hoặc Quá hạn.');
+    throw new Error(
+      'Giá trị TIẾN ĐỘ không hợp lệ. Chỉ dùng: Đang thực hiện, Hoàn thành, Hủy hoặc Tạm dừng.'
+    );
   }
 
   row[tienDoKey] = serialized;

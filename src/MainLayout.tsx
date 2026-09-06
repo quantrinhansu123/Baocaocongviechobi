@@ -13,12 +13,13 @@ import {
   MenuFoldOutlined,
   TeamOutlined,
 } from '@ant-design/icons';
-import { Navigate, Routes, Route, useNavigate, useLocation } from 'react-router-dom';
+import { Navigate, Routes, Route, useNavigate, useLocation, Link } from 'react-router-dom';
 import './MainLayout.css';
 import logo from './img/logo.png';
 import { loadDashboardTasks, normalizeDashboardChartStatus } from './services/dashboardData';
 import MobileBottomNav from './components/MobileBottomNav';
 import { MobileShellProvider } from './contexts/MobileShellContext';
+import { HeaderToolbarProvider, useHeaderToolbar } from './contexts/HeaderToolbarContext';
 
 // Lazy-load pages để giảm JS lần đầu mở app
 const Dashboard = lazy(() => import('./pages/Dashboard'));
@@ -41,6 +42,7 @@ const TASK_MENU_TREE = [
     depts: [
       { key: 'bld-ca-nhan', label: '1. CÔNG VIỆC CÁ NHÂN' },
       { key: 'bld-cong-viec-bld', label: '2. CÔNG VIỆC CỦA BLĐ' },
+      { key: 'bld-cong-viec-thu-ky', label: '3. CÔNG VIỆC CỦA THƯ KÝ' },
     ],
   },
   {
@@ -120,8 +122,17 @@ function sidebarOpenKeys(pathname: string): string[] {
 }
 
 const MainLayout: React.FC = () => {
+  return (
+    <HeaderToolbarProvider>
+      <MainLayoutInner />
+    </HeaderToolbarProvider>
+  );
+};
+
+const MainLayoutInner: React.FC = () => {
   const navigate = useNavigate();
   const location = useLocation();
+  const { toolbar } = useHeaderToolbar();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false); // Mobile Menu State
   const [collapsed, setCollapsed] = useState(false); // Desktop Sider State
   const [menuOpenKeys, setMenuOpenKeys] = useState<string[]>(['/tasks']);
@@ -172,9 +183,16 @@ const MainLayout: React.FC = () => {
     [incompleteByDept]
   );
 
-  const mainMenuItems: MenuProps['items'] = useMemo(
+  const dashboardMenuItems: MenuProps['items'] = useMemo(
     () => [
       { key: '/', icon: <DashboardOutlined className="sidebar-nav-icon" />, label: 'ĐIỀU HÀNH CÔNG VIỆC' },
+    ],
+    []
+  );
+
+  /** Đặt cuối sidebar: sau ghi chú / nhân sự */
+  const tasksMenuItems: MenuProps['items'] = useMemo(
+    () => [
       {
         key: '/tasks',
         icon: <CheckSquareOutlined className="sidebar-nav-icon" />,
@@ -184,9 +202,17 @@ const MainLayout: React.FC = () => {
             (sum, dept) => sum + (incompleteByDept[dept.key] ?? 0),
             0
           );
+          const blockPath = `/tasks/${block.key}`;
           return {
-            key: `/tasks/${block.key}`,
+            key: blockPath,
             label: renderMenuLabelWithCount(block.label, blockCount),
+            onTitleClick: () => {
+              navigate(blockPath);
+              setMenuOpenKeys(previousKeys =>
+                Array.from(new Set([...previousKeys, '/tasks', blockPath]))
+              );
+              setMobileMenuOpen(false);
+            },
             children: block.depts.map(dept => ({
               key: `/tasks/${block.key}/${dept.key}`,
               label: renderMenuLabelWithCount(dept.label, incompleteByDept[dept.key] ?? 0),
@@ -195,7 +221,7 @@ const MainLayout: React.FC = () => {
         }),
       },
     ],
-    [incompleteByDept, totalIncomplete]
+    [incompleteByDept, totalIncomplete, navigate]
   );
 
   const notesMenuItems: MenuProps['items'] = useMemo(
@@ -280,6 +306,15 @@ const MainLayout: React.FC = () => {
     { key: 'logout', label: 'Đăng xuất', danger: true },
   ];
 
+  const pathParts = location.pathname.split('/').filter(Boolean);
+  const activeBlockKey =
+    pathParts[0] === 'tasks' && pathParts[1] ? pathParts[1] : undefined;
+  const activeDeptKey =
+    pathParts[0] === 'tasks' && pathParts[2] ? pathParts[2] : undefined;
+  const activeBlock = TASK_MENU_TREE.find(b => b.key === activeBlockKey);
+  const showTopicLinks =
+    location.pathname === '/' || location.pathname.startsWith('/tasks');
+
   return (
     <MobileShellProvider openMenu={() => setMobileMenuOpen(true)}>
     <Layout style={{ minHeight: '100vh', display: 'flex', flexDirection: 'row' }}>
@@ -295,28 +330,28 @@ const MainLayout: React.FC = () => {
         className="shadow-lg hidden md:block sidebar-sider-brand"
       >
         <div className="sidebar-sider-inner">
-          <div className={`h-16 flex items-center px-6 bg-[#F38320] transition-all duration-300 shrink-0 ${collapsed ? 'justify-center px-0' : ''}`}>
-            <div className="flex-shrink-0 h-10 w-10 flex items-center justify-center overflow-hidden mr-2 bg-white p-1 rounded-lg shadow-sm cursor-pointer" onClick={() => navigate('/')}>
+          <div className={`h-16 flex items-center bg-[#F38320] transition-all duration-300 ease-[cubic-bezier(0.4,0,0.2,1)] shrink-0 overflow-hidden ${collapsed ? 'justify-center px-2' : 'px-6'}`}>
+            <div className={`flex-shrink-0 h-10 w-10 flex items-center justify-center overflow-hidden bg-white p-1 rounded-lg shadow-sm cursor-pointer transition-all duration-300 ${collapsed ? 'mr-0' : 'mr-2'}`} onClick={() => navigate('/')}>
               <img
                 src={logo}
                 alt="Hobiwood Logo"
                 className="w-full h-auto object-contain"
               />
             </div>
-            {!collapsed && (
-              <span className="font-bold text-lg text-[#1E386B] tracking-wider whitespace-nowrap overflow-hidden">
-                HOBI VIỆT NAM
-              </span>
-            )}
+            <span
+              className={`font-bold text-lg text-[#1E386B] tracking-wider whitespace-nowrap overflow-hidden transition-all duration-300 ease-[cubic-bezier(0.4,0,0.2,1)] ${
+                collapsed ? 'max-w-0 opacity-0 ml-0' : 'max-w-[180px] opacity-100'
+              }`}
+            >
+              HOBI VIỆT NAM
+            </span>
           </div>
           <div className="sidebar-menu-scroll">
             <Menu
               theme="dark"
               mode="inline"
               selectedKeys={selectedMenuKeys}
-              openKeys={menuOpenKeys}
-              onOpenChange={handleMenuOpenChange}
-              items={mainMenuItems}
+              items={dashboardMenuItems}
               onClick={handleMenuClick}
               inlineIndent={14}
               className="border-none mt-4 sidebar-report-menu"
@@ -333,15 +368,26 @@ const MainLayout: React.FC = () => {
                 selectable
               />
             </div>
+            <Menu
+              theme="dark"
+              mode="inline"
+              selectedKeys={selectedMenuKeys}
+              openKeys={menuOpenKeys}
+              onOpenChange={handleMenuOpenChange}
+              items={tasksMenuItems}
+              onClick={handleMenuClick}
+              inlineIndent={14}
+              className="border-none sidebar-report-menu sidebar-tasks-menu"
+            />
           </div>
         </div>
       </Sider>
 
       <Layout className="main flex flex-col min-w-0" style={{ flex: 1 }}>
         {/* --- COMMON HEADER --- */}
-        <Header className="p-0 flex items-center justify-between shadow-sm px-4 md:px-6 z-10 h-16 border-b bg-white border-gray-200">
+        <Header className="p-0 flex items-center justify-between shadow-sm px-3 md:px-4 z-10 min-h-16 h-auto py-2 border-b bg-white border-gray-200 gap-2 md:gap-3">
 
-          <div className="flex items-center">
+          <div className="flex items-center shrink-0">
             {/* Desktop: Nút gập Sider */}
             <div className="hidden md:flex items-center">
               {React.createElement(collapsed ? MenuUnfoldOutlined : MenuFoldOutlined, {
@@ -374,7 +420,11 @@ const MainLayout: React.FC = () => {
             </div>
           </div>
 
-          <Space size="middle" className="md:size-large">
+          <div className="flex-1 min-w-0 flex items-center justify-end md:justify-center overflow-x-auto">
+            {toolbar}
+          </div>
+
+          <Space size="middle" className="md:size-large shrink-0">
             <Badge count={3} dot offset={[-2, 2]} color="#1E386B">
               <div className="h-9 w-9 flex items-center justify-center rounded-full cursor-pointer transition-colors hover:bg-gray-100 text-gray-700">
                 <BellOutlined className="text-xl text-[#1E386B]" />
@@ -391,6 +441,59 @@ const MainLayout: React.FC = () => {
           </Space>
         </Header>
 
+        {showTopicLinks ? (
+          <div className="topic-link-bar">
+            <div className="topic-link-row">
+              <Link
+                to="/tasks"
+                className={`topic-link${location.pathname === '/tasks' ? ' is-active' : ''}`}
+              >
+                Tất cả CV
+              </Link>
+              {TASK_MENU_TREE.map(block => {
+                const href = `/tasks/${block.key}`;
+                const active = activeBlockKey === block.key;
+                return (
+                  <Link
+                    key={block.key}
+                    to={href}
+                    className={`topic-link${active ? ' is-active' : ''}`}
+                    title={block.label}
+                  >
+                    {block.label}
+                  </Link>
+                );
+              })}
+            </div>
+            {activeBlock ? (
+              <div className="topic-link-row topic-link-row--depts">
+                <Link
+                  to={`/tasks/${activeBlock.key}`}
+                  className={`topic-link topic-link--dept${
+                    activeBlockKey && !activeDeptKey ? ' is-active' : ''
+                  }`}
+                >
+                  Tổng khối
+                </Link>
+                {activeBlock.depts.map(dept => {
+                  const href = `/tasks/${activeBlock.key}/${dept.key}`;
+                  const active = activeDeptKey === dept.key;
+                  return (
+                    <Link
+                      key={dept.key}
+                      to={href}
+                      className={`topic-link topic-link--dept${active ? ' is-active' : ''}`}
+                      title={dept.label}
+                    >
+                      {dept.label}
+                    </Link>
+                  );
+                })}
+              </div>
+            ) : null}
+          </div>
+        ) : null}
+
         {/* TẦNG 2.5: MOBILE MENU DRAWER (Đồng bộ Dark Theme với Desktop) */}
         <Drawer
           title={
@@ -405,6 +508,7 @@ const MainLayout: React.FC = () => {
           onClose={() => setMobileMenuOpen(false)}
           open={mobileMenuOpen}
           width={280}
+          destroyOnClose={false}
           styles={{
             body: {
               padding: 0,
@@ -414,6 +518,8 @@ const MainLayout: React.FC = () => {
               height: '100%',
             },
             header: { backgroundColor: '#F38320', borderBottom: 'none', padding: '16px 24px' },
+            mask: { transition: 'opacity 0.28s cubic-bezier(0.4, 0, 0.2, 1)' },
+            wrapper: { transition: 'transform 0.28s cubic-bezier(0.4, 0, 0.2, 1)' },
           }}
           closeIcon={<span className="text-white hover:text-gray-300 transition-colors text-lg">✖</span>}
         >
@@ -422,9 +528,7 @@ const MainLayout: React.FC = () => {
               theme="dark"
               mode="inline"
               selectedKeys={selectedMenuKeys}
-              openKeys={menuOpenKeys}
-              onOpenChange={handleMenuOpenChange}
-              items={mainMenuItems}
+              items={dashboardMenuItems}
               onClick={handleMenuClick}
               inlineIndent={14}
               className="border-none sidebar-report-menu"
@@ -443,6 +547,18 @@ const MainLayout: React.FC = () => {
                 selectable
               />
             </div>
+            <Menu
+              theme="dark"
+              mode="inline"
+              selectedKeys={selectedMenuKeys}
+              openKeys={menuOpenKeys}
+              onOpenChange={handleMenuOpenChange}
+              items={tasksMenuItems}
+              onClick={handleMenuClick}
+              inlineIndent={14}
+              className="border-none sidebar-report-menu sidebar-tasks-menu"
+              style={{ backgroundColor: 'transparent' }}
+            />
           </div>
         </Drawer>
 

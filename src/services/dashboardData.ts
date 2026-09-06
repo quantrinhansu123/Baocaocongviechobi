@@ -187,6 +187,7 @@ export type DashboardTask = {
   impact: number;
   isIssue: boolean;
   assignee: string;
+  followers: string[];
   deadline: string;
   week: string;
   desc: string;
@@ -198,6 +199,7 @@ export type DashboardTask = {
   giaHan3: string;
   ketQua: string;
   linkKQ: string;
+  tenTaiLieu: string;
   tienDo: string;
   tienDoPhanTram: number;
   vuongMac: string;
@@ -261,12 +263,21 @@ function mapTaskRecordToDashboardTask(
   let status: string;
   if (
     storedTienDo === 'Đang làm' ||
+    storedTienDo === 'Đang thực hiện' ||
     storedTienDo === 'Hoàn thành' ||
     storedTienDo === 'Quá hạn' ||
-    storedTienDo.toLowerCase().includes('gia hạn') ||
-    storedTienDo === 'Đang thực hiện'
+    storedTienDo === 'Hủy' ||
+    storedTienDo === 'Huỷ' ||
+    storedTienDo === 'Tạm dừng' ||
+    storedTienDo.toLowerCase().includes('gia hạn')
   ) {
-    status = storedTienDo === 'Đang thực hiện' ? 'Đang làm' : storedTienDo;
+    if (storedTienDo === 'Đang thực hiện' || storedTienDo === 'Đang làm') {
+      status = 'Đang làm';
+    } else if (storedTienDo === 'Huỷ') {
+      status = 'Hủy';
+    } else {
+      status = storedTienDo;
+    }
   } else if (isTaskRecordCompleted(task)) {
     status = 'Hoàn thành';
   } else {
@@ -291,6 +302,7 @@ function mapTaskRecordToDashboardTask(
     impact: task.anhHuong || 1,
     isIssue: Boolean(task.vuongMac.trim()) || status === 'Quá hạn',
     assignee: task.nguoiGiao || '—',
+    followers: task.nguoiTheoDoi ?? [],
     deadline: deadline || '—',
     week: resolveDashboardWeek(task.kyBaoCao, deadline),
     desc: task.ketQua || task.congViec || '',
@@ -302,6 +314,7 @@ function mapTaskRecordToDashboardTask(
     giaHan3: task.giaHan3 || '',
     ketQua: task.ketQua || '',
     linkKQ: task.linkKQ || '',
+    tenTaiLieu: task.tenTaiLieu || '',
     tienDo: task.tienDo || '',
     tienDoPhanTram: task.tienDoPhanTram ?? 0,
     vuongMac: task.vuongMac || '',

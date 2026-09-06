@@ -14,7 +14,7 @@ do $$
 declare
   t text;
   tables text[] := array[
-    'i_1','i_2','i_3',
+    'i_1','i_2','i_3','i_4',
     'ii_1','ii_2','ii_3','ii_4','ii_5','ii_6','ii_7','ii_8','ii_9',
     'iii_1','iii_2','iii_3',
     'iv_1','iv_2'

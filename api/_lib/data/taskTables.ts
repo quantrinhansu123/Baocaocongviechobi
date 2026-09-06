@@ -1,6 +1,6 @@
 /** Tên bảng công việc (map menu I.1 … IV.2). */
 const BLOCK_ROMANS = ['I', 'II', 'III', 'IV'] as const;
-const BLOCK_DEPT_COUNTS = [3, 9, 3, 2] as const;
+const BLOCK_DEPT_COUNTS = [4, 9, 3, 2] as const;
 
 export function listTaskTableNames(): string[] {
   return BLOCK_ROMANS.flatMap((block, blockIndex) =>

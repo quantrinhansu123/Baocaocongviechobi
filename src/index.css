@@ -77,13 +77,13 @@ body {
   background-color: #0F274D !important;
   color: #ffffff !important;
   font-weight: 900 !important;
-  font-size: 20px !important;
+  font-size: 13px !important;
   letter-spacing: 0.04em;
   text-shadow: 0 1px 0 rgba(0, 0, 0, 0.25);
   border-bottom-color: #0F274D !important;
-  padding-top: 14px !important;
-  padding-bottom: 14px !important;
-  line-height: 1.45 !important;
+  padding-top: 8px !important;
+  padding-bottom: 8px !important;
+  line-height: 1.3 !important;
   white-space: nowrap !important;
   overflow: visible !important;
   text-overflow: clip !important;
@@ -105,10 +105,10 @@ body {
 }
 
 .ant-table-tbody > tr > td {
-  font-size: 15px !important;
-  padding-top: 14px !important;
-  padding-bottom: 14px !important;
-  line-height: 1.5 !important;
+  font-size: 14px !important;
+  padding-top: 6px !important;
+  padding-bottom: 6px !important;
+  line-height: 1.35 !important;
 }
 
 .ant-table {
@@ -350,18 +350,18 @@ body {
 
 .task-table-compact .ant-table-thead > tr > th,
 .task-table-compact .ant-table-tbody > tr > td {
-  padding: 12px 12px !important;
-  font-size: 15px !important;
+  padding: 6px 8px !important;
+  font-size: 13px !important;
 }
 
 .task-table-compact .ant-table-thead > tr > th {
-  font-size: 16px !important;
+  font-size: 12px !important;
   font-weight: 900 !important;
   white-space: nowrap;
 }
 
 .task-table-compact .ant-table-cell {
-  line-height: 1.5 !important;
+  line-height: 1.3 !important;
 }
 
 .task-table-compact.task-table-balanced .ant-table {

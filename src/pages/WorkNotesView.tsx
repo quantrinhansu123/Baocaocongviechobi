@@ -1,8 +1,13 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { Button, Checkbox, Empty, Spin, Typography, message } from 'antd';
-import { CheckOutlined, CloudOutlined, CloudSyncOutlined } from '@ant-design/icons';
+import { Button, Checkbox, Empty, Spin, Tag, Typography, message } from 'antd';
+import {
+  CheckOutlined,
+  MenuFoldOutlined,
+  MenuUnfoldOutlined,
+  PlusOutlined,
+} from '@ant-design/icons';
 import { ORG_BLOCKS } from '../data/orgBlocks';
-import BackButton from '../components/BackButton';
+import { useHeaderToolbar } from '../contexts/HeaderToolbarContext';
 import {
   loadWorkNotesFromSupabase,
   syncWorkNotesToSupabase,
@@ -135,6 +140,7 @@ function displayTitle(title: string): string {
 const WorkNotesView: React.FC = () => {
   const [activeBlockKey, setActiveBlockKey] = useState(() => ORG_BLOCKS[1]?.key ?? ORG_BLOCKS[0]?.key ?? 'tm');
   const [activeDeptKey, setActiveDeptKey] = useState<string | null>(null);
+  const [leftCollapsed, setLeftCollapsed] = useState(false);
   const [notes, setNotes] = useState<NoteIdea[]>(() => loadNotes());
   const [showHidden, setShowHidden] = useState(false);
   const [focusIdeaId, setFocusIdeaId] = useState<string | null>(null);
@@ -146,6 +152,7 @@ const WorkNotesView: React.FC = () => {
   const syncTimerRef = useRef<number | null>(null);
   const notesRef = useRef(notes);
   notesRef.current = notes;
+  const { setToolbar, clearToolbar } = useHeaderToolbar();
 
   const activeBlock = useMemo(
     () => ORG_BLOCKS.find(block => block.key === activeBlockKey) ?? ORG_BLOCKS[0],
@@ -158,15 +165,11 @@ const WorkNotesView: React.FC = () => {
   }, [activeBlock]);
 
   useEffect(() => {
-    if (leftDepts.length === 0) {
-      setActiveDeptKey(null);
-      return;
-    }
+    // Đổi khối: bỏ chọn phòng → hiện cả khối; nếu phòng cũ không thuộc khối mới thì clear.
     setActiveDeptKey(previous => {
-      if (previous && leftDepts.some(dept => dept.key === previous)) {
-        return previous;
-      }
-      return leftDepts[0].key;
+      if (!previous) return null;
+      if (leftDepts.some(dept => dept.key === previous)) return previous;
+      return null;
     });
   }, [leftDepts]);
 
@@ -264,13 +267,21 @@ const WorkNotesView: React.FC = () => {
     [leftDepts]
   );
 
-  // Danh sách ghi chú chính: luôn hiện tất cả theo thứ tự gõ.
-  // Thanh khối trên / phòng trái chỉ dùng để chọn nơi gắn khi Thêm ý — không lọc list.
-  const timelineNotes = useMemo(() => {
+  /** Toàn bộ ý (để đếm badge) — chỉ ẩn/hiện theo checkbox. */
+  const visibleNotes = useMemo(() => {
     return notes
       .filter(note => showHidden || !note.hidden)
       .sort((a, b) => a.createdAt - b.createdAt);
   }, [notes, showHidden]);
+
+  /** Nội dung chính: lọc theo khối đang chọn; nếu chọn phòng thì chỉ hiện phòng đó. */
+  const timelineNotes = useMemo(() => {
+    return visibleNotes.filter(note => {
+      if (note.blockKey !== activeBlockKey) return false;
+      if (activeDeptKey && note.deptKey !== activeDeptKey) return false;
+      return true;
+    });
+  }, [visibleNotes, activeBlockKey, activeDeptKey]);
 
   /** Gộp các ý cùng tiêu đề thành một nhóm (giữ thứ tự xuất hiện). */
   const groupedNotes = useMemo(() => {
@@ -293,21 +304,26 @@ const WorkNotesView: React.FC = () => {
   /** Số ý theo khối (tiêu đề cha) và theo phòng (thanh trái). */
   const countByBlockKey = useMemo(() => {
     const map: Record<string, number> = {};
-    for (const idea of timelineNotes) {
+    for (const idea of visibleNotes) {
       const key = idea.blockKey || 'unknown';
       map[key] = (map[key] ?? 0) + 1;
     }
     return map;
-  }, [timelineNotes]);
+  }, [visibleNotes]);
 
   const countByDeptKey = useMemo(() => {
     const map: Record<string, number> = {};
-    for (const idea of timelineNotes) {
+    for (const idea of visibleNotes) {
       const key = idea.deptKey || 'unknown';
       map[key] = (map[key] ?? 0) + 1;
     }
     return map;
-  }, [timelineNotes]);
+  }, [visibleNotes]);
+
+  const activeDeptName = useMemo(() => {
+    if (!activeDeptKey) return null;
+    return leftDepts.find(dept => dept.key === activeDeptKey)?.name ?? null;
+  }, [activeDeptKey, leftDepts]);
 
   const updateIdea = (ideaId: string, patch: Partial<NoteIdea>) => {
     persist(notes.map(idea => (idea.id === ideaId ? { ...idea, ...patch } : idea)));
@@ -428,10 +444,10 @@ const WorkNotesView: React.FC = () => {
   const blockIndex = ORG_BLOCKS.findIndex(block => block.key === activeBlockKey);
   const roman = blockIndex >= 0 ? ROMAN[blockIndex] : '';
 
-  return (
-    <div className="flex-1 flex flex-col overflow-hidden bg-gray-50 min-h-0">
-      <div className="flex-shrink-0 bg-white border-b border-gray-200 px-2 md:px-4 py-2 overflow-x-auto">
-        <div className="flex gap-2 min-w-max">
+  useEffect(() => {
+    setToolbar(
+      <div className="flex items-center gap-1.5 md:gap-2 w-full min-w-0">
+        <div className="flex items-center gap-1.5 md:gap-2 min-w-0 overflow-x-auto flex-1 py-0.5">
           {ORG_BLOCKS.map((block, index) => {
             const active = block.key === activeBlockKey;
             const blockCount = countByBlockKey[block.key] ?? 0;
@@ -439,16 +455,23 @@ const WorkNotesView: React.FC = () => {
               <button
                 key={block.key}
                 type="button"
-                onClick={() => setActiveBlockKey(block.key)}
-                className={`px-3 md:px-4 py-2 rounded-md text-sm md:text-base font-extrabold uppercase tracking-wide transition whitespace-nowrap ${
+                onClick={() => {
+                  setActiveBlockKey(block.key);
+                  setActiveDeptKey(null);
+                }}
+                className={`px-2 md:px-2.5 py-1.5 rounded-md text-xs md:text-sm font-extrabold uppercase tracking-wide transition whitespace-nowrap shrink-0 ${
                   active
                     ? 'bg-[#1E386B] text-white shadow-sm'
                     : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
                 }`}
+                title={`${ROMAN[index]}. ${block.label}`}
               >
-                {ROMAN[index]}. {block.label}
+                <span className="lg:hidden">{ROMAN[index]}</span>
+                <span className="hidden lg:inline">
+                  {ROMAN[index]}. {block.label}
+                </span>
                 {blockCount > 0 ? (
-                  <span className={`ml-2 font-bold ${active ? 'text-white/90' : 'text-[#F38320]'}`}>
+                  <span className={`ml-1 font-bold ${active ? 'text-white/90' : 'text-[#F38320]'}`}>
                     ({blockCount})
                   </span>
                 ) : null}
@@ -456,98 +479,183 @@ const WorkNotesView: React.FC = () => {
             );
           })}
         </div>
-      </div>
-
-      <div className="flex-1 flex min-h-0 overflow-hidden">
-        <aside className="w-[260px] md:w-[320px] flex-shrink-0 bg-[#1E386B] text-white overflow-y-auto">
-          <div className="px-3 py-3 border-b border-white/10">
-            <p className="m-0 text-[11px] uppercase tracking-widest text-white/70 font-bold">Phòng ban</p>
-            <p className="m-0 mt-1 text-sm font-extrabold">
-              {roman}. {activeBlock?.label}
-              {(countByBlockKey[activeBlockKey] ?? 0) > 0 ? (
-                <span className="ml-2 text-[#F38320]">({countByBlockKey[activeBlockKey]})</span>
-              ) : null}
+        <div className="flex items-center gap-2 shrink-0">
+          <div className="hidden xl:block min-w-0 max-w-[180px]">
+            <p className="m-0 text-[10px] font-bold uppercase tracking-widest text-gray-500 leading-tight truncate">
+              Ghi chú PB
+            </p>
+            <p className="m-0 text-xs font-extrabold uppercase text-[#1E386B] leading-snug truncate">
+              {activeDeptName
+                ? activeDeptName
+                : `${roman}. ${activeBlock?.label ?? ''}`.trim()}
             </p>
           </div>
-          <div className="py-1">
-            {leftDepts.map(dept => {
-              const active = dept.key === activeDeptKey;
-              const deptCount = countByDeptKey[dept.key] ?? 0;
-              return (
+          {supabaseConnected ? (
+            <Tag color="success" className="m-0 hidden md:inline-flex">
+              Supabase
+            </Tag>
+          ) : supabaseConnected === false ? (
+            <Tag color="error" className="m-0 hidden md:inline-flex">
+              Offline
+            </Tag>
+          ) : null}
+          <Button
+            type="primary"
+            size="small"
+            icon={<PlusOutlined />}
+            className="font-bold bg-[#F38320] border-[#F38320]"
+            onClick={() => {
+              if (!activeDeptKey) {
+                message.info('Chọn một phòng ban bên trái rồi bấm Thêm ý.');
+                return;
+              }
+              appendIdea(activeDeptKey, '');
+            }}
+          >
+            Thêm ý
+          </Button>
+        </div>
+      </div>
+    );
+    return () => clearToolbar();
+  }, [
+    activeBlockKey,
+    activeDeptKey,
+    activeDeptName,
+    activeBlock?.label,
+    roman,
+    countByBlockKey,
+    supabaseConnected,
+    setToolbar,
+    clearToolbar,
+  ]);
+
+  return (
+    <div className="flex-1 flex flex-col overflow-hidden bg-gray-50 min-h-0">
+      <div className="flex-1 flex min-h-0 overflow-hidden">
+        <aside
+          className={`flex-shrink-0 bg-[#1E386B] text-white overflow-hidden transition-[width] duration-200 ${
+            leftCollapsed ? 'w-12' : 'w-[260px] md:w-[320px]'
+          }`}
+        >
+          <div
+            className={`flex items-center border-b border-white/10 ${
+              leftCollapsed ? 'justify-center px-1 py-3' : 'justify-between gap-2 px-3 py-3'
+            }`}
+          >
+            {!leftCollapsed ? (
+              <div className="min-w-0">
+                <p className="m-0 text-[11px] uppercase tracking-widest text-white/70 font-bold">Phòng ban</p>
                 <button
-                  key={dept.key}
                   type="button"
-                  onClick={() => {
-                    setActiveDeptKey(dept.key);
-                    appendIdea(dept.key, '');
-                  }}
-                  className={`w-full text-left px-3 py-2.5 text-sm md:text-base font-bold border-l-4 transition ${
-                    active
-                      ? 'bg-white/15 border-[#F38320] text-white'
-                      : 'border-transparent text-white/80 hover:bg-white/10'
-                  }`}
+                  onClick={() => setActiveDeptKey(null)}
+                  className="m-0 mt-1 text-left text-sm font-extrabold text-white hover:text-[#F38320] transition"
+                  title="Hiện tất cả phòng trong khối"
                 >
-                  <span className="inline-flex items-center justify-between gap-2 w-full">
-                    <span className="min-w-0 truncate">{dept.name}</span>
-                    {deptCount > 0 ? (
-                      <span className={`shrink-0 ${active ? 'text-[#F38320]' : 'text-white/70'}`}>
-                        ({deptCount})
-                      </span>
-                    ) : null}
-                  </span>
+                  {roman}. {activeBlock?.label}
+                  {(countByBlockKey[activeBlockKey] ?? 0) > 0 ? (
+                    <span className="ml-2 text-[#F38320]">({countByBlockKey[activeBlockKey]})</span>
+                  ) : null}
                 </button>
-              );
-            })}
+              </div>
+            ) : null}
+            <button
+              type="button"
+              onClick={() => setLeftCollapsed(prev => !prev)}
+              className="shrink-0 w-8 h-8 inline-flex items-center justify-center rounded-md text-white/90 hover:bg-white/15 transition"
+              title={leftCollapsed ? 'Mở danh sách phòng ban' : 'Thu gọn danh sách phòng ban'}
+              aria-label={leftCollapsed ? 'Mở danh sách phòng ban' : 'Thu gọn danh sách phòng ban'}
+            >
+              {leftCollapsed ? <MenuUnfoldOutlined /> : <MenuFoldOutlined />}
+            </button>
           </div>
+
+          {!leftCollapsed ? (
+            <div className="py-1 overflow-y-auto h-[calc(100%-4.5rem)]">
+              <button
+                type="button"
+                onClick={() => setActiveDeptKey(null)}
+                className={`w-full text-left px-3 py-2.5 text-sm md:text-base font-bold border-l-4 transition ${
+                  !activeDeptKey
+                    ? 'bg-white/15 border-[#F38320] text-white'
+                    : 'border-transparent text-white/80 hover:bg-white/10'
+                }`}
+              >
+                Tất cả phòng ban
+                {(countByBlockKey[activeBlockKey] ?? 0) > 0 ? (
+                  <span className={`ml-2 ${!activeDeptKey ? 'text-[#F38320]' : 'text-white/70'}`}>
+                    ({countByBlockKey[activeBlockKey]})
+                  </span>
+                ) : null}
+              </button>
+              {leftDepts.map(dept => {
+                const active = dept.key === activeDeptKey;
+                const deptCount = countByDeptKey[dept.key] ?? 0;
+                return (
+                  <button
+                    key={dept.key}
+                    type="button"
+                    onClick={() => setActiveDeptKey(dept.key)}
+                    className={`w-full text-left px-3 py-2.5 pl-5 text-sm md:text-base font-bold border-l-4 transition ${
+                      active
+                        ? 'bg-white/15 border-[#F38320] text-white'
+                        : 'border-transparent text-white/80 hover:bg-white/10'
+                    }`}
+                  >
+                    <span className="inline-flex items-center justify-between gap-2 w-full">
+                      <span className="min-w-0 truncate">{dept.name}</span>
+                      {deptCount > 0 ? (
+                        <span className={`shrink-0 ${active ? 'text-[#F38320]' : 'text-white/70'}`}>
+                          ({deptCount})
+                        </span>
+                      ) : null}
+                    </span>
+                  </button>
+                );
+              })}
+            </div>
+          ) : null}
         </aside>
 
-        <main className="flex-1 flex flex-col min-w-0 overflow-hidden p-3 md:p-4">
-          <div className="flex-1 flex flex-col min-h-0 bg-white border border-gray-200 rounded-lg shadow-sm overflow-hidden">
-            <div className="bg-[#F38320] text-white px-4 py-3 flex items-start justify-between gap-3 flex-shrink-0">
-              <div className="min-w-0 flex items-start gap-3">
-                <BackButton variant="light" size="small" className="mt-0.5" />
-                <div className="min-w-0">
-                  <p className="m-0 text-[11px] font-bold uppercase tracking-widest text-white/80">Ghi chú phòng ban</p>
-                  <h2 className="m-0 mt-0.5 text-base md:text-lg font-extrabold uppercase leading-snug truncate">
-                    Theo thứ tự gõ
-                  </h2>
-                </div>
-              </div>
-              <div className="shrink-0 text-right text-[11px] font-semibold uppercase tracking-wide text-white/90">
-                {syncing || loadingRemote ? (
-                  <span>
-                    <CloudSyncOutlined className="mr-1" />
-                    Đang đồng bộ
-                  </span>
-                ) : supabaseConnected ? (
-                  <span>
-                    <CloudOutlined className="mr-1" />
-                    Supabase
-                  </span>
-                ) : (
-                  <span>Chưa kết nối Supabase</span>
-                )}
-              </div>
-            </div>
+        <main className="flex-1 flex flex-col min-w-0 overflow-hidden">
+          <div className="px-3 py-2 border-b border-gray-200 flex flex-wrap items-center gap-2 bg-white shrink-0">
+            <Text type="secondary" className="text-xs md:text-sm font-medium">
+              {activeDeptKey
+                ? 'Đang lọc theo phòng đã chọn'
+                : 'Đang hiện tất cả phòng trong khối'}{' '}
+              · <strong>2 dấu cách</strong> xuống dòng · <strong>Enter</strong> ý mới
+            </Text>
+            <label className="inline-flex items-center gap-1.5 text-xs md:text-sm font-semibold text-gray-600 ml-auto cursor-pointer select-none">
+              <Checkbox checked={showHidden} onChange={e => setShowHidden(e.target.checked)} />
+              Hiện ý đã xong
+            </label>
+          </div>
 
-            <div className="px-3 py-2 border-b border-gray-100 flex flex-wrap items-center gap-2 bg-slate-50">
-              <Text type="secondary" className="text-xs md:text-sm font-medium">
-                List theo <strong>thứ tự gõ</strong> · thanh trên/trái chỉ chọn phòng để thêm ý ·{' '}
-                <strong>2 dấu cách</strong> xuống dòng cùng ý · <strong>Enter</strong> ý mới · <strong>Chưa xong</strong> để ẩn
-              </Text>
-              <label className="inline-flex items-center gap-1.5 text-xs md:text-sm font-semibold text-gray-600 ml-auto cursor-pointer select-none">
-                <Checkbox checked={showHidden} onChange={e => setShowHidden(e.target.checked)} />
-                Hiện ý đã xong
-              </label>
-            </div>
-
-            <div className="flex-1 overflow-y-auto p-3 md:p-4 space-y-3 bg-[#fafafa]">
+          <div className="flex-1 overflow-y-auto p-3 md:p-4 space-y-3">
               <Spin spinning={loadingRemote} tip="Đang tải từ Supabase...">
               {groupedNotes.length === 0 && !loadingRemote ? (
                 <Empty
                   image={Empty.PRESENTED_IMAGE_SIMPLE}
-                  description="Chưa có ghi chú — chọn phòng bên trái để bắt đầu"
-                />
+                  description={
+                    activeDeptKey
+                      ? 'Phòng này chưa có ghi chú — bấm Thêm ý'
+                      : 'Chưa có ghi chú trong khối này — chọn phòng rồi Thêm ý'
+                  }
+                >
+                  <Button
+                    type="primary"
+                    icon={<PlusOutlined />}
+                    onClick={() => {
+                      if (!activeDeptKey) {
+                        message.info('Chọn một phòng ban bên trái rồi bấm Thêm ý.');
+                        return;
+                      }
+                      appendIdea(activeDeptKey, '');
+                    }}
+                  >
+                    Thêm ý
+                  </Button>
+                </Empty>
               ) : (
                 groupedNotes.map(group => {
                   const allHidden = group.ideas.every(idea => idea.hidden);
@@ -591,7 +699,6 @@ const WorkNotesView: React.FC = () => {
                               }}
                               value={ideaBodyText(idea)}
                               onChange={e => handleBodyChange(idea.id, e.target.value)}
-                              onFocus={() => setActiveDeptKey(idea.deptKey)}
                               onKeyDown={e => handleIdeaKeyDown(idea.id, e)}
                               rows={Math.max(1, idea.lines.length)}
                               spellCheck={false}
@@ -628,7 +735,6 @@ const WorkNotesView: React.FC = () => {
                 })
               )}
               </Spin>
-            </div>
           </div>
         </main>
       </div>

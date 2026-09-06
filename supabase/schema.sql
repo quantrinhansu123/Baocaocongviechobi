@@ -8,6 +8,7 @@
 drop table if exists public.i_1 cascade;
 drop table if exists public.i_2 cascade;
 drop table if exists public.i_3 cascade;
+drop table if exists public.i_4 cascade;
 drop table if exists public.ii_1 cascade;
 drop table if exists public.ii_2 cascade;
 drop table if exists public.ii_3 cascade;
@@ -75,6 +76,18 @@ create policy "anon_select_i_3" on public.i_3 for select to anon using (true);
 create policy "anon_insert_i_3" on public.i_3 for insert to anon with check (true);
 create policy "anon_update_i_3" on public.i_3 for update to anon using (true) with check (true);
 create policy "anon_delete_i_3" on public.i_3 for delete to anon using (true);
+
+create table public.i_4 (
+  tt text primary key,
+  data jsonb not null default '{}'::jsonb,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
+);
+alter table public.i_4 enable row level security;
+create policy "anon_select_i_4" on public.i_4 for select to anon using (true);
+create policy "anon_insert_i_4" on public.i_4 for insert to anon with check (true);
+create policy "anon_update_i_4" on public.i_4 for update to anon using (true) with check (true);
+create policy "anon_delete_i_4" on public.i_4 for delete to anon using (true);
 
 create table public.ii_1 (
   tt text primary key,

@@ -20,6 +20,7 @@ import {
 } from '@ant-design/icons';
 import dayjs, { type Dayjs } from 'dayjs';
 import BackButton from '../components/BackButton';
+import { useHeaderToolbar } from '../contexts/HeaderToolbarContext';
 import { ORG_BLOCKS } from '../data/orgBlocks';
 import {
   loadGeneralNotesFromSupabase,
@@ -201,6 +202,7 @@ const GeneralNotesView: React.FC = () => {
   const syncTimerRef = useRef<number | null>(null);
   const notesRef = useRef(notes);
   notesRef.current = notes;
+  const { setToolbar, clearToolbar } = useHeaderToolbar();
 
   const [archiveOpen, setArchiveOpen] = useState(false);
   const [archiveLoading, setArchiveLoading] = useState(false);
@@ -449,135 +451,148 @@ const GeneralNotesView: React.FC = () => {
     setFocusNoteId(null);
   }, [focusNoteId, timelineNotes]);
 
-  return (
-    <div className="flex-1 flex flex-col overflow-hidden bg-gray-50 min-h-0 p-3 md:p-4">
-      <div className="flex-1 flex flex-col min-h-0 bg-white border border-gray-200 rounded-lg shadow-sm overflow-hidden">
-        <div className="bg-[#F38320] text-white px-4 py-3 flex items-center justify-between gap-3 flex-shrink-0">
-          <div className="min-w-0 flex items-start gap-3">
-            <BackButton variant="light" size="small" className="mt-0.5" />
-            <div className="min-w-0">
-              <p className="m-0 text-[11px] font-bold uppercase tracking-widest text-white/80">Ghi chú chung</p>
-              <h2 className="m-0 mt-0.5 text-base md:text-lg font-extrabold uppercase leading-snug truncate">
-                Theo thứ tự gõ
-              </h2>
-              <p className="m-0 mt-1 text-[11px] font-semibold uppercase tracking-wide text-white/90">
-                {syncing || loadingRemote ? (
-                  <span>
-                    <CloudSyncOutlined className="mr-1" />
-                    Đang đồng bộ
-                  </span>
-                ) : supabaseConnected ? (
-                  <span>
-                    <CloudOutlined className="mr-1" />
-                    Supabase
-                  </span>
-                ) : (
-                  <span>Chưa kết nối Supabase</span>
-                )}
-              </p>
-            </div>
-          </div>
-          <div className="flex items-center gap-2 shrink-0">
-            <Button
-              type="default"
-              size="middle"
-              icon={<UnorderedListOutlined />}
-              className="font-bold"
-              onClick={() => void openArchiveModal()}
-            >
-              Theo ngày
-            </Button>
-            <Button
-              type="default"
-              size="middle"
-              icon={<PlusOutlined />}
-              className="font-bold"
-              onClick={() => appendNote('')}
-            >
-              Thêm ý
-            </Button>
-          </div>
+  useEffect(() => {
+    setToolbar(
+      <div className="flex items-center gap-2 md:gap-3 w-full min-w-0">
+        <BackButton size="small" />
+        <div className="min-w-0 flex-1 hidden sm:block">
+          <p className="m-0 text-[10px] font-bold uppercase tracking-widest text-gray-500 leading-tight">
+            Ghi chú chung
+          </p>
+          <p className="m-0 text-sm font-extrabold uppercase text-[#1E386B] leading-snug truncate">
+            Theo thứ tự gõ
+          </p>
         </div>
-
-        <div className="px-3 py-2 border-b border-gray-100 flex flex-wrap items-center gap-2 bg-slate-50">
-          <Text type="secondary" className="text-xs md:text-sm font-medium">
-            List theo <strong>thứ tự gõ</strong> · <strong>2 dấu cách</strong> xuống dòng cùng ý ·{' '}
-            <strong>Enter</strong> ý mới · <strong>Chưa xong</strong> để ẩn
-          </Text>
-          <label className="inline-flex items-center gap-1.5 text-xs md:text-sm font-semibold text-gray-600 ml-auto cursor-pointer select-none">
+        <div className="flex items-center gap-2 shrink-0 ml-auto flex-wrap justify-end">
+          {syncing || loadingRemote ? (
+            <Tag className="m-0 hidden md:inline-flex">
+              <CloudSyncOutlined className="mr-1" />
+              Đồng bộ
+            </Tag>
+          ) : supabaseConnected ? (
+            <Tag color="success" className="m-0 hidden md:inline-flex">
+              <CloudOutlined className="mr-1" />
+              Supabase
+            </Tag>
+          ) : (
+            <Tag color="error" className="m-0 hidden md:inline-flex">
+              Offline
+            </Tag>
+          )}
+          <label className="hidden lg:inline-flex items-center gap-1.5 text-xs font-semibold text-gray-600 cursor-pointer select-none">
             <Checkbox checked={showHidden} onChange={e => setShowHidden(e.target.checked)} />
-            Hiện ý đã xong
+            Hiện đã xong
           </label>
+          <Button
+            type="default"
+            size="small"
+            icon={<UnorderedListOutlined />}
+            className="font-bold"
+            onClick={() => void openArchiveModal()}
+          >
+            Theo ngày
+          </Button>
+          <Button
+            type="primary"
+            size="small"
+            icon={<PlusOutlined />}
+            className="font-bold bg-[#F38320] border-[#F38320]"
+            onClick={() => appendNote('')}
+          >
+            Thêm ý
+          </Button>
         </div>
+      </div>
+    );
+    return () => clearToolbar();
+  }, [
+    syncing,
+    loadingRemote,
+    supabaseConnected,
+    showHidden,
+    setToolbar,
+    clearToolbar,
+  ]);
 
-        <div className="flex-1 overflow-y-auto p-3 md:p-4 space-y-2 bg-[#fafafa]">
-          <Spin spinning={loadingRemote} tip="Đang tải từ Supabase...">
-            {timelineNotes.length === 0 && !loadingRemote ? (
-              <Empty
-                image={Empty.PRESENTED_IMAGE_SIMPLE}
-                description="Chưa có ghi chú — bấm Thêm ý để bắt đầu"
+  return (
+    <div className="flex-1 flex flex-col overflow-hidden bg-gray-50 min-h-0">
+      <div className="px-3 py-2 border-b border-gray-200 flex flex-wrap items-center gap-2 bg-white shrink-0 lg:hidden">
+        <Text type="secondary" className="text-xs font-medium">
+          <strong>2 dấu cách</strong> xuống dòng · <strong>Enter</strong> ý mới
+        </Text>
+        <label className="inline-flex items-center gap-1.5 text-xs font-semibold text-gray-600 ml-auto cursor-pointer select-none">
+          <Checkbox checked={showHidden} onChange={e => setShowHidden(e.target.checked)} />
+          Hiện đã xong
+        </label>
+      </div>
+
+      <div className="flex-1 overflow-y-auto p-3 md:p-4 space-y-2">
+        <Spin spinning={loadingRemote} tip="Đang tải từ Supabase...">
+          {timelineNotes.length === 0 && !loadingRemote ? (
+            <Empty
+              image={Empty.PRESENTED_IMAGE_SIMPLE}
+              description="Chưa có ghi chú — bấm Thêm ý để bắt đầu"
+            >
+              <Button type="primary" icon={<PlusOutlined />} onClick={() => appendNote('')}>
+                Thêm ý
+              </Button>
+            </Empty>
+          ) : (
+            timelineNotes.map(note => (
+              <div
+                key={note.id}
+                className={`flex items-start gap-2 rounded-lg border px-3 py-2 transition ${
+                  note.hidden
+                    ? 'bg-gray-100 border-gray-200 opacity-75'
+                    : 'bg-white border-gray-200 shadow-sm'
+                }`}
               >
-                <Button type="primary" icon={<PlusOutlined />} onClick={() => appendNote('')}>
-                  Thêm ý
-                </Button>
-              </Empty>
-            ) : (
-              timelineNotes.map(note => (
-                <div
-                  key={note.id}
-                  className={`flex items-start gap-2 rounded-lg border px-3 py-2 transition ${
-                    note.hidden
-                      ? 'bg-gray-100 border-gray-200 opacity-75'
-                      : 'bg-white border-gray-200 shadow-sm'
+                <span
+                  className={`work-notes-bullet select-none mt-0.5 ${
+                    note.hidden ? 'text-gray-400' : 'text-[#1E386B]'
                   }`}
+                  aria-hidden
                 >
-                  <span
-                    className={`work-notes-bullet select-none mt-0.5 ${
-                      note.hidden ? 'text-gray-400' : 'text-[#1E386B]'
-                    }`}
-                    aria-hidden
+                  −
+                </span>
+                <textarea
+                  ref={node => {
+                    textareaRefs.current[note.id] = node;
+                  }}
+                  value={noteBodyText(note)}
+                  onChange={e => handleBodyChange(note.id, e.target.value)}
+                  onKeyDown={e => handleIdeaKeyDown(note.id, e)}
+                  rows={Math.max(1, note.lines.length)}
+                  spellCheck={false}
+                  disabled={note.hidden && !showHidden}
+                  className={`work-notes-idea-input flex-1 min-w-0 resize-none outline-none bg-transparent ${
+                    note.hidden ? 'line-through text-gray-400' : 'text-gray-900'
+                  }`}
+                  placeholder="Nội dung ghi chú..."
+                />
+                {note.hidden ? (
+                  <Button
+                    size="middle"
+                    className="work-notes-done-btn shrink-0 font-bold"
+                    onClick={() => updateNote(note.id, { hidden: false })}
                   >
-                    −
-                  </span>
-                  <textarea
-                    ref={node => {
-                      textareaRefs.current[note.id] = node;
-                    }}
-                    value={noteBodyText(note)}
-                    onChange={e => handleBodyChange(note.id, e.target.value)}
-                    onKeyDown={e => handleIdeaKeyDown(note.id, e)}
-                    rows={Math.max(1, note.lines.length)}
-                    spellCheck={false}
-                    disabled={note.hidden && !showHidden}
-                    className={`work-notes-idea-input flex-1 min-w-0 resize-none outline-none bg-transparent ${
-                      note.hidden ? 'line-through text-gray-400' : 'text-gray-900'
-                    }`}
-                    placeholder="Nội dung ghi chú..."
-                  />
-                  {note.hidden ? (
-                    <Button
-                      size="middle"
-                      className="work-notes-done-btn shrink-0 font-bold"
-                      onClick={() => updateNote(note.id, { hidden: false })}
-                    >
-                      Hiện lại
-                    </Button>
-                  ) : (
-                    <Button
-                      type="primary"
-                      size="middle"
-                      icon={<CheckOutlined />}
-                      className="work-notes-done-btn shrink-0 font-bold"
-                      onClick={() => updateNote(note.id, { hidden: true })}
-                    >
-                      Chưa xong
-                    </Button>
-                  )}
-                </div>
-              ))
-            )}
-          </Spin>
-        </div>
+                    Hiện lại
+                  </Button>
+                ) : (
+                  <Button
+                    type="primary"
+                    size="middle"
+                    icon={<CheckOutlined />}
+                    className="work-notes-done-btn shrink-0 font-bold"
+                    onClick={() => updateNote(note.id, { hidden: true })}
+                  >
+                    Chưa xong
+                  </Button>
+                )}
+              </div>
+            ))
+          )}
+        </Spin>
       </div>
 
       <Modal

@@ -23,7 +23,7 @@ function auxiliaryTableToSupabaseName(logicalTable) {
 
 // api/_lib/data/taskTables.ts
 var BLOCK_ROMANS = ["I", "II", "III", "IV"];
-var BLOCK_DEPT_COUNTS = [3, 9, 3, 2];
+var BLOCK_DEPT_COUNTS = [4, 9, 3, 2];
 function listTaskTableNames() {
   return BLOCK_ROMANS.flatMap(
     (block, blockIndex) => Array.from({ length: BLOCK_DEPT_COUNTS[blockIndex] }, (_, deptIndex) => `${block}.${deptIndex + 1}`)

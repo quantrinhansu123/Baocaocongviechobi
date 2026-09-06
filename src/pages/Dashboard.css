@@ -200,6 +200,48 @@
   white-space: nowrap;
 }
 
+/* Tên phòng ban — đậm, xanh; đổi màu khi hover/active */
+.dept-name-tag.ant-tag {
+  margin: 0 !important;
+  border: 1px solid rgba(30, 56, 107, 0.22) !important;
+  background: rgba(30, 56, 107, 0.08) !important;
+  color: #1e386b !important;
+  font-size: 12px !important;
+  font-weight: 800 !important;
+  line-height: 1.25 !important;
+  padding: 2px 6px !important;
+  border-radius: 4px !important;
+  cursor: pointer;
+  transition: background-color 0.15s ease, color 0.15s ease, border-color 0.15s ease;
+  max-width: 100%;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  display: inline-block;
+}
+
+.dept-name-tag.ant-tag:hover,
+.dept-name-tag.ant-tag:focus {
+  background: #1e386b !important;
+  border-color: #1e386b !important;
+  color: #ffffff !important;
+}
+
+.dept-name-tag.ant-tag:active {
+  background: #f38320 !important;
+  border-color: #f38320 !important;
+  color: #ffffff !important;
+}
+
+.dashboard-mobile-task-card .dept-name-tag.ant-tag {
+  font-size: 0.6875rem !important;
+  padding: 2px 6px !important;
+  max-width: 65%;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
 .dashboard-mobile-task-card .task-deadline {
   font-size: 0.5625rem;
   color: #6b7280;
@@ -253,6 +295,16 @@
   color: #1e386b;
 }
 
+.dashboard-mobile-task-card .task-status--cancel {
+  background: #f1f5f9;
+  color: #475569;
+}
+
+.dashboard-mobile-task-card .task-status--paused {
+  background: #fef3c7;
+  color: #b45309;
+}
+
 .dashboard-mobile-task-card .task-impact {
   display: flex;
   gap: 0.1rem;
@@ -290,10 +342,28 @@
 
 .dashboard-chart-wrap {
   width: 100%;
+  contain: layout paint;
+}
+
+.dashboard-chart-wrap .recharts-surface {
+  overflow: visible;
+}
+
+.dashboard-chart-wrap .recharts-cartesian-axis-tick text {
+  white-space: nowrap;
+}
+
+.dashboard-chart-wrap .recharts-yAxis .recharts-text {
+  white-space: nowrap;
 }
 
 .dashboard-chart-wrap .recharts-bar-rectangle {
   cursor: pointer;
+  transition: opacity 0.12s ease;
+}
+
+.dashboard-chart-wrap .recharts-bar-rectangle:hover {
+  opacity: 0.88;
 }
 
 .dashboard-chart-wrap .recharts-legend-item-text {
@@ -611,37 +681,37 @@
   width: 100%;
 }
 
-.chart-drill-table .ant-table-thead > tr > th {
-  background-color: #0F274D !important;
-  color: #ffffff !important;
-  font-size: 17px;
-  font-weight: 900;
-  letter-spacing: 0.04em;
-  text-shadow: 0 1px 0 rgba(0, 0, 0, 0.25);
-  padding: 16px 16px !important;
-}
-
-.chart-drill-table .ant-table-tbody > tr > td {
-  font-size: 16px !important;
-  padding: 16px !important;
-  vertical-align: middle;
-  line-height: 1.5 !important;
-}
-
 .dashboard-wide-table .ant-table-thead > tr > th {
-  font-size: 20px !important;
+  font-size: 13px !important;
   font-weight: 800 !important;
-  padding-top: 14px !important;
-  padding-bottom: 14px !important;
+  padding: 8px 8px !important;
   font-family: "Times New Roman", Times, serif !important;
+  white-space: nowrap;
 }
 
 .dashboard-wide-table .ant-table-tbody > tr > td {
-  font-size: 20px !important;
-  padding-top: 14px !important;
-  padding-bottom: 14px !important;
-  line-height: 1.5 !important;
+  font-size: 14px !important;
+  padding: 6px 8px !important;
+  line-height: 1.35 !important;
   font-family: "Times New Roman", Times, serif !important;
+  vertical-align: middle;
+}
+
+.chart-drill-table .ant-table-thead > tr > th {
+  background-color: #0F274D !important;
+  color: #ffffff !important;
+  font-size: 13px;
+  font-weight: 900;
+  letter-spacing: 0.04em;
+  text-shadow: 0 1px 0 rgba(0, 0, 0, 0.25);
+  padding: 8px 8px !important;
+}
+
+.chart-drill-table .ant-table-tbody > tr > td {
+  font-size: 14px !important;
+  padding: 6px 8px !important;
+  vertical-align: middle;
+  line-height: 1.35 !important;
 }
 
 /* Thanh cuộn rõ hơn cho bảng dashboard */
@@ -679,6 +749,37 @@
 .dashboard-list-card .ant-card-head-title {
   font-family: "Times New Roman", Times, serif !important;
   font-size: 22px !important;
+}
+
+.dashboard-task-name {
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  overflow: hidden;
+  white-space: normal;
+  word-break: break-word;
+  font-size: 14px;
+  font-weight: 700;
+  line-height: 1.35;
+  color: #1e386b;
+  cursor: pointer;
+}
+
+.dashboard-task-name:hover {
+  text-decoration: underline;
+}
+
+.dashboard-task-name--danger {
+  color: #dc2626;
+}
+
+.dashboard-wide-table .dashboard-col-task {
+  white-space: normal !important;
+  vertical-align: middle;
+}
+
+.dashboard-wide-table .dashboard-col-task .ant-table-cell {
+  white-space: normal !important;
 }
 
 .chart-drill-task-name {
@@ -719,6 +820,17 @@
 
 .chart-drill-action-btn.ant-btn .anticon {
   font-size: 20px !important;
+}
+
+.dashboard-wide-table .dashboard-col-complete,
+.dashboard-wide-table .dashboard-col-assignee,
+.dashboard-wide-table .dashboard-col-deadline,
+.dashboard-wide-table .dashboard-col-impact {
+  padding-inline: 6px !important;
+}
+
+.dashboard-wide-table .dashboard-col-complete {
+  padding-inline: 4px !important;
 }
 
 .chart-drill-actions {

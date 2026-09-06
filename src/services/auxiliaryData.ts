@@ -233,6 +233,17 @@ export function mergePersonnelOption(
   return [{ value: name, label: name }, ...options];
 }
 
+export function mergePersonnelOptions(
+  options: PersonnelSelectOption[],
+  currentNames?: string[] | null
+): PersonnelSelectOption[] {
+  let next = options;
+  for (const name of currentNames ?? []) {
+    next = mergePersonnelOption(next, name);
+  }
+  return next;
+}
+
 export async function addPersonnel(record: PersonnelRecord): Promise<void> {
   await addDataRow(personnelToRow(record), TABLE_NHAN_SU);
 }
