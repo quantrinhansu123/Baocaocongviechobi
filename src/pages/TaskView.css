@@ -151,16 +151,16 @@
 }
 
 .task-list-check {
-  width: 18px;
-  height: 18px;
+  width: 36px;
+  height: 36px;
   border-radius: 999px;
   border: 2px solid #b8c5d9;
   flex-shrink: 0;
-  margin-top: 2px;
+  margin-top: 0;
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  font-size: 10px;
+  font-size: 14px;
   color: #fff;
   background: #fff;
   cursor: pointer;
@@ -746,17 +746,28 @@
 }
 
 @media (max-width: 767px) {
+  .task-md-shell {
+    flex-direction: column;
+  }
+
   .task-list-panel {
     display: none;
   }
 
   .task-list-panel.is-mobile-visible {
     display: flex;
-    flex: 1;
+    flex: 1 1 auto;
     width: 100%;
+    max-width: none;
+  }
+
+  .task-md-detail {
+    flex: 1 1 auto;
+    width: 100%;
+    max-width: none;
   }
 
   .task-md-detail.is-mobile-hidden {
-    display: none;
+    display: none !important;
   }
 }

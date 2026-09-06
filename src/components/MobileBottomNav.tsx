@@ -3,13 +3,13 @@ import { useLocation, useNavigate } from 'react-router-dom';
 import {
   HomeOutlined,
   CarryOutOutlined,
-  UserOutlined,
+  FormOutlined,
 } from '@ant-design/icons';
 
 const NAV_ITEMS = [
   { key: '/', label: 'Tổng quan', icon: HomeOutlined },
   { key: '/tasks', label: 'Công việc', icon: CarryOutOutlined },
-  { key: '/profile', label: 'Cá nhân', icon: UserOutlined },
+  { key: '/work-notes', label: 'Ghi chú', icon: FormOutlined },
 ] as const;
 
 function isActive(pathname: string, key: string): boolean {
@@ -18,6 +18,9 @@ function isActive(pathname: string, key: string): boolean {
   }
   if (key === '/tasks') {
     return pathname.startsWith('/tasks');
+  }
+  if (key === '/work-notes') {
+    return pathname.startsWith('/work-notes') || pathname.startsWith('/general-notes');
   }
   return pathname === key;
 }
@@ -31,7 +34,7 @@ const MobileBottomNav: React.FC = () => {
       className="md:hidden fixed bottom-0 inset-x-0 z-50 bg-white border-t border-gray-200 safe-area-pb"
       aria-label="Điều hướng chính"
     >
-      <div className="grid grid-cols-3 h-[60px]">
+      <div className="grid grid-cols-3 mobile-bottom-nav-inner">
         {NAV_ITEMS.map(item => {
           const active = isActive(location.pathname, item.key);
           const Icon = item.icon;
@@ -39,7 +42,7 @@ const MobileBottomNav: React.FC = () => {
             <button
               key={item.key}
               type="button"
-              onClick={() => navigate(item.key === '/profile' ? '/' : item.key)}
+              onClick={() => navigate(item.key)}
               className={`flex flex-col items-center justify-center gap-0.5 text-[11px] font-medium transition-colors ${
                 active ? 'text-[#1E386B]' : 'text-gray-400'
               }`}

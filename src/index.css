@@ -16,6 +16,9 @@
   /* Độ sâu (elevation) dùng chung — giữ bóng đổ mềm, nhất quán toàn app */
   --shadow-elevation-1: 0 1px 2px 0 rgba(16, 24, 40, 0.04), 0 1px 3px 0 rgba(16, 24, 40, 0.06);
   --shadow-elevation-2: 0 4px 10px -2px rgba(16, 24, 40, 0.1), 0 2px 6px -2px rgba(16, 24, 40, 0.06);
+  /* Mobile bottom nav */
+  --mobile-nav-h: 60px;
+  --mobile-content-pb: calc(var(--mobile-nav-h) + env(safe-area-inset-bottom, 0px) + 8px);
 }
 
 body {
@@ -54,11 +57,45 @@ body {
   background-color: white !important;
   border-bottom: 1px solid var(--color-ant-border) !important;
   box-shadow: 0 1px 2px 0 rgba(16, 24, 40, 0.04);
-  height: 4rem !important;
+  min-height: 4rem !important;
+  height: auto !important;
   display: flex !important;
   align-items: center !important;
-  padding-left: 1.5rem !important;
-  padding-right: 1.5rem !important;
+  padding-left: 0.75rem !important;
+  padding-right: 0.75rem !important;
+}
+
+@media (min-width: 768px) {
+  .ant-layout-header {
+    padding-left: 1.5rem !important;
+    padding-right: 1.5rem !important;
+  }
+}
+
+/* Content: chừa chỗ bottom nav + safe-area trên mobile */
+.main-content-mobile-pad {
+  padding-bottom: var(--mobile-content-pb) !important;
+}
+
+@media (min-width: 768px) {
+  .main-content-mobile-pad {
+    padding-bottom: 0 !important;
+  }
+}
+
+/* Full-bleed pages (Task / Notes) — bỏ padding cạnh trên mobile */
+.main-content-fullbleed {
+  padding-left: 0 !important;
+  padding-right: 0 !important;
+  padding-top: 0 !important;
+}
+
+@media (min-width: 768px) {
+  .main-content-fullbleed {
+    padding-left: 1.5rem !important;
+    padding-right: 1.5rem !important;
+    padding-top: 1.5rem !important;
+  }
 }
 
 .ant-card {
@@ -184,6 +221,10 @@ body {
 
 .safe-area-pb {
   padding-bottom: env(safe-area-inset-bottom, 0);
+}
+
+.mobile-bottom-nav-inner {
+  height: var(--mobile-nav-h);
 }
 
 @keyframes task-overdue-blink {

@@ -1248,11 +1248,11 @@ const TaskView: React.FC = () => {
           options={WEEK_OPTIONS}
           placeholder="Tuần"
           size="small"
-          className="w-[150px] sm:w-[200px] md:w-56"
+          className="w-[112px] sm:w-[180px] md:w-56"
           getPopupContainer={trigger => trigger.parentElement ?? document.body}
         />
         {supabaseConnected === true ? (
-          <Tag color="success" className="m-0 shrink-0">
+          <Tag color="success" className="m-0 shrink-0 hidden sm:inline-flex">
             Supabase
           </Tag>
         ) : supabaseConnected === false ? (
@@ -2249,11 +2249,11 @@ const TaskView: React.FC = () => {
               </Form>
             </div>
           ) : (
-            <div className={`task-md-detail${!listScope ? '' : ' is-mobile-hidden'}`}>
+            <div className="task-md-detail is-mobile-hidden">
               <div className="task-md-empty">
                 {listScope
                   ? 'Chọn một công việc ở danh sách bên trái để xem chi tiết.'
-                  : 'Chọn phòng ban ở menu bên trái để bắt đầu.'}
+                  : 'Chọn đầu mục ở thanh link phía trên để bắt đầu.'}
               </div>
             </div>
           )}

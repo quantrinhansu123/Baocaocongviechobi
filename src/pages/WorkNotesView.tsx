@@ -140,7 +140,10 @@ function displayTitle(title: string): string {
 const WorkNotesView: React.FC = () => {
   const [activeBlockKey, setActiveBlockKey] = useState(() => ORG_BLOCKS[1]?.key ?? ORG_BLOCKS[0]?.key ?? 'tm');
   const [activeDeptKey, setActiveDeptKey] = useState<string | null>(null);
-  const [leftCollapsed, setLeftCollapsed] = useState(false);
+  const [leftCollapsed, setLeftCollapsed] = useState(() => {
+    if (typeof window === 'undefined') return false;
+    return window.matchMedia('(max-width: 767px)').matches;
+  });
   const [notes, setNotes] = useState<NoteIdea[]>(() => loadNotes());
   const [showHidden, setShowHidden] = useState(false);
   const [focusIdeaId, setFocusIdeaId] = useState<string | null>(null);
@@ -172,6 +175,18 @@ const WorkNotesView: React.FC = () => {
       return null;
     });
   }, [leftDepts]);
+
+  useEffect(() => {
+    const mq = window.matchMedia('(max-width: 767px)');
+    const syncCollapsed = () => {
+      if (mq.matches) {
+        setLeftCollapsed(true);
+      }
+    };
+    syncCollapsed();
+    mq.addEventListener('change', syncCollapsed);
+    return () => mq.removeEventListener('change', syncCollapsed);
+  }, []);
 
   useEffect(() => {
     let cancelled = false;
@@ -531,11 +546,21 @@ const WorkNotesView: React.FC = () => {
   ]);
 
   return (
-    <div className="flex-1 flex flex-col overflow-hidden bg-gray-50 min-h-0">
+    <div className="flex-1 flex flex-col overflow-hidden bg-gray-50 min-h-0 relative">
       <div className="flex-1 flex min-h-0 overflow-hidden">
+        {!leftCollapsed ? (
+          <button
+            type="button"
+            className="md:hidden absolute inset-0 z-20 bg-black/40 border-0 p-0 cursor-pointer"
+            aria-label="Đóng danh sách phòng ban"
+            onClick={() => setLeftCollapsed(true)}
+          />
+        ) : null}
         <aside
-          className={`flex-shrink-0 bg-[#1E386B] text-white overflow-hidden transition-[width] duration-200 ${
-            leftCollapsed ? 'w-12' : 'w-[260px] md:w-[320px]'
+          className={`flex-shrink-0 bg-[#1E386B] text-white overflow-hidden transition-[width] duration-200 z-30 ${
+            leftCollapsed
+              ? 'w-12'
+              : 'absolute md:relative inset-y-0 left-0 w-[min(280px,85vw)] md:w-[320px] shadow-xl md:shadow-none'
           }`}
         >
           <div
@@ -562,7 +587,7 @@ const WorkNotesView: React.FC = () => {
             <button
               type="button"
               onClick={() => setLeftCollapsed(prev => !prev)}
-              className="shrink-0 w-8 h-8 inline-flex items-center justify-center rounded-md text-white/90 hover:bg-white/15 transition"
+              className="shrink-0 w-10 h-10 inline-flex items-center justify-center rounded-md text-white/90 hover:bg-white/15 transition"
               title={leftCollapsed ? 'Mở danh sách phòng ban' : 'Thu gọn danh sách phòng ban'}
               aria-label={leftCollapsed ? 'Mở danh sách phòng ban' : 'Thu gọn danh sách phòng ban'}
             >

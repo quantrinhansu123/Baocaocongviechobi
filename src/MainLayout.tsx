@@ -312,6 +312,10 @@ const MainLayoutInner: React.FC = () => {
   const activeDeptKey =
     pathParts[0] === 'tasks' && pathParts[2] ? pathParts[2] : undefined;
   const activeBlock = TASK_MENU_TREE.find(b => b.key === activeBlockKey);
+  const isFullBleedMobileRoute =
+    location.pathname.startsWith('/tasks') ||
+    location.pathname === '/work-notes' ||
+    location.pathname === '/general-notes';
   const showTopicLinks =
     location.pathname === '/' || location.pathname.startsWith('/tasks');
 
@@ -396,12 +400,12 @@ const MainLayoutInner: React.FC = () => {
               })}
             </div>
 
-            {/* Mobile: Nút Hamburger + Logo gốc */}
+            {/* Mobile: Nút Hamburger + Logo (ẩn chữ brand để chừa toolbar) */}
             <div className="flex md:hidden items-center">
               <button
                 type="button"
                 aria-label="Mở menu"
-                className="mr-3 flex items-center justify-center w-10 h-10 rounded-lg transition-all shrink-0 bg-orange-50 text-[#1E386B] border-2 border-[#F38320]/40 hover:bg-orange-100 shadow-sm"
+                className="mr-2 flex items-center justify-center w-10 h-10 rounded-lg transition-all shrink-0 bg-orange-50 text-[#1E386B] border-2 border-[#F38320]/40 hover:bg-orange-100 shadow-sm"
                 onClick={() => setMobileMenuOpen(true)}
               >
                 <MenuOutlined className="text-[22px] font-bold" />
@@ -410,12 +414,7 @@ const MainLayoutInner: React.FC = () => {
                 className="custom-navbar-brand cursor-pointer flex items-center"
                 onClick={() => navigate('/')}
               >
-                <img src={logo} alt="Hobiwood Logo" className="h-8 w-auto object-contain mr-2" />
-                <div className="leading-tight">
-                  <p className="font-bold text-base m-0 tracking-wide text-[#1E386B]">
-                    HOBI VIỆT NAM
-                  </p>
-                </div>
+                <img src={logo} alt="Hobiwood Logo" className="h-8 w-auto object-contain" />
               </div>
             </div>
           </div>
@@ -564,7 +563,11 @@ const MainLayoutInner: React.FC = () => {
 
         {/* --- CONTENT AREA --- */}
         <Content
-          className="overflow-auto flex-1 flex flex-col relative pb-16 md:pb-0 p-4 md:p-6 bg-gray-50"
+          className={`overflow-auto flex-1 flex flex-col relative main-content-mobile-pad bg-gray-50 ${
+            isFullBleedMobileRoute
+              ? 'main-content-fullbleed p-0 md:p-6'
+              : 'p-4 md:p-6'
+          }`}
           style={{ minHeight: 280 }}
         >
           <Suspense

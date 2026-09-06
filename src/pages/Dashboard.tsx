@@ -1129,7 +1129,8 @@ const Dashboard: React.FC = () => {
 
   const weekOptions = generateWeekOptions();
   const screens = Grid.useBreakpoint();
-  const isMobile = screens.md === false;
+  // Khi breakpoint chưa hydrate (undefined), mặc định mobile để tránh flash desktop
+  const isMobile = screens.md === false || screens.md === undefined;
 
   useEffect(() => {
     setChartGroupMode(isMobile ? 'block' : 'dept');
@@ -1971,7 +1972,7 @@ const Dashboard: React.FC = () => {
   return (
     <>
     <Spin spinning={tasksLoading} tip="Đang tải dữ liệu Supabase...">
-      <div className="dashboard-container space-y-4 md:space-y-6 bg-gray-50 min-h-screen p-3 md:p-6 relative">
+      <div className="dashboard-container space-y-4 md:space-y-6 bg-gray-50 min-h-0 md:min-h-screen p-3 md:p-6 relative">
       
       {/* ─── HIỂN THỊ DESKTOP ─── */}
       {!isMobile && (
@@ -2124,8 +2125,9 @@ const Dashboard: React.FC = () => {
                 </p>
               </div>
               <button
+                type="button"
                 onClick={() => setChartGroupPopup(null)}
-                className="hover:bg-white/20 p-1 rounded transition shrink-0"
+                className="dashboard-modal-close-btn text-white"
                 aria-label="Đóng"
               >
                 <X size={22} />
@@ -2191,11 +2193,12 @@ const Dashboard: React.FC = () => {
                   ← Quay lại
                 </Button>
                 <button
+                  type="button"
                   onClick={() => {
                     setChartDrillDown(null);
                     setChartGroupPopup(null);
                   }}
-                  className="hover:bg-white/20 p-1 rounded transition shrink-0"
+                  className="dashboard-modal-close-btn text-white"
                   aria-label="Đóng"
                 >
                   <X size={22} />
@@ -2282,16 +2285,16 @@ const Dashboard: React.FC = () => {
         <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-[9999] p-2 md:p-4">
           <ConfigProvider theme={{ token: { zIndexPopupBase: 11000 } }}>
           <div className="bg-white rounded-xl shadow-xl w-full max-w-[96vw] h-[94vh] flex flex-col">
-            <div className="bg-[#F38320] text-white p-4 md:p-5 flex flex-wrap justify-between items-start gap-3 rounded-t-xl shrink-0">
-              <div className="min-w-0 flex-1 flex items-start gap-3">
+            <div className="bg-[#F38320] text-white p-3 md:p-5 flex flex-wrap justify-between items-center gap-2 rounded-t-xl shrink-0">
+              <div className="min-w-0 flex-1 flex items-center gap-2 md:gap-3">
                 <Button
                   size="small"
-                  className="mt-0.5 shrink-0 bg-white/15 text-white border-white/40 hover:!bg-white/25 hover:!text-white hover:!border-white font-bold"
+                  className="shrink-0 bg-white/15 text-white border-white/40 hover:!bg-white/25 hover:!text-white hover:!border-white font-bold"
                   onClick={() => setSelectedTask(null)}
                 >
                   ← Quay lại
                 </Button>
-                <div className="min-w-0">
+                <div className="min-w-0 hidden sm:block">
                 <p className="text-white/70 text-[10px] md:text-xs m-0 mb-0.5 uppercase tracking-wide">
                   Chi tiết công việc · {selectedTask.department}
                 </p>
@@ -2300,7 +2303,7 @@ const Dashboard: React.FC = () => {
                 </h2>
                 </div>
               </div>
-              <div className="flex flex-wrap items-center gap-2 shrink-0">
+              <div className="flex flex-wrap items-center gap-1.5 md:gap-2 shrink-0">
                 <div className="task-detail-complete-header flex items-center gap-1.5">
                   <TaskCompleteTick
                     completed={selectedTask.status.includes('Hoàn thành')}
@@ -2309,7 +2312,7 @@ const Dashboard: React.FC = () => {
                     onComplete={() => void handleMarkComplete(selectedTask)}
                     className="task-complete-tick--on-orange"
                   />
-                  <span className="text-white text-sm font-semibold hidden sm:inline select-none">
+                  <span className="text-white text-sm font-semibold hidden md:inline select-none">
                     {selectedTask.status.includes('Hoàn thành') ? 'Đã hoàn thành' : 'Hoàn thành'}
                   </span>
                 </div>
@@ -2337,18 +2340,29 @@ const Dashboard: React.FC = () => {
                     icon={<DeleteOutlined />}
                     loading={deletingTaskId === selectedTask.id}
                     disabled={supabaseConnected === false}
+                    className="px-2 md:px-4"
                   >
-                    Xóa
+                    <span className="hidden sm:inline">Xóa</span>
                   </Button>
                 </Popconfirm>
                 <button
+                  type="button"
                   onClick={() => setSelectedTask(null)}
-                  className="hover:bg-white/20 p-1.5 rounded transition shrink-0"
+                  className="dashboard-modal-close-btn text-white"
                   aria-label="Đóng"
                 >
                   <X size={22} />
                 </button>
               </div>
+            </div>
+
+            <div className="sm:hidden px-3 pt-2 pb-1 border-b border-slate-100 bg-white shrink-0">
+              <p className="text-slate-500 text-[10px] m-0 uppercase tracking-wide">
+                {selectedTask.department}
+              </p>
+              <h2 className="text-sm font-bold m-0 leading-snug line-clamp-2 text-[#0f274d]">
+                {selectedTask.name}
+              </h2>
             </div>
 
             <div className="overflow-y-auto min-h-0 flex-1 bg-white border-t border-slate-200">
