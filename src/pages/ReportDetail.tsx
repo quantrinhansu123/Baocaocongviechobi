@@ -260,15 +260,16 @@ const ReportDetail: React.FC = () => {
           initialValues={{ priority: 3, status: 'Chờ xử lý' }}
           className="mt-4"
         >
-          <AntForm.Item
-            name="name"
-            label="Tên công việc"
-            rules={[{ required: true, message: 'Vui lòng nhập tên công việc' }]}
-          >
-            <AntInput placeholder="Ví dụ: Kiểm tra dây chuyền sản xuất số 1" />
-          </AntForm.Item>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-4">
+            <AntForm.Item
+              name="name"
+              label="Tên công việc"
+              rules={[{ required: true, message: 'Vui lòng nhập tên công việc' }]}
+              className="sm:col-span-2"
+            >
+              <AntInput placeholder="Ví dụ: Kiểm tra dây chuyền sản xuất số 1" />
+            </AntForm.Item>
 
-          <div className="grid grid-cols-2 gap-4">
             <AntForm.Item
               name="deadline"
               label="Hạn chót"
@@ -279,11 +280,11 @@ const ReportDetail: React.FC = () => {
             <AntForm.Item name="priority" label="Mức độ ảnh hưởng">
               <AntRate />
             </AntForm.Item>
-          </div>
 
-          <AntForm.Item name="description" label="Mô tả chi tiết">
-            <TextArea rows={4} placeholder="Nhập nội dung yêu cầu chi tiết..." />
-          </AntForm.Item>
+            <AntForm.Item name="description" label="Mô tả chi tiết" className="sm:col-span-2">
+              <TextArea rows={4} placeholder="Nhập nội dung yêu cầu chi tiết..." />
+            </AntForm.Item>
+          </div>
         </AntForm>
       </AntModal>
 

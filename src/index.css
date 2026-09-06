@@ -1,7 +1,7 @@
 @import "tailwindcss";
 
 @theme {
-  --font-sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  --font-sans: "Times New Roman", Times, "Noto Serif", Georgia, serif;
   /* Cam chủ đạo · xanh tím điểm nhấn */
   --color-brand-orange: #f38320;
   --color-brand-orange-hover: #e07518;
@@ -20,7 +20,8 @@
 
 body {
   @apply bg-ant-bg text-[rgba(0,0,0,0.88)];
-  font-family: var(--font-sans);
+  font-family: "Times New Roman", Times, "Noto Serif", Georgia, serif;
+  font-size: 20px;
   -webkit-font-smoothing: antialiased;
 }
 
@@ -53,10 +54,10 @@ body {
   background-color: white !important;
   border-bottom: 1px solid var(--color-ant-border) !important;
   box-shadow: 0 1px 2px 0 rgba(16, 24, 40, 0.04);
-  height: 4rem !important; /* h-16 */
+  height: 4rem !important;
   display: flex !important;
   align-items: center !important;
-  padding-left: 1.5rem !important; /* px-6 */
+  padding-left: 1.5rem !important;
   padding-right: 1.5rem !important;
 }
 
@@ -76,7 +77,7 @@ body {
   background-color: #0F274D !important;
   color: #ffffff !important;
   font-weight: 900 !important;
-  font-size: 16px !important;
+  font-size: 20px !important;
   letter-spacing: 0.04em;
   text-shadow: 0 1px 0 rgba(0, 0, 0, 0.25);
   border-bottom-color: #0F274D !important;
@@ -482,3 +483,106 @@ body {
 .work-notes-idea-input:disabled {
   cursor: default;
 }
+
+/* Tiêu đề field form — đậm, dễ đọc */
+.ant-form-item-label > label {
+  font-weight: 700 !important;
+  color: #0f274d !important;
+}
+
+.ant-form-item-label > label.ant-form-item-required:not(.ant-form-item-required-mark-optional)::before {
+  font-weight: 700 !important;
+}
+
+/* Icon Select / DatePicker — xanh đen đậm, dễ nhìn */
+.ant-picker-suffix,
+.ant-picker-clear,
+.ant-select-arrow,
+.ant-select-clear,
+.ant-input-clear-icon {
+  color: #0f274d !important;
+}
+
+.ant-picker-suffix .anticon,
+.ant-select-arrow .anticon,
+.ant-picker-clear .anticon,
+.ant-select-clear .anticon {
+  color: #0f274d !important;
+  font-size: 14px;
+}
+
+.ant-picker:hover .ant-picker-suffix,
+.ant-select:not(.ant-select-disabled):hover .ant-select-arrow {
+  color: #1e386b !important;
+}
+
+.ant-modal-close-x {
+  color: #0f274d !important;
+}
+
+/* Form chi tiết công việc — full màn, ô lớn dễ nhìn */
+.task-detail-form .ant-form-item {
+  margin-bottom: 14px;
+}
+
+.task-detail-form .ant-form-item-label > label {
+  font-size: 18px !important;
+}
+
+.task-detail-form .ant-form-item-explain,
+.task-detail-form .ant-form-item-extra {
+  min-height: 0;
+  font-size: 13px;
+}
+
+.task-detail-form .ant-input,
+.task-detail-form .ant-input-affix-wrapper,
+.task-detail-form .ant-select-selector,
+.task-detail-form .ant-picker,
+.task-detail-form .ant-input-number,
+.task-detail-form .ant-input-number-input {
+  min-height: 40px !important;
+  font-size: 18px !important;
+  line-height: 1.4 !important;
+}
+
+.task-detail-form .ant-select-single .ant-select-selector {
+  padding-block: 4px !important;
+}
+
+.task-detail-form .ant-select-selection-item,
+.task-detail-form .ant-select-selection-placeholder,
+.task-detail-form .ant-picker-input > input {
+  font-size: 18px !important;
+}
+
+.task-detail-form textarea.ant-input {
+  min-height: 88px !important;
+  font-size: 18px !important;
+  line-height: 1.5 !important;
+  padding: 8px 12px !important;
+}
+
+.task-detail-form .ant-input-number-group-addon {
+  font-size: 14px !important;
+  font-weight: 700;
+}
+
+.task-form-section-title {
+  margin: 0 0 12px;
+  padding-bottom: 8px;
+  border-bottom: 1px solid #dbe3ef;
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: #0f274d;
+}
+
+.task-form-panel {
+  border: 1px solid #e8edf5;
+  border-radius: 10px;
+  background: #fbfcfe;
+  padding: 14px 16px 6px;
+}
+

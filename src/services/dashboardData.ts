@@ -321,6 +321,9 @@ export function invalidateDashboardTasksCache() {
   cachedDashboardTasks = null;
   cachedDashboardTasksAt = 0;
   dashboardTasksInflight = null;
+  if (typeof window !== 'undefined') {
+    window.dispatchEvent(new Event('dashboard-tasks-changed'));
+  }
 }
 
 async function fetchDashboardTasks(): Promise<DashboardTask[]> {

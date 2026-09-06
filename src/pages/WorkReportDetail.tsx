@@ -1,20 +1,27 @@
 import React, { useEffect, useState } from 'react';
 import { Edit2, X, Star, Calendar, User, MessageSquare, AlertCircle, ChevronDown } from 'lucide-react';
 import BackButton from '../components/BackButton';
-import { loadWorkReportTasks, type WorkReportTask } from '../services/auxiliaryData';
+import {
+  loadPersonnelSelectOptions,
+  loadWorkReportTasks,
+  type PersonnelSelectOption,
+  type WorkReportTask,
+} from '../services/auxiliaryData';
 
 export default function ReportDetailScreen() {
   const [tasks, setTasks] = useState<WorkReportTask[]>([]);
   const [loading, setLoading] = useState(true);
   const [filterImportant, setFilterImportant] = useState(false);
   const [filterOverdue, setFilterOverdue] = useState(false);
+  const [personnelOptions, setPersonnelOptions] = useState<PersonnelSelectOption[]>([]);
 
   useEffect(() => {
     let active = true;
-    void loadWorkReportTasks()
-      .then(data => {
+    void Promise.all([loadWorkReportTasks(), loadPersonnelSelectOptions().catch(() => [])])
+      .then(([data, options]) => {
         if (active) {
           setTasks(data);
+          setPersonnelOptions(options);
         }
       })
       .finally(() => {
@@ -139,13 +146,27 @@ export default function ReportDetailScreen() {
                 {/* Inline Edit: Người phụ trách */}
                 <td className="px-4 py-5 relative">
                   {editingCell.id === task.id && editingCell.field === 'assignee' ? (
-                    <input
-                      type="text" autoFocus
-                      className="border border-[#F38320] outline-none rounded p-1 w-full"
-                      defaultValue={task.assignee}
-                      onBlur={(e) => handleInlineSave(task.id, 'assignee', e.target.value)}
-                      onKeyDown={(e) => e.key === 'Enter' && handleInlineSave(task.id, 'assignee', e.target.value)}
-                    />
+                    <div className="relative w-full">
+                      <select
+                        autoFocus
+                        className="w-full appearance-none bg-white border-2 border-[#F38320] text-gray-700 text-sm font-semibold rounded-lg pl-3 pr-8 py-1.5 outline-none shadow-sm cursor-pointer"
+                        defaultValue={task.assignee}
+                        onBlur={e => handleInlineSave(task.id, 'assignee', e.target.value)}
+                        onChange={e => handleInlineSave(task.id, 'assignee', e.target.value)}
+                      >
+                        {!personnelOptions.some(opt => opt.value === task.assignee) && task.assignee ? (
+                          <option value={task.assignee}>{task.assignee}</option>
+                        ) : null}
+                        {personnelOptions.map(opt => (
+                          <option key={opt.value} value={opt.value}>
+                            {opt.value}
+                          </option>
+                        ))}
+                      </select>
+                      <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2 text-[#0F274D]">
+                        <ChevronDown size={16} strokeWidth={2.5} />
+                      </div>
+                    </div>
                   ) : (
                     <div className="flex items-center gap-2 cursor-pointer group/edit" onClick={() => setEditingCell({ id: task.id, field: 'assignee' })}>
                       <User size={16} className="text-gray-400" />

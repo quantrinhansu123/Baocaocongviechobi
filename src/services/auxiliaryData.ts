@@ -1,8 +1,9 @@
-import { findDataRows } from './dataApi';
+import { addDataRow, deleteDataRow, editDataRow, findDataRows } from './dataApi';
 
 export const TABLE_CONG_NO = 'Công nợ';
 export const TABLE_LICH_BAO_CAO = 'Lịch báo cáo';
 export const TABLE_NGUOI_DUNG = 'Người dùng';
+export const TABLE_NHAN_SU = 'Nhân sự';
 export const TABLE_MAU_BAO_CAO = 'Mẫu báo cáo';
 export const TABLE_THU_MUC = 'Thư mục';
 export const TABLE_PHAN_QUYEN = 'Phân quyền';
@@ -53,6 +54,17 @@ export type AdminUser = {
   email: string;
   department: string;
   role: string;
+};
+
+export type PersonnelRecord = {
+  key: string;
+  name: string;
+  department: string;
+  position: string;
+  email: string;
+  phone: string;
+  status: string;
+  joinDate: string;
 };
 
 export type AdminTemplate = {
@@ -149,6 +161,88 @@ export async function loadAdminUsers(): Promise<AdminUser[]> {
     department: pickField(row, ['department', 'Phòng ban']),
     role: pickField(row, ['role', 'Vai trò']),
   }));
+}
+
+function mapPersonnelRow(row: Record<string, unknown>): PersonnelRecord {
+  return {
+    key: pickField(row, ['id', 'key']),
+    name: pickField(row, ['name', 'Tên', 'Họ tên']),
+    department: pickField(row, ['department', 'Phòng ban']),
+    position: pickField(row, ['position', 'Chức vụ']),
+    email: pickField(row, ['email', 'Email']),
+    phone: pickField(row, ['phone', 'SĐT', 'Điện thoại']),
+    status: pickField(row, ['status', 'Trạng thái']) || 'Đang làm',
+    joinDate: pickField(row, ['joinDate', 'Ngày vào làm']),
+  };
+}
+
+export function personnelToRow(record: PersonnelRecord): Record<string, unknown> {
+  return {
+    id: record.key,
+    key: record.key,
+    name: record.name,
+    department: record.department,
+    position: record.position,
+    email: record.email,
+    phone: record.phone,
+    status: record.status,
+    joinDate: record.joinDate,
+  };
+}
+
+export async function loadPersonnel(): Promise<PersonnelRecord[]> {
+  const result = await findDataRows({ table: TABLE_NHAN_SU });
+  return result.rows.map(mapPersonnelRow).filter(row => row.key);
+}
+
+export type PersonnelSelectOption = {
+  value: string;
+  label: string;
+  description?: string;
+};
+
+/** Options sổ xuống Người phụ trách — value/label = họ tên (chỉ hiện tên khi chọn). */
+export async function loadPersonnelSelectOptions(): Promise<PersonnelSelectOption[]> {
+  const rows = await loadPersonnel();
+  const seen = new Set<string>();
+  const options: PersonnelSelectOption[] = [];
+
+  for (const row of rows) {
+    const name = row.name.trim();
+    if (!name || seen.has(name)) continue;
+    if (row.status === 'Đã nghỉ') continue;
+    seen.add(name);
+    const description = [row.position, row.department].filter(Boolean).join(' · ');
+    options.push({
+      value: name,
+      label: name,
+      description: description || undefined,
+    });
+  }
+
+  return options.sort((a, b) => a.value.localeCompare(b.value, 'vi'));
+}
+
+export function mergePersonnelOption(
+  options: PersonnelSelectOption[],
+  currentName?: string | null
+): PersonnelSelectOption[] {
+  const name = (currentName ?? '').trim();
+  if (!name || name === '—') return options;
+  if (options.some(opt => opt.value === name)) return options;
+  return [{ value: name, label: name }, ...options];
+}
+
+export async function addPersonnel(record: PersonnelRecord): Promise<void> {
+  await addDataRow(personnelToRow(record), TABLE_NHAN_SU);
+}
+
+export async function editPersonnel(record: PersonnelRecord): Promise<void> {
+  await editDataRow(personnelToRow(record), TABLE_NHAN_SU);
+}
+
+export async function deletePersonnel(key: string): Promise<void> {
+  await deleteDataRow({ id: key, key }, TABLE_NHAN_SU);
 }
 
 export async function loadAdminTemplates(): Promise<AdminTemplate[]> {

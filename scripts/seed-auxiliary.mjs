@@ -44,6 +44,11 @@ const seeds = {
     { id: '2', data: { name: 'Nguyễn Văn Hùng', email: 'hungnv@hobiwood.com', department: 'Nhà máy', role: 'Quản lý' } },
     { id: '3', data: { name: 'Trần Thị Lan', email: 'lantt@hobiwood.com', department: 'Kế toán', role: 'Nhân viên' } },
   ],
+  nhan_su: [
+    { id: '1', data: { name: 'Lê Hoàng Tuyển', department: 'Ban Giám Đốc', position: 'Giám đốc', email: 'tuyenlh@hobiwood.com', phone: '', status: 'Đang làm', joinDate: '01/01/2018' } },
+    { id: '2', data: { name: 'Nguyễn Văn Hùng', department: 'Nhà máy Wilson HB', position: 'Quản lý sản xuất', email: 'hungnv@hobiwood.com', phone: '', status: 'Đang làm', joinDate: '15/03/2020' } },
+    { id: '3', data: { name: 'Trần Thị Lan', department: 'Phòng Kế toán TM', position: 'Kế toán viên', email: 'lantt@hobiwood.com', phone: '', status: 'Đang làm', joinDate: '01/06/2021' } },
+  ],
   mau_bao_cao: [
     { id: '1', data: { name: 'Mẫu Báo Cáo Sản Xuất Tuần', type: 'Excel', lastUpdate: '10/04/2026', status: 'Active' } },
     { id: '2', data: { name: 'Biểu Mẫu Đánh Giá OEM', type: 'Word', lastUpdate: '05/04/2026', status: 'Active' } },

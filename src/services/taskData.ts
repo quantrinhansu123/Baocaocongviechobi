@@ -648,7 +648,7 @@ export function buildTaskRow(input: {
     TT: input.stt != null ? String(input.stt) : '',
     'CÔNG VIỆC': input.congViec,
     'NGƯỜI ĐƯỢC GIAO': input.nguoiPhuTrach,
-    'NGÀY GIAO': formatRecordDate(new Date().toLocaleDateString('vi-VN')),
+    'NGÀY GIAO': formatRecordDate(new Date()),
     'Y/C XONG': formatRecordDate(input.deadline),
     'GIA HẠN 1': formatRecordDate(input.giaHan1 ?? ''),
     'GIA HẠN 2': formatRecordDate(input.giaHan2 ?? ''),

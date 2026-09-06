@@ -112,12 +112,9 @@
     overflow-x: hidden;
 }
 
-.sidebar-notes-footer {
-    flex-shrink: 0;
-    margin-top: auto;
-    padding: 8px 0 12px;
-    border-top: 1px solid rgba(255, 255, 255, 0.12);
-    background: rgba(0, 0, 0, 0.12);
+.sidebar-notes-block {
+    margin-top: 4px;
+    padding-top: 4px;
 }
 
 .sidebar-notes-menu.ant-menu {
@@ -198,11 +195,27 @@
     color: rgba(255, 255, 255, 0.38) !important;
 }
 
+/* Ant Design title-content phải flex full-width để badge ô tròn hiện bên phải */
+.sidebar-report-menu.ant-menu-dark .ant-menu-item,
+.sidebar-report-menu.ant-menu-dark .ant-menu-submenu-title {
+    display: flex !important;
+    align-items: center;
+}
+
+.sidebar-report-menu.ant-menu-dark .ant-menu-title-content {
+    display: flex !important;
+    flex: 1 1 auto !important;
+    min-width: 0 !important;
+    overflow: visible !important;
+    width: 100%;
+}
+
 .sidebar-menu-label-row {
     display: flex;
     align-items: center;
     justify-content: space-between;
     width: 100%;
+    min-width: 0;
     gap: 8px;
 }
 
@@ -211,21 +224,34 @@
     text-overflow: ellipsis;
     white-space: nowrap;
     min-width: 0;
+    flex: 1 1 auto;
 }
 
 .sidebar-menu-count-badge {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
     flex-shrink: 0;
-    min-width: 20px;
-    height: 20px;
+    min-width: 22px;
+    height: 22px;
     padding: 0 6px;
     border-radius: 999px;
-    background: #f38320;
-    color: #ffffff;
+    background: #f38320 !important;
+    color: #ffffff !important;
     font-size: 11px;
     font-weight: 800;
-    line-height: 20px;
+    line-height: 1;
     text-align: center;
-    box-shadow: 0 1px 3px rgba(243, 131, 32, 0.35);
+    box-shadow: 0 1px 3px rgba(243, 131, 32, 0.45);
+    border: 1px solid rgba(255, 255, 255, 0.35);
+}
+
+/* Nút cam cấp 1: badge trắng chữ cam để nổi trên nền cam */
+.sidebar-menu-count-badge--on-orange {
+    background: #ffffff !important;
+    color: #f38320 !important;
+    border: 1px solid rgba(255, 255, 255, 0.9);
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.18);
 }
 
 .sidebar-report-menu.ant-menu-dark > .ant-menu-item .sidebar-menu-count-badge,
@@ -234,8 +260,13 @@
 .sidebar-report-menu.ant-menu-dark .ant-menu-sub .ant-menu-item-selected .sidebar-menu-count-badge,
 .sidebar-report-menu.ant-menu-dark .ant-menu-sub .ant-menu-item:hover .sidebar-menu-count-badge,
 .sidebar-report-menu.ant-menu-dark .ant-menu-sub .ant-menu-submenu-title:hover .sidebar-menu-count-badge {
-    background: #f38320;
-    color: #ffffff;
+    background: #f38320 !important;
+    color: #ffffff !important;
+}
+
+.sidebar-report-menu.ant-menu-dark > .ant-menu-submenu > .ant-menu-submenu-title .sidebar-menu-count-badge--on-orange {
+    background: #ffffff !important;
+    color: #f38320 !important;
 }
 
 .sidebar-report-menu .sidebar-nav-icon {
@@ -259,7 +290,7 @@
 }
 
 .sidebar-report-menu .ant-menu-submenu .ant-menu-submenu-title {
-    padding-inline-end: 28px !important;
+    padding-inline-end: 36px !important;
 }
 
 .sidebar-report-menu .ant-menu-sub .ant-menu-item {

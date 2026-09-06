@@ -18,8 +18,14 @@ export default function App() {
           colorBgLayout: '#f4f5f7',
           colorBorder: '#e2e5eb',
           colorBorderSecondary: '#ebedf1',
-          controlHeight: 36,
-          fontFamily: "-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif",
+          /* Thanh / ô điều khiển giữ kích thước chuẩn */
+          controlHeight: 40,
+          controlHeightLG: 44,
+          fontFamily: "'Times New Roman', Times, 'Noto Serif', Georgia, serif",
+          /* Chữ to hơn */
+          fontSize: 20,
+          fontSizeLG: 22,
+          fontSizeSM: 17,
           boxShadow:
             '0 1px 2px 0 rgba(16, 24, 40, 0.04), 0 1px 3px 0 rgba(16, 24, 40, 0.06)',
           boxShadowSecondary:
@@ -30,6 +36,7 @@ export default function App() {
             headerBg: '#ffffff',
             siderBg: '#1E386B',
             bodyBg: '#f4f5f7',
+            headerHeight: 64,
           },
           Menu: {
             darkItemBg: 'transparent',
@@ -40,17 +47,19 @@ export default function App() {
             darkItemHoverColor: '#ffffff',
             itemBorderRadius: 8,
             itemMarginInline: 12,
-            itemHeight: 42,
-            collapsedIconSize: 16,
+            itemHeight: 44,
+            collapsedIconSize: 18,
+            fontSize: 18,
           },
           Button: {
             borderRadius: 8,
-            controlHeight: 36,
-            fontWeight: 600,
+            controlHeight: 40,
+            fontWeight: 700,
+            fontSize: 18,
           },
           Card: {
             borderRadiusLG: 12,
-            headerFontSize: 15,
+            headerFontSize: 22,
             boxShadowTertiary: '0 1px 2px 0 rgba(16, 24, 40, 0.05)',
           },
           Table: {
@@ -62,9 +71,9 @@ export default function App() {
             rowHoverBg: '#f8fafc',
             borderColor: '#eef0f3',
             headerBorderRadius: 10,
-            cellFontSize: 15,
-            cellFontSizeMD: 15,
-            cellFontSizeSM: 14,
+            cellFontSize: 20,
+            cellFontSizeMD: 20,
+            cellFontSizeSM: 18,
             cellPaddingBlock: 14,
             cellPaddingInline: 14,
             cellPaddingBlockMD: 14,
@@ -74,16 +83,32 @@ export default function App() {
           },
           Input: {
             borderRadius: 8,
-            controlHeight: 36,
+            controlHeight: 40,
+            fontSize: 18,
           },
           Select: {
             borderRadius: 8,
-            controlHeight: 36,
+            controlHeight: 40,
+            fontSize: 18,
+          },
+          DatePicker: {
+            borderRadius: 8,
+            controlHeight: 40,
+            fontSize: 18,
           },
           Tabs: {
             itemSelectedColor: '#1E386B',
             itemColor: 'rgba(15, 23, 42, 0.55)',
             inkBarColor: '#F38320',
+            titleFontSize: 18,
+          },
+          Tag: {
+            fontSize: 16,
+            fontSizeSM: 14,
+          },
+          Pagination: {
+            itemSize: 36,
+            fontSize: 16,
           },
         },
       }}

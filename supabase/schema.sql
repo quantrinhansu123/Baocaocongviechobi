@@ -33,6 +33,7 @@ drop table if exists public.bc_chi_tiet cascade;
 drop table if exists public.canh_bao cascade;
 drop table if exists public.ghi_chu_phong_ban cascade;
 drop table if exists public.ghi_chu_chung cascade;
+drop table if exists public.nhan_su cascade;
 
 -- 2) Bảng công việc chi tiết (I.1 … IV.2) — pk: tt
 -- Dữ liệu nghiệp vụ nằm trong data (jsonb), gồm các key như:
@@ -375,6 +376,18 @@ create policy "anon_select_ghi_chu_chung" on public.ghi_chu_chung for select to 
 create policy "anon_insert_ghi_chu_chung" on public.ghi_chu_chung for insert to anon with check (true);
 create policy "anon_update_ghi_chu_chung" on public.ghi_chu_chung for update to anon using (true) with check (true);
 create policy "anon_delete_ghi_chu_chung" on public.ghi_chu_chung for delete to anon using (true);
+
+create table public.nhan_su (
+  id text primary key,
+  data jsonb not null default '{}'::jsonb,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
+);
+alter table public.nhan_su enable row level security;
+create policy "anon_select_nhan_su" on public.nhan_su for select to anon using (true);
+create policy "anon_insert_nhan_su" on public.nhan_su for insert to anon with check (true);
+create policy "anon_update_nhan_su" on public.nhan_su for update to anon using (true) with check (true);
+create policy "anon_delete_nhan_su" on public.nhan_su for delete to anon using (true);
 
 -- 4) Làm mới cache PostgREST
 notify pgrst, 'reload schema';

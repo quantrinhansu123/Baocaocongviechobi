@@ -121,13 +121,40 @@ export function parseTaskDate(value: string | undefined): dayjs.Dayjs | null {
     return null;
   }
 
-  const dmy = dayjs(value, DMY_FORMATS, true);
+  const trimmed = String(value).trim();
+  if (!trimmed) {
+    return null;
+  }
+
+  const dmy = dayjs(trimmed, DMY_FORMATS, true);
   if (dmy.isValid()) {
     return dmy;
   }
 
-  const mdy = dayjs(value, 'MM/DD/YYYY', true);
-  return mdy.isValid() ? mdy : null;
+  const dmyWithTime = dayjs(trimmed, DMY_WITH_TIME_FORMATS, true);
+  if (dmyWithTime.isValid()) {
+    return dmyWithTime;
+  }
+
+  const mdy = dayjs(trimmed, 'MM/DD/YYYY', true);
+  if (mdy.isValid()) {
+    return mdy;
+  }
+
+  if (/^\d{4}-\d{2}-\d{2}/.test(trimmed)) {
+    const iso = dayjs(trimmed);
+    if (iso.isValid()) {
+      return iso;
+    }
+  }
+
+  // vd. "Fri, 04 Sep 2026 17:00:00 GMT" / Date#toString()
+  const native = dayjs(new Date(trimmed));
+  if (native.isValid()) {
+    return native;
+  }
+
+  return null;
 }
 
 export const DISPLAY_DATE_FORMAT = 'DD/MM/YYYY';
@@ -200,6 +227,12 @@ export function formatRecordDate(value: string | number | Date): string {
     if (iso.isValid()) {
       return iso.format('DD/MM/YYYY');
     }
+  }
+
+  // vd. "Fri, 04 Sep 2026 17:00:00 GMT"
+  const native = dayjs(new Date(trimmed));
+  if (native.isValid()) {
+    return native.format('DD/MM/YYYY');
   }
 
   return '';

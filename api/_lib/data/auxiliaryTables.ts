@@ -10,6 +10,7 @@ export const AUXILIARY_TABLE_MAP: Record<string, string> = {
   'Cảnh báo': 'canh_bao',
   'Ghi chú phòng ban': 'ghi_chu_phong_ban',
   'Ghi chú chung': 'ghi_chu_chung',
+  'Nhân sự': 'nhan_su',
 };
 
 export const AUXILIARY_LOGICAL_NAMES = Object.keys(AUXILIARY_TABLE_MAP);

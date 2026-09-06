@@ -24,6 +24,7 @@ import {
   ClockCircleOutlined,
   WarningOutlined,
   ThunderboltOutlined,
+  ClearOutlined,
 } from '@ant-design/icons';
 import { Star } from 'lucide-react';
 import dayjs from 'dayjs';
@@ -43,6 +44,12 @@ import {
   calculateAutomaticStatus,
 } from '../utils/taskDate';
 import { addDataRow, deleteDataRow, editDataRow, findDataRows } from '../services/dataApi';
+import { invalidateDashboardTasksCache } from '../services/dashboardData';
+import {
+  loadPersonnelSelectOptions,
+  mergePersonnelOption,
+  type PersonnelSelectOption,
+} from '../services/auxiliaryData';
 import {
   buildCompleteTaskRow,
   hasRowKey,
@@ -226,6 +233,7 @@ type TableRow = {
   phongBan: string;
   congViec: string;
   nguoiPhuTrach: string;
+  ngayGiao: string;
   deadline: string;
   giaHan1: string;
   giaHan2: string;
@@ -237,6 +245,48 @@ type TableRow = {
   deptKey: string;
   sourceRow?: Record<string, unknown>;
 };
+
+const LIST_STATUS_FILTER_OPTIONS = [
+  { value: 'all', label: 'Tất cả trạng thái' },
+  { value: 'chua_bat_dau', label: 'Chưa bắt đầu' },
+  { value: 'dang_lam', label: 'Đang làm' },
+  { value: 'qua_han', label: 'Quá hạn' },
+  { value: 'hoan_thanh', label: 'Hoàn thành' },
+  { value: 'ext_1', label: 'Hoàn thành gia hạn 1' },
+  { value: 'ext_2', label: 'Hoàn thành gia hạn 2' },
+  { value: 'ext_3', label: 'Hoàn thành gia hạn 3' },
+];
+
+function matchListStatusFilter(tienDo: string, filter: string): boolean {
+  if (filter === 'all') return true;
+  const raw = (tienDo || '').trim();
+  const lower = raw.toLowerCase();
+  if (filter === 'chua_bat_dau') return lower.includes('chưa bắt đầu') || lower === 'chua bat dau';
+  if (filter === 'dang_lam') {
+    return raw === 'Đang làm' || lower.includes('đang làm') || lower.includes('đang thực hiện');
+  }
+  if (filter === 'qua_han') return raw === 'Quá hạn' || lower.includes('quá hạn');
+  if (filter === 'hoan_thanh') {
+    return lower.includes('hoàn thành') && !lower.includes('gia hạn');
+  }
+  if (filter === 'ext_1') return lower.includes('gia hạn 1');
+  if (filter === 'ext_2') return lower.includes('gia hạn 2');
+  if (filter === 'ext_3') return lower.includes('gia hạn 3');
+  return true;
+}
+
+function matchNgayGiaoRange(
+  ngayGiao: string,
+  range: [dayjs.Dayjs | null, dayjs.Dayjs | null] | null
+): boolean {
+  if (!range || (!range[0] && !range[1])) return true;
+  const parsed = parseTaskDate(ngayGiao);
+  if (!parsed) return false;
+  const day = parsed.startOf('day');
+  if (range[0] && day.isBefore(range[0].startOf('day'))) return false;
+  if (range[1] && day.isAfter(range[1].startOf('day'))) return false;
+  return true;
+}
 
 function renderCompletionDateCell(value: string) {
   const trimmed = (value ?? '').trim();
@@ -331,14 +381,39 @@ const TaskView: React.FC = () => {
   const [savingTienDoKey, setSavingTienDoKey] = useState<string | null>(null);
   const [tienDoDraft, setTienDoDraft] = useState('Chưa bắt đầu');
   const [supabaseConnected, setSupabaseConnected] = useState<boolean | null>(null);
+  const [personnelOptions, setPersonnelOptions] = useState<PersonnelSelectOption[]>([]);
   const [form] = Form.useForm();
   const [detailForm] = Form.useForm();
+  const [filterStatus, setFilterStatus] = useState('all');
+  const [filterPersonnel, setFilterPersonnel] = useState<string>('all');
+  const [filterNgayGiaoRange, setFilterNgayGiaoRange] = useState<
+    [dayjs.Dayjs | null, dayjs.Dayjs | null] | null
+  >(null);
 
   const taskTable = useMemo(
     () =>
       resolveTaskTableName(blockKeyParam, deptKeyParam) ??
       (deptKeyParam ? resolveTaskTableNameFromDeptKey(deptKeyParam) : null),
     [blockKeyParam, deptKeyParam]
+  );
+
+  useEffect(() => {
+    let cancelled = false;
+    void loadPersonnelSelectOptions()
+      .then(options => {
+        if (!cancelled) setPersonnelOptions(options);
+      })
+      .catch(() => {
+        if (!cancelled) setPersonnelOptions([]);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  const detailAssigneeOptions = useMemo(
+    () => mergePersonnelOption(personnelOptions, detailTask?.nguoiGiao),
+    [personnelOptions, detailTask?.nguoiGiao]
   );
 
   useEffect(() => {
@@ -433,7 +508,7 @@ const TaskView: React.FC = () => {
     detailForm.setFieldsValue({
       congViec: detailTask.congViec,
       nguoiGiao: detailTask.nguoiGiao,
-      ngayGiao: parseTaskDate(detailTask.ngayGiao) ?? formatTaskDate(detailTask.ngayGiao) ?? undefined,
+      ngayGiao: parseTaskDate(detailTask.ngayGiao) ?? undefined,
       ycXong: parseTaskDate(detailTask.ycXong) ?? undefined,
       giaHan1: parseTaskDate(detailTask.giaHan1) ?? undefined,
       giaHan2: parseTaskDate(detailTask.giaHan2) ?? undefined,
@@ -505,6 +580,7 @@ const TaskView: React.FC = () => {
             phongBan: label,
             congViec: t.congViec,
             nguoiPhuTrach: t.nguoiGiao,
+            ngayGiao: t.ngayGiao,
             deadline: t.ycXong,
             giaHan1: t.giaHan1,
             giaHan2: t.giaHan2,
@@ -533,6 +609,7 @@ const TaskView: React.FC = () => {
             phongBan: label,
             congViec: t.congViec,
             nguoiPhuTrach: t.nguoiGiao,
+            ngayGiao: t.ngayGiao,
             deadline: t.ycXong,
             giaHan1: t.giaHan1,
             giaHan2: t.giaHan2,
@@ -556,6 +633,46 @@ const TaskView: React.FC = () => {
     () => (listScope ? collectRowsForScope(listScope) : []),
     [listScope, collectRowsForScope]
   );
+
+  const personnelFilterOptions = useMemo(() => {
+    const names = new Set<string>();
+    for (const opt of personnelOptions) {
+      if (opt.value.trim()) names.add(opt.value.trim());
+    }
+    for (const row of tableRows) {
+      const name = (row.nguoiPhuTrach || '').trim();
+      if (name && name !== '—') names.add(name);
+    }
+    return [
+      { value: 'all', label: 'Tất cả nhân sự' },
+      ...Array.from(names)
+        .sort((a, b) => a.localeCompare(b, 'vi'))
+        .map(name => ({ value: name, label: name })),
+    ];
+  }, [personnelOptions, tableRows]);
+
+  const filteredTableRows = useMemo(() => {
+    return tableRows.filter(row => {
+      if (!matchListStatusFilter(row.tienDo, filterStatus)) return false;
+      if (!matchNgayGiaoRange(row.ngayGiao, filterNgayGiaoRange)) return false;
+      if (filterPersonnel !== 'all') {
+        const name = (row.nguoiPhuTrach || '').trim();
+        if (name !== filterPersonnel) return false;
+      }
+      return true;
+    });
+  }, [tableRows, filterStatus, filterNgayGiaoRange, filterPersonnel]);
+
+  const hasActiveListFilters =
+    filterStatus !== 'all' ||
+    filterPersonnel !== 'all' ||
+    Boolean(filterNgayGiaoRange?.[0] || filterNgayGiaoRange?.[1]);
+
+  const clearListFilters = () => {
+    setFilterStatus('all');
+    setFilterPersonnel('all');
+    setFilterNgayGiaoRange(null);
+  };
 
   const listTitle = useMemo(() => {
     if (!listScope) return '';
@@ -662,6 +779,7 @@ const TaskView: React.FC = () => {
           }
 
           message.success('Đã thêm công việc mới vào Supabase.');
+          invalidateDashboardTasksCache();
           setCreateOpen(false);
           form.resetFields();
         } catch (error) {
@@ -737,6 +855,7 @@ const TaskView: React.FC = () => {
             setDetailTask({ ...refreshed, key: detailTask.key, deptKey: detailTask.deptKey });
           }
           message.success('Đã cập nhật Supabase.');
+          invalidateDashboardTasksCache();
         } catch (error) {
           message.error(error instanceof Error ? error.message : 'Không thể cập nhật Supabase.');
         } finally {
@@ -833,6 +952,7 @@ const TaskView: React.FC = () => {
           detailForm.setFieldsValue({ tienDo: refreshed.tienDo });
         }
         message.success('Đã cập nhật TIẾN ĐỘ trên Supabase.');
+        invalidateDashboardTasksCache();
         return true;
       } catch (error) {
         // Rollback nếu lưu lỗi
@@ -927,6 +1047,7 @@ const TaskView: React.FC = () => {
         setDetailTask({ ...refreshed, key: taskKey, deptKey });
       }
       message.success('Đã đánh dấu hoàn thành trên Supabase.');
+      invalidateDashboardTasksCache();
     } catch (error) {
       message.error(error instanceof Error ? error.message : 'Không thể đánh dấu hoàn thành trên Supabase.');
     } finally {
@@ -963,6 +1084,7 @@ const TaskView: React.FC = () => {
         setDetailTask(null);
       }
       message.success('Đã xoá công việc trên Supabase.');
+      invalidateDashboardTasksCache();
     } catch (error) {
       message.error(error instanceof Error ? error.message : 'Không thể xoá dòng trên Supabase.');
     } finally {
@@ -1213,73 +1335,110 @@ const TaskView: React.FC = () => {
         confirmLoading={creatingTask}
         destroyOnHidden
         forceRender
+        width={720}
+        styles={{ body: { paddingTop: 8 } }}
       >
-        <Form form={form} layout="vertical" className="mt-2">
-          <Form.Item name="deptKey" label="Phòng ban" rules={[{ required: true, message: 'Chọn phòng ban' }]}>
-            <Select
-              showSearch
-              optionFilterProp="label"
-              options={DEPT_OPTIONS}
-              placeholder="Chọn phòng ban"
-              disabled={Boolean(deptKeyParam)}
-            />
-          </Form.Item>
-          <Form.Item name="congViec" label="Công việc" rules={[{ required: true, message: 'Nhập tên công việc' }]}>
-            <Input placeholder="Nội dung công việc" />
-          </Form.Item>
-          <Form.Item
-            name="nguoiPhuTrach"
-            label="Người phụ trách"
-            rules={[{ required: true, message: 'Nhập người phụ trách' }]}
-          >
-            <Input placeholder="Họ tên" />
-          </Form.Item>
-          <Form.Item
-            name="anhHuong"
-            label="Mức độ ảnh hưởng"
-            initialValue={2}
-            rules={[{ required: true, message: 'Chọn mức độ ảnh hưởng' }]}
-          >
-            <Select
-              options={[
-                { value: 1, label: 'Mức 1 - Thấp' },
-                { value: 2, label: 'Mức 2 - Trung bình' },
-                { value: 3, label: 'Mức 3 - Cao' },
-                { value: 4, label: 'Mức 4 - Rất cao' },
+        <Form form={form} layout="vertical" size="large" className="task-detail-form mt-2">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-4">
+            <Form.Item
+              name="deptKey"
+              label="Phòng ban"
+              rules={[{ required: true, message: 'Chọn phòng ban' }]}
+              className="sm:col-span-2"
+            >
+              <Select
+                showSearch
+                optionFilterProp="label"
+                options={DEPT_OPTIONS}
+                placeholder="Chọn phòng ban"
+                disabled={Boolean(deptKeyParam)}
+              />
+            </Form.Item>
+            <Form.Item
+              name="congViec"
+              label="Công việc"
+              rules={[{ required: true, message: 'Nhập tên công việc' }]}
+              className="sm:col-span-2"
+            >
+              <Input placeholder="Nội dung công việc" />
+            </Form.Item>
+            <Form.Item
+              name="nguoiPhuTrach"
+              label="Người phụ trách"
+              rules={[{ required: true, message: 'Chọn người phụ trách' }]}
+            >
+              <Select
+                showSearch
+                allowClear
+                optionFilterProp="label"
+                options={personnelOptions}
+                optionLabelProp="value"
+                optionRender={option => {
+                  const data = option.data as PersonnelSelectOption;
+                  return (
+                    <div className="leading-tight py-0.5">
+                      <div className="font-semibold text-[#0f274d]">{data.value}</div>
+                      {data.description ? (
+                        <div className="text-[11px] text-gray-500">{data.description}</div>
+                      ) : null}
+                    </div>
+                  );
+                }}
+                placeholder={personnelOptions.length ? 'Chọn từ nhân sự' : 'Chưa có nhân sự — thêm ở mục Nhân sự'}
+                notFoundContent={personnelOptions.length ? 'Không khớp' : 'Chưa có dữ liệu nhân sự'}
+              />
+            </Form.Item>
+            <Form.Item
+              name="anhHuong"
+              label="Mức độ ảnh hưởng"
+              initialValue={2}
+              rules={[{ required: true, message: 'Chọn mức độ ảnh hưởng' }]}
+            >
+              <Select
+                options={[
+                  { value: 1, label: 'Mức 1 - Thấp' },
+                  { value: 2, label: 'Mức 2 - Trung bình' },
+                  { value: 3, label: 'Mức 3 - Cao' },
+                  { value: 4, label: 'Mức 4 - Rất cao' },
+                ]}
+                placeholder="Chọn mức độ ảnh hưởng"
+              />
+            </Form.Item>
+            <Form.Item
+              name="deadline"
+              label="Ngày hoàn thành"
+              rules={[{ required: true, message: 'Chọn ngày hoàn thành' }]}
+            >
+              <DatePicker className="w-full" format="DD/MM/YYYY" />
+            </Form.Item>
+            <Form.Item
+              name="tienDoPhanTram"
+              label="Tiến độ CV (%)"
+              initialValue={0}
+              extra="Lưu sẽ đồng bộ lên Supabase (key TIẾN ĐỘ CV trong data jsonb)."
+              rules={[
+                { required: true, message: 'Nhập tiến độ' },
+                { type: 'number', min: 0, max: 100, message: 'Nhập từ 0 đến 100' },
               ]}
-              placeholder="Chọn mức độ ảnh hưởng"
-            />
-          </Form.Item>
-          <Form.Item name="deadline" label="Ngày hoàn thành" rules={[{ required: true, message: 'Chọn ngày hoàn thành' }]}>
-            <DatePicker className="w-full" format="DD/MM/YYYY" />
-          </Form.Item>
-          <Form.Item
-            name="tienDoPhanTram"
-            label="Tiến độ CV (%)"
-            initialValue={0}
-            extra="Lưu sẽ đồng bộ lên Supabase (key TIẾN ĐỘ CV trong data jsonb)."
-            rules={[
-              { required: true, message: 'Nhập tiến độ' },
-              { type: 'number', min: 0, max: 100, message: 'Nhập từ 0 đến 100' },
-            ]}
-          >
-            <InputNumber className="w-full" min={0} max={100} addonAfter="%" placeholder="0–100" />
-          </Form.Item>
-          <Form.Item name="linkKQ" label="Link KQ (tùy chọn)">
-            <Input placeholder="https://..." />
-          </Form.Item>
-          <div className="md:col-span-2">
-            <p className="text-[11px] font-semibold uppercase tracking-wide text-gray-400 mb-2">Gia hạn</p>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              <Form.Item name="giaHan1" label="GIA HẠN 1">
-                <DatePicker className="w-full" format="DD/MM/YYYY" />
-              </Form.Item>
-              <Form.Item name="giaHan2" label="GIA HẠN 2">
-                <DatePicker className="w-full" format="DD/MM/YYYY" />
-              </Form.Item>
-              <Form.Item name="giaHan3" label="GIA HẠN 3">
-                <DatePicker className="w-full" format="DD/MM/YYYY" />
-              </Form.Item>
+            >
+              <InputNumber className="w-full" min={0} max={100} addonAfter="%" placeholder="0–100" />
+            </Form.Item>
+            <Form.Item name="linkKQ" label="Link KQ (tùy chọn)" className="sm:col-span-2">
+              <Input placeholder="https://..." />
+            </Form.Item>
+            <div className="sm:col-span-2">
+              <p className="text-[11px] font-bold uppercase tracking-wide text-[#0f274d] mb-2">Gia hạn</p>
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-x-4">
+                <Form.Item name="giaHan1" label="GIA HẠN 1">
+                  <DatePicker className="w-full" format="DD/MM/YYYY" />
+                </Form.Item>
+                <Form.Item name="giaHan2" label="GIA HẠN 2">
+                  <DatePicker className="w-full" format="DD/MM/YYYY" />
+                </Form.Item>
+                <Form.Item name="giaHan3" label="GIA HẠN 3">
+                  <DatePicker className="w-full" format="DD/MM/YYYY" />
+                </Form.Item>
+              </div>
             </div>
           </div>
         </Form>
@@ -1333,18 +1492,58 @@ const TaskView: React.FC = () => {
                 <div className="shrink-0 pt-0.5">{addTaskButton({ size: 'small' })}</div>
               </div>
               <div className="flex-1 overflow-auto bg-white border border-t-0 border-gray-200 rounded-b-lg shadow-sm p-3 md:p-4">
+                <div className="mb-3 flex flex-col gap-2 rounded-lg border border-slate-200 bg-slate-50 px-3 py-2.5">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <Select
+                      value={filterStatus}
+                      onChange={setFilterStatus}
+                      options={LIST_STATUS_FILTER_OPTIONS}
+                      className="w-full sm:w-48"
+                      placeholder="Trạng thái"
+                    />
+                    <Select
+                      showSearch
+                      optionFilterProp="label"
+                      value={filterPersonnel}
+                      onChange={setFilterPersonnel}
+                      options={personnelFilterOptions}
+                      className="w-full sm:w-56"
+                      placeholder="Nhân sự"
+                    />
+                    <DatePicker.RangePicker
+                      className="w-full sm:w-auto min-w-[260px]"
+                      format="DD/MM/YYYY"
+                      value={filterNgayGiaoRange}
+                      onChange={dates =>
+                        setFilterNgayGiaoRange(
+                          dates ? [dates[0] ?? null, dates[1] ?? null] : null
+                        )
+                      }
+                      placeholder={['Ngày giao từ', 'Đến ngày']}
+                      allowEmpty={[true, true]}
+                    />
+                    {hasActiveListFilters ? (
+                      <Button icon={<ClearOutlined />} onClick={clearListFilters}>
+                        Xóa lọc
+                      </Button>
+                    ) : null}
+                    <Text type="secondary" className="text-xs sm:ml-auto">
+                      Hiển thị {filteredTableRows.length}/{tableRows.length}
+                    </Text>
+                  </div>
+                </div>
                 <div className="hidden md:block min-w-0">
                   <Table<TableRow>
                     rowKey="key"
                     className="task-table-compact task-table-balanced text-[15px]"
                     columns={tableColumns}
-                    dataSource={tableRows}
+                    dataSource={filteredTableRows}
                     loading={taskLoading}
                     pagination={false}
                     size="middle"
                     tableLayout="fixed"
                     scroll={{ x: showDeptColumn ? 1680 : 1620 }}
-                    locale={{ emptyText: 'Chưa có công việc' }}
+                    locale={{ emptyText: hasActiveListFilters ? 'Không có công việc khớp bộ lọc' : 'Chưa có công việc' }}
                     onRow={record => {
                       const overdue =
                         !isTaskRecordCompleted(record) &&
@@ -1364,13 +1563,17 @@ const TaskView: React.FC = () => {
                   />
                 </div>
                 <div className="block md:hidden space-y-2">
-                  {tableRows.length === 0 ? (
+                  {filteredTableRows.length === 0 ? (
                     <div className="text-center text-gray-400 py-6 space-y-3">
-                      <p className="m-0">Chưa có công việc</p>
-                      {addTaskButton({ block: true })}
+                      <p className="m-0">
+                        {hasActiveListFilters ? 'Không có công việc khớp bộ lọc' : 'Chưa có công việc'}
+                      </p>
+                      {!hasActiveListFilters ? addTaskButton({ block: true }) : (
+                        <Button onClick={clearListFilters}>Xóa lọc</Button>
+                      )}
                     </div>
                   ) : (
-                    tableRows.map(row => {
+                    filteredTableRows.map(row => {
                       const overdue =
                         !isTaskRecordCompleted(row) &&
                         isTaskOverduePastExtensions(taskDueContext(row));
@@ -1508,95 +1711,168 @@ const TaskView: React.FC = () => {
                 </div>
               </div>
 
-              <div className="flex-1 overflow-auto p-5">
-                <div className="bg-white rounded-xl shadow-sm border border-gray-200">
-                  <div className="bg-[#1E386B] text-white text-center font-bold py-2 text-xs tracking-widest rounded-t-xl uppercase">
-                    Thông tin công việc
+              <div className="flex-1 overflow-auto bg-slate-100/70 p-0 md:p-0">
+                <div className="h-full min-h-0 flex flex-col bg-white border-t border-slate-200">
+                  <div className="bg-[#1E386B] text-white px-4 md:px-6 py-2.5 flex items-center justify-between gap-3 shrink-0">
+                    <p className="m-0 text-[11px] md:text-xs font-extrabold tracking-[0.14em] uppercase">
+                      Thông tin công việc
+                    </p>
+                    {selected.ngayGioHoanThanh ? (
+                      <span className="text-[11px] font-semibold text-emerald-200 truncate">
+                        Đã HT: {normalizeDisplayDate(selected.ngayGioHoanThanh) || selected.ngayGioHoanThanh}
+                      </span>
+                    ) : null}
                   </div>
 
-                  <Form form={detailForm} layout="vertical" className="px-5 py-4">
-                    <div className="grid grid-cols-1 xl:grid-cols-2 gap-x-6">
-                      <Form.Item name="congViec" label="Công việc" rules={[{ required: true, message: 'Nhập công việc' }]}>
-                        <Input.TextArea rows={2} />
-                      </Form.Item>
-                      <Form.Item name="nguoiGiao" label="Người phụ trách" rules={[{ required: true, message: 'Nhập người phụ trách' }]}>
-                        <Input />
-                      </Form.Item>
-                      <Form.Item name="ngayGiao" label="Ngày giao">
-                        <Input placeholder="DD/MM/YYYY" />
-                      </Form.Item>
-                      <Form.Item name="ycXong" label="Ngày hoàn thành">
-                        <DatePicker className="w-full" format="DD/MM/YYYY" />
-                      </Form.Item>
-                      <div className="xl:col-span-2">
-                        <p className="text-[11px] font-semibold uppercase tracking-wide text-gray-400 mb-2">Gia hạn</p>
-                        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                          <Form.Item name="giaHan1" label="GIA HẠN 1">
-                            <DatePicker className="w-full" format="DD/MM/YYYY" />
-                          </Form.Item>
-                          <Form.Item name="giaHan2" label="GIA HẠN 2">
-                            <DatePicker className="w-full" format="DD/MM/YYYY" />
-                          </Form.Item>
-                          <Form.Item name="giaHan3" label="GIA HẠN 3">
-                            <DatePicker className="w-full" format="DD/MM/YYYY" />
-                          </Form.Item>
-                        </div>
+                  <Form
+                    form={detailForm}
+                    layout="vertical"
+                    size="large"
+                    className="task-detail-form flex-1 overflow-auto px-4 py-3 md:px-6 md:py-4"
+                  >
+                    <div className="grid grid-cols-1 xl:grid-cols-12 gap-x-6 gap-y-3">
+                      {/* Cột trái — nội dung & kết quả */}
+                      <div className="xl:col-span-7 space-y-3">
+                        <section className="task-form-panel">
+                          <p className="task-form-section-title">1. Nội dung</p>
+                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-4">
+                            <Form.Item
+                              name="congViec"
+                              label="Công việc"
+                              rules={[{ required: true, message: 'Nhập công việc' }]}
+                              className="sm:col-span-2"
+                            >
+                              <Input.TextArea rows={4} placeholder="Mô tả công việc" />
+                            </Form.Item>
+                            <Form.Item
+                              name="nguoiGiao"
+                              label="Người phụ trách"
+                              rules={[{ required: true, message: 'Chọn người phụ trách' }]}
+                            >
+                              <Select
+                                showSearch
+                                allowClear
+                                optionFilterProp="label"
+                                options={detailAssigneeOptions}
+                                optionLabelProp="value"
+                                optionRender={option => {
+                                  const data = option.data as PersonnelSelectOption;
+                                  return (
+                                    <div className="leading-tight py-0.5">
+                                      <div className="font-semibold text-[#0f274d]">{data.value}</div>
+                                      {data.description ? (
+                                        <div className="text-[11px] text-gray-500">{data.description}</div>
+                                      ) : null}
+                                    </div>
+                                  );
+                                }}
+                                placeholder={
+                                  detailAssigneeOptions.length
+                                    ? 'Chọn từ nhân sự'
+                                    : 'Chưa có nhân sự — thêm ở mục Nhân sự'
+                                }
+                                notFoundContent={
+                                  detailAssigneeOptions.length ? 'Không khớp' : 'Chưa có dữ liệu nhân sự'
+                                }
+                              />
+                            </Form.Item>
+                            <Form.Item
+                              name="anhHuong"
+                              label="Mức ảnh hưởng"
+                              rules={[{ required: true, message: 'Chọn mức độ' }]}
+                            >
+                              <Select options={[1, 2, 3, 4].map(level => ({ value: level, label: `${level} sao` }))} />
+                            </Form.Item>
+                          </div>
+                        </section>
+
+                        <section className="task-form-panel">
+                          <p className="task-form-section-title">3. Kết quả & vướng mắc</p>
+                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-4">
+                            <Form.Item name="ketQua" label="Kết quả">
+                              <Input.TextArea rows={5} placeholder="Kết quả đạt được..." />
+                            </Form.Item>
+                            <Form.Item name="vuongMac" label="Vướng mắc">
+                              <Input.TextArea rows={5} placeholder="Khó khăn cần hỗ trợ..." />
+                            </Form.Item>
+                            <Form.Item name="linkKQ" label="Link KQ" className="sm:col-span-2 mb-0">
+                              <Input placeholder="https://..." allowClear />
+                            </Form.Item>
+                          </div>
+                        </section>
                       </div>
-                      <Form.Item
-                        name="tienDo"
-                        label="Trạng thái"
-                        rules={[{ required: true, message: 'Chọn trạng thái' }]}
-                      >
-                        <Select
-                          options={TIEN_DO_EDIT_OPTIONS}
-                          placeholder="Chọn trạng thái"
-                          disabled={!supabaseConnected}
-                        />
-                      </Form.Item>
-                      <Form.Item
-                        name="tienDoPhanTram"
-                        label="Tiến độ CV (%)"
-                        extra="Lưu sẽ đồng bộ lên Supabase (key TIẾN ĐỘ CV trong data jsonb)."
-                        rules={[
-                          { required: true, message: 'Nhập tiến độ' },
-                          { type: 'number', min: 0, max: 100, message: 'Nhập từ 0 đến 100' },
-                        ]}
-                      >
-                        <InputNumber className="w-full" min={0} max={100} addonAfter="%" placeholder="0–100" />
-                      </Form.Item>
-                      <Form.Item shouldUpdate={(prev, next) => prev.tienDoPhanTram !== next.tienDoPhanTram} className="mb-0 xl:col-span-2">
-                        {() => (
-                          <TaskProgressBar
-                            value={clampProgressPercent(detailForm.getFieldValue('tienDoPhanTram'))}
-                            className="max-w-none mb-2"
-                          />
-                        )}
-                      </Form.Item>
-                      {selected.ngayGioHoanThanh ? (
-                        <Form.Item label="Ngày đã hoàn thành">
-                          <Text className="font-medium">{selected.ngayGioHoanThanh}</Text>
-                        </Form.Item>
-                      ) : null}
-                      <Form.Item name="canLD" label="Cần LĐ tác động">
-                        <Select
-                          options={[
-                            { value: 'Không', label: 'Không' },
-                            { value: 'Có', label: 'Có' },
-                          ]}
-                        />
-                      </Form.Item>
-                      <Form.Item name="anhHuong" label="Mức ảnh hưởng" rules={[{ required: true, message: 'Chọn mức độ' }]}>
-                        <Select options={[1, 2, 3, 4].map(level => ({ value: level, label: `${level} sao` }))} />
-                      </Form.Item>
-                      <Form.Item name="linkKQ" label="Link KQ (tùy chọn)" className="xl:col-span-2">
-                        <Input />
-                      </Form.Item>
-                      <Form.Item name="ketQua" label="Kết quả" className="xl:col-span-2">
-                        <Input.TextArea rows={2} />
-                      </Form.Item>
-                      <Form.Item name="vuongMac" label="Vướng mắc" className="xl:col-span-2">
-                        <Input.TextArea rows={2} />
-                      </Form.Item>
+
+                      {/* Cột phải — thời hạn & tiến độ */}
+                      <div className="xl:col-span-5 space-y-3">
+                        <section className="task-form-panel">
+                          <p className="task-form-section-title">2. Thời hạn</p>
+                          <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-2 gap-x-3">
+                            <Form.Item name="ngayGiao" label="Ngày giao">
+                              <DatePicker className="w-full" format="DD/MM/YYYY" placeholder="Chọn ngày" />
+                            </Form.Item>
+                            <Form.Item name="ycXong" label="Ngày hoàn thành">
+                              <DatePicker className="w-full" format="DD/MM/YYYY" placeholder="Chọn ngày" />
+                            </Form.Item>
+                          </div>
+                          <div className="grid grid-cols-3 gap-x-2 rounded-lg border border-slate-200 bg-slate-50 px-2.5 pt-2 pb-0">
+                            <Form.Item name="giaHan1" label="Gia hạn 1" className="mb-2">
+                              <DatePicker className="w-full" format="DD/MM/YYYY" placeholder="—" />
+                            </Form.Item>
+                            <Form.Item name="giaHan2" label="Gia hạn 2" className="mb-2">
+                              <DatePicker className="w-full" format="DD/MM/YYYY" placeholder="—" />
+                            </Form.Item>
+                            <Form.Item name="giaHan3" label="Gia hạn 3" className="mb-2">
+                              <DatePicker className="w-full" format="DD/MM/YYYY" placeholder="—" />
+                            </Form.Item>
+                          </div>
+                        </section>
+
+                        <section className="task-form-panel">
+                          <p className="task-form-section-title">2b. Tiến độ</p>
+                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-3">
+                            <Form.Item
+                              name="tienDo"
+                              label="Trạng thái"
+                              rules={[{ required: true, message: 'Chọn trạng thái' }]}
+                            >
+                              <Select
+                                options={TIEN_DO_EDIT_OPTIONS}
+                                placeholder="Chọn trạng thái"
+                                disabled={!supabaseConnected}
+                              />
+                            </Form.Item>
+                            <Form.Item
+                              name="tienDoPhanTram"
+                              label="Tiến độ CV (%)"
+                              rules={[
+                                { required: true, message: 'Nhập tiến độ' },
+                                { type: 'number', min: 0, max: 100, message: 'Nhập từ 0 đến 100' },
+                              ]}
+                            >
+                              <InputNumber className="w-full" min={0} max={100} addonAfter="%" placeholder="0–100" />
+                            </Form.Item>
+                            <Form.Item
+                              shouldUpdate={(prev, next) => prev.tienDoPhanTram !== next.tienDoPhanTram}
+                              className="mb-2 sm:col-span-2"
+                            >
+                              {() => (
+                                <TaskProgressBar
+                                  value={clampProgressPercent(detailForm.getFieldValue('tienDoPhanTram'))}
+                                  className="max-w-none"
+                                />
+                              )}
+                            </Form.Item>
+                            <Form.Item name="canLD" label="Cần LĐ tác động" className="sm:col-span-2 mb-0">
+                              <Select
+                                options={[
+                                  { value: 'Không', label: 'Không' },
+                                  { value: 'Có', label: 'Có' },
+                                ]}
+                              />
+                            </Form.Item>
+                          </div>
+                        </section>
+                      </div>
                     </div>
                   </Form>
                 </div>

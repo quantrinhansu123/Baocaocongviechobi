@@ -11,11 +11,12 @@ import {
   MenuOutlined,
   MenuUnfoldOutlined,
   MenuFoldOutlined,
+  TeamOutlined,
 } from '@ant-design/icons';
 import { Navigate, Routes, Route, useNavigate, useLocation } from 'react-router-dom';
 import './MainLayout.css';
 import logo from './img/logo.png';
-import { loadDashboardTasks } from './services/dashboardData';
+import { loadDashboardTasks, normalizeDashboardChartStatus } from './services/dashboardData';
 import MobileBottomNav from './components/MobileBottomNav';
 import { MobileShellProvider } from './contexts/MobileShellContext';
 
@@ -29,6 +30,7 @@ const WorkReportDetail = lazy(() => import('./pages/WorkReportDetail'));
 const TaskView = lazy(() => import('./pages/TaskView'));
 const WorkNotesView = lazy(() => import('./pages/WorkNotesView'));
 const GeneralNotesView = lazy(() => import('./pages/GeneralNotesView'));
+const PersonnelView = lazy(() => import('./pages/PersonnelView'));
 
 const { Content, Header, Sider } = Layout;
 
@@ -75,12 +77,21 @@ const TASK_MENU_TREE = [
   },
 ];
 
-function renderMenuLabelWithCount(label: string, count: number): React.ReactNode {
+function renderMenuLabelWithCount(
+  label: string,
+  count: number,
+  options?: { onOrange?: boolean }
+): React.ReactNode {
   if (!count) return label;
+  const badgeClass = options?.onOrange
+    ? 'sidebar-menu-count-badge sidebar-menu-count-badge--on-orange'
+    : 'sidebar-menu-count-badge';
   return (
     <span className="sidebar-menu-label-row">
       <span className="sidebar-menu-label-text">{label}</span>
-      <span className="sidebar-menu-count-badge">{count > 99 ? '99+' : count}</span>
+      <span className={badgeClass} title={`${count} CV chưa hoàn thành`}>
+        {count > 99 ? '99+' : count}
+      </span>
     </span>
   );
 }
@@ -118,30 +129,48 @@ const MainLayout: React.FC = () => {
 
   useEffect(() => {
     let cancelled = false;
-    // Để dashboard/route hiện tại chiếm mạng trước; badge sidebar tải sau một nhịp.
-    const timer = window.setTimeout(() => {
-      void loadDashboardTasks()
+
+    const refreshIncompleteCounts = (force = false) => {
+      void loadDashboardTasks(force ? { force: true } : undefined)
         .then(tasks => {
           if (cancelled) return;
           const counts: Record<string, number> = {};
           for (const task of tasks) {
-            if (task.status.includes('Hoàn thành')) continue;
+            if (normalizeDashboardChartStatus(task.status) === 'Hoàn thành') continue;
+            if (!task.deptKey) continue;
             counts[task.deptKey] = (counts[task.deptKey] ?? 0) + 1;
           }
           setIncompleteByDept(counts);
         })
         .catch(() => {
-          if (!cancelled) {
-            setIncompleteByDept({});
-          }
+          if (!cancelled) setIncompleteByDept({});
         });
-    }, 0);
+    };
+
+    // Để dashboard/route hiện tại chiếm mạng trước; badge sidebar tải sau một nhịp.
+    const timer = window.setTimeout(() => refreshIncompleteCounts(false), 0);
+    const onFocus = () => refreshIncompleteCounts(true);
+    const onVisibility = () => {
+      if (document.visibilityState === 'visible') refreshIncompleteCounts(true);
+    };
+    const onTasksChanged = () => refreshIncompleteCounts(true);
+    window.addEventListener('focus', onFocus);
+    document.addEventListener('visibilitychange', onVisibility);
+    window.addEventListener('dashboard-tasks-changed', onTasksChanged);
 
     return () => {
       cancelled = true;
       window.clearTimeout(timer);
+      window.removeEventListener('focus', onFocus);
+      document.removeEventListener('visibilitychange', onVisibility);
+      window.removeEventListener('dashboard-tasks-changed', onTasksChanged);
     };
-  }, []);
+  }, [location.pathname]);
+
+  const totalIncomplete = useMemo(
+    () => Object.values(incompleteByDept).reduce((sum, n) => sum + n, 0),
+    [incompleteByDept]
+  );
 
   const mainMenuItems: MenuProps['items'] = useMemo(
     () => [
@@ -149,7 +178,7 @@ const MainLayout: React.FC = () => {
       {
         key: '/tasks',
         icon: <CheckSquareOutlined className="sidebar-nav-icon" />,
-        label: 'CÔNG VIỆC CHI TIẾT',
+        label: renderMenuLabelWithCount('CÔNG VIỆC CHI TIẾT', totalIncomplete, { onOrange: true }),
         children: TASK_MENU_TREE.map(block => {
           const blockCount = block.depts.reduce(
             (sum, dept) => sum + (incompleteByDept[dept.key] ?? 0),
@@ -166,7 +195,7 @@ const MainLayout: React.FC = () => {
         }),
       },
     ],
-    [incompleteByDept]
+    [incompleteByDept, totalIncomplete]
   );
 
   const notesMenuItems: MenuProps['items'] = useMemo(
@@ -181,6 +210,11 @@ const MainLayout: React.FC = () => {
         icon: <FormOutlined className="sidebar-nav-icon" />,
         label: 'GHI CHÚ PHÒNG BAN',
       },
+      {
+        key: '/personnel',
+        icon: <TeamOutlined className="sidebar-nav-icon" />,
+        label: 'NHÂN SỰ',
+      },
     ],
     []
   );
@@ -193,6 +227,7 @@ const MainLayout: React.FC = () => {
     if (location.pathname === '/') return ['/'];
     if (location.pathname === '/general-notes') return ['/general-notes'];
     if (location.pathname === '/work-notes') return ['/work-notes'];
+    if (location.pathname === '/personnel') return ['/personnel'];
     return [];
   }, [location.pathname]);
 
@@ -231,6 +266,11 @@ const MainLayout: React.FC = () => {
     }
     if (key === '/work-notes') {
       navigate('/work-notes');
+      setMobileMenuOpen(false);
+      return;
+    }
+    if (key === '/personnel') {
+      navigate('/personnel');
       setMobileMenuOpen(false);
     }
   };
@@ -281,18 +321,18 @@ const MainLayout: React.FC = () => {
               inlineIndent={14}
               className="border-none mt-4 sidebar-report-menu"
             />
-          </div>
-          <div className="sidebar-notes-footer">
-            <Menu
-              theme="dark"
-              mode="inline"
-              selectedKeys={selectedMenuKeys}
-              items={notesMenuItems}
-              onClick={handleMenuClick}
-              inlineIndent={14}
-              className="border-none sidebar-report-menu sidebar-notes-menu"
-              selectable
-            />
+            <div className="sidebar-notes-block">
+              <Menu
+                theme="dark"
+                mode="inline"
+                selectedKeys={selectedMenuKeys}
+                items={notesMenuItems}
+                onClick={handleMenuClick}
+                inlineIndent={14}
+                className="border-none sidebar-report-menu sidebar-notes-menu"
+                selectable
+              />
+            </div>
           </div>
         </div>
       </Sider>
@@ -390,19 +430,19 @@ const MainLayout: React.FC = () => {
               className="border-none sidebar-report-menu"
               style={{ backgroundColor: 'transparent' }}
             />
-          </div>
-          <div className="sidebar-notes-footer">
-            <Menu
-              theme="dark"
-              mode="inline"
-              selectedKeys={selectedMenuKeys}
-              items={notesMenuItems}
-              onClick={handleMenuClick}
-              inlineIndent={14}
-              className="border-none sidebar-report-menu sidebar-notes-menu"
-              style={{ backgroundColor: 'transparent' }}
-              selectable
-            />
+            <div className="sidebar-notes-block">
+              <Menu
+                theme="dark"
+                mode="inline"
+                selectedKeys={selectedMenuKeys}
+                items={notesMenuItems}
+                onClick={handleMenuClick}
+                inlineIndent={14}
+                className="border-none sidebar-report-menu sidebar-notes-menu"
+                style={{ backgroundColor: 'transparent' }}
+                selectable
+              />
+            </div>
           </div>
         </Drawer>
 
@@ -432,6 +472,7 @@ const MainLayout: React.FC = () => {
               <Route path="/tasks" element={<TaskView />} />
               <Route path="/general-notes" element={<GeneralNotesView />} />
               <Route path="/work-notes" element={<WorkNotesView />} />
+              <Route path="/personnel" element={<PersonnelView />} />
               <Route path="/work-report-detail" element={<WorkReportDetail />} />
             </Routes>
           </Suspense>
