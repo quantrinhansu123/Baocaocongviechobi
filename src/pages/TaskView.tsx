@@ -1903,6 +1903,7 @@ const TaskView: React.FC = () => {
                       const done = isTaskRecordCompleted(row);
                       const active = selected?.key === row.key;
                       const badge = listBadgeMeta(row.tienDo);
+                      const railCls = badge.cls.replace('task-list-badge', 'task-list-card');
                       const deptMeta = findDeptMeta(row.deptKey);
                       const progress = clampProgressPercent(row.tienDoPhanTram);
                       const progressCls =
@@ -1917,56 +1918,66 @@ const TaskView: React.FC = () => {
                         <button
                           key={row.key}
                           type="button"
-                          className={`task-list-item task-list-card${active ? ' is-active' : ''}`}
+                          className={`task-list-item task-list-card${active ? ' is-active' : ''}${
+                            done ? ' is-done' : ''
+                          } ${railCls}`}
                           onClick={() => openDetail(row.key, row.deptKey)}
                         >
-                          <div className="task-list-item-top">
-                            <span
-                              role="checkbox"
-                              aria-checked={done}
-                              aria-label={done ? 'Đã hoàn thành' : 'Đánh dấu hoàn thành'}
-                              title={done ? 'Đã hoàn thành' : 'Tích để hoàn thành'}
-                              className={`task-list-check${done ? ' is-done' : ''}${
-                                completingTaskKey === row.key ? ' is-loading' : ''
-                              }`}
-                              onClick={event => {
-                                event.preventDefault();
-                                event.stopPropagation();
-                                if (done || !supabaseConnected || completingTaskKey === row.key) {
-                                  return;
-                                }
-                                void handleMarkComplete(row.key, row.deptKey);
-                              }}
-                            >
-                              {done ? <CheckOutlined /> : null}
-                            </span>
-                            <div className="task-list-card-body">
-                              <div className="task-list-card-head">
-                                <p className="task-list-name" title={row.congViec}>
-                                  {row.congViec}
-                                </p>
-                                <span className="task-md-person-avatar task-list-card-avatar">
-                                  {personInitial(row.nguoiPhuTrach)}
-                                </span>
-                              </div>
-                              <div className="task-list-item-meta">
-                                <span className={`task-list-badge ${badge.cls}`}>{badge.label}</span>
-                                <span
-                                  className={`task-list-progress-tag ${progressCls}`}
-                                  title={`Tiến độ hoàn thành ${progress}%`}
-                                >
-                                  {progress}%
-                                </span>
-                                <span className="task-list-sub truncate">
-                                  {(deptMeta?.deptName || row.phongBan || row.deptKey) +
-                                    (row.ngayGiao
-                                      ? ` · ${normalizeDisplayDate(row.ngayGiao) || row.ngayGiao}`
-                                      : '')}
-                                </span>
-                              </div>
-                              <div className="task-list-card-progress">
-                                <TaskProgressBar value={progress} showInfo={false} className="task-list-card-progress-bar" />
-                              </div>
+                          <span className="task-list-card-rail" aria-hidden />
+                          <div className="task-list-card-body">
+                            <div className="task-list-card-head">
+                              <p className="task-list-name" title={row.congViec}>
+                                {row.congViec}
+                              </p>
+                              <span
+                                className="task-md-person-avatar task-list-card-avatar"
+                                title={row.nguoiPhuTrach || 'Chưa gán'}
+                              >
+                                {personInitial(row.nguoiPhuTrach)}
+                              </span>
+                            </div>
+
+                            <div className="task-list-card-progress">
+                              <TaskProgressBar
+                                value={progress}
+                                showInfo={false}
+                                className="task-list-card-progress-bar"
+                              />
+                              <span
+                                className={`task-list-progress-tag ${progressCls}`}
+                                title={`Tiến độ hoàn thành ${progress}%`}
+                              >
+                                {progress}%
+                              </span>
+                            </div>
+
+                            <div className="task-list-card-foot">
+                              <span
+                                role="checkbox"
+                                aria-checked={done}
+                                aria-label={done ? 'Đã hoàn thành' : 'Đánh dấu hoàn thành'}
+                                title={done ? 'Đã hoàn thành' : 'Tích để hoàn thành'}
+                                className={`task-list-check${done ? ' is-done' : ''}${
+                                  completingTaskKey === row.key ? ' is-loading' : ''
+                                }`}
+                                onClick={event => {
+                                  event.preventDefault();
+                                  event.stopPropagation();
+                                  if (done || !supabaseConnected || completingTaskKey === row.key) {
+                                    return;
+                                  }
+                                  void handleMarkComplete(row.key, row.deptKey);
+                                }}
+                              >
+                                {done ? <CheckOutlined /> : null}
+                              </span>
+                              <span className={`task-list-badge ${badge.cls}`}>{badge.label}</span>
+                              <span className="task-list-sub truncate">
+                                {deptMeta?.deptName || row.phongBan || row.deptKey}
+                                {row.ngayGiao
+                                  ? ` · ${normalizeDisplayDate(row.ngayGiao) || row.ngayGiao}`
+                                  : ''}
+                              </span>
                             </div>
                           </div>
                         </button>
