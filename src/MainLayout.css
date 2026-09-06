@@ -37,8 +37,15 @@
   align-items: center;
   gap: 6px;
   overflow-x: auto;
-  padding-bottom: 2px;
-  scrollbar-width: thin;
+  padding-bottom: 0;
+  scrollbar-width: none; /* Firefox */
+  -ms-overflow-style: none; /* IE/Edge legacy */
+}
+
+.topic-link-row::-webkit-scrollbar {
+  display: none; /* Chrome/Safari */
+  height: 0;
+  width: 0;
 }
 
 .topic-link-row--depts {

@@ -13,6 +13,7 @@ import {
   InputNumber,
   DatePicker,
   Space,
+  Grid,
 } from 'antd';
 import type { ColumnsType } from 'antd/es/table';
 import {
@@ -38,7 +39,9 @@ import BackButton from '../components/BackButton';
 import TaskActionMenu from '../components/TaskActionMenu';
 import TaskCompleteTick from '../components/TaskCompleteTick';
 import TaskProgressBar, { clampProgressPercent } from '../components/TaskProgressBar';
+import MobileTaskDetailBody from '../components/MobileTaskDetailBody';
 import './TaskView.css';
+import './TaskView.mobile-detail.css';
 import { ORG_BLOCKS } from '../data/orgBlocks';
 import type { TaskRecord } from '../types/task';
 import {
@@ -1248,6 +1251,15 @@ const TaskView: React.FC = () => {
   };
 
   useEffect(() => {
+    const isMobileViewport =
+      typeof window !== 'undefined' && window.matchMedia('(max-width: 767px)').matches;
+
+    // Mobile: bỏ thanh toolbar trên (Thêm + Tuần) — đã có trong panel danh sách
+    if (isMobileViewport) {
+      clearToolbar();
+      return () => clearToolbar();
+    }
+
     const weekControls = (
       <>
         <span className="text-gray-600 text-xs font-semibold whitespace-nowrap hidden lg:inline">
@@ -1298,81 +1310,83 @@ const TaskView: React.FC = () => {
           </div>
         </div>
       );
-    } else if (listScope && detailTask) {
-      setToolbar(
-        <div className="flex items-center gap-2 md:gap-3 w-full min-w-0">
-          <BackButton size="small" onClick={() => setDetailTask(null)} />
-          <div className="min-w-0 flex-1 hidden sm:block">
-            <p className="text-[10px] uppercase tracking-widest text-gray-500 m-0 leading-tight truncate">
-              {listTitle}
-            </p>
-            <p className="m-0 text-sm font-extrabold text-[#1E386B] leading-snug truncate">
-              {detailTask.congViec}
-            </p>
-          </div>
-          <div className="flex items-center gap-2 shrink-0 ml-auto flex-wrap justify-end">
-            {addTaskButton({ size: 'small' })}
-            <div className="flex items-center gap-1.5">
-              <TaskCompleteTick
-                completed={isTaskRecordCompleted(detailTask)}
-                loading={completingTaskKey === detailTask.key}
-                disabled={!supabaseConnected}
-                onComplete={() => void handleMarkComplete(detailTask.key, detailTask.deptKey)}
-              />
-              <span className="text-xs font-semibold text-[#1E386B] hidden sm:inline">
-                {isTaskRecordCompleted(detailTask) ? 'Đã hoàn thành' : 'Hoàn thành'}
-              </span>
-            </div>
-            <Button
-              type="primary"
-              size="small"
-              className="bg-[#F38320] border-[#F38320] font-semibold hidden sm:inline-flex"
-              loading={savingDetail}
-              onClick={handleDetailSave}
-            >
-              Lưu
-            </Button>
-            {weekControls}
-          </div>
-        </div>
-      );
     } else if (detailTask) {
-      setToolbar(
-        <div className="flex items-center gap-2 md:gap-3 w-full min-w-0">
-          <BackButton size="small" onClick={() => setDetailTask(null)} />
-          <div className="min-w-0 flex-1 hidden sm:block">
-            <p className="text-[10px] uppercase tracking-widest text-gray-500 m-0 leading-tight">
-              Chi tiết công việc
-            </p>
-            <p className="m-0 text-sm font-extrabold text-[#1E386B] leading-snug truncate">
-              {detailTask.congViec}
-            </p>
-          </div>
-          <div className="flex items-center gap-2 shrink-0 ml-auto flex-wrap justify-end">
-            <div className="flex items-center gap-1.5">
-              <TaskCompleteTick
-                completed={isTaskRecordCompleted(detailTask)}
-                loading={completingTaskKey === detailTask.key}
-                disabled={!supabaseConnected}
-                onComplete={() => void handleMarkComplete(detailTask.key, detailTask.deptKey)}
-              />
-              <span className="text-xs font-semibold text-[#1E386B] hidden sm:inline">
-                {isTaskRecordCompleted(detailTask) ? 'Đã hoàn thành' : 'Hoàn thành'}
-              </span>
+      if (listScope) {
+        setToolbar(
+          <div className="flex items-center gap-2 md:gap-3 w-full min-w-0">
+            <BackButton size="small" onClick={() => setDetailTask(null)} />
+            <div className="min-w-0 flex-1 hidden sm:block">
+              <p className="text-[10px] uppercase tracking-widest text-gray-500 m-0 leading-tight truncate">
+                {listTitle}
+              </p>
+              <p className="m-0 text-sm font-extrabold text-[#1E386B] leading-snug truncate">
+                {detailTask.congViec}
+              </p>
             </div>
-            <Button
-              type="primary"
-              size="small"
-              className="bg-[#F38320] border-[#F38320] font-semibold hidden sm:inline-flex"
-              loading={savingDetail}
-              onClick={handleDetailSave}
-            >
-              Lưu
-            </Button>
-            {weekControls}
+            <div className="flex items-center gap-2 shrink-0 ml-auto flex-wrap justify-end">
+              {addTaskButton({ size: 'small' })}
+              <div className="flex items-center gap-1.5">
+                <TaskCompleteTick
+                  completed={isTaskRecordCompleted(detailTask)}
+                  loading={completingTaskKey === detailTask.key}
+                  disabled={!supabaseConnected}
+                  onComplete={() => void handleMarkComplete(detailTask.key, detailTask.deptKey)}
+                />
+                <span className="text-xs font-semibold text-[#1E386B] hidden sm:inline">
+                  {isTaskRecordCompleted(detailTask) ? 'Đã hoàn thành' : 'Hoàn thành'}
+                </span>
+              </div>
+              <Button
+                type="primary"
+                size="small"
+                className="bg-[#F38320] border-[#F38320] font-semibold"
+                loading={savingDetail}
+                onClick={handleDetailSave}
+              >
+                Lưu
+              </Button>
+              {weekControls}
+            </div>
           </div>
-        </div>
-      );
+        );
+      } else {
+        setToolbar(
+          <div className="flex items-center gap-2 md:gap-3 w-full min-w-0">
+            <BackButton size="small" onClick={() => setDetailTask(null)} />
+            <div className="min-w-0 flex-1 hidden sm:block">
+              <p className="text-[10px] uppercase tracking-widest text-gray-500 m-0 leading-tight">
+                Chi tiết công việc
+              </p>
+              <p className="m-0 text-sm font-extrabold text-[#1E386B] leading-snug truncate">
+                {detailTask.congViec}
+              </p>
+            </div>
+            <div className="flex items-center gap-2 shrink-0 ml-auto flex-wrap justify-end">
+              <div className="flex items-center gap-1.5">
+                <TaskCompleteTick
+                  completed={isTaskRecordCompleted(detailTask)}
+                  loading={completingTaskKey === detailTask.key}
+                  disabled={!supabaseConnected}
+                  onComplete={() => void handleMarkComplete(detailTask.key, detailTask.deptKey)}
+                />
+                <span className="text-xs font-semibold text-[#1E386B] hidden sm:inline">
+                  {isTaskRecordCompleted(detailTask) ? 'Đã hoàn thành' : 'Hoàn thành'}
+                </span>
+              </div>
+              <Button
+                type="primary"
+                size="small"
+                className="bg-[#F38320] border-[#F38320] font-semibold"
+                loading={savingDetail}
+                onClick={handleDetailSave}
+              >
+                Lưu
+              </Button>
+              {weekControls}
+            </div>
+          </div>
+        );
+      }
     } else {
       setToolbar(
         <div className="flex items-center gap-2 md:gap-3 min-w-0 ml-auto">{weekControls}</div>
@@ -1591,6 +1605,8 @@ const TaskView: React.FC = () => {
   }, [showDeptColumn, supabaseConnected, completingTaskKey, deletingTaskKey, savingTienDoKey, updateTaskTienDo]);
 
   const selected = detailTask;
+  const screens = Grid.useBreakpoint();
+  const isMobileDetail = screens.md === false || screens.md === undefined;
 
   const statusPillClass = (status: string) => {
     if (status.includes('Hoàn thành')) return 'task-md-status-pill--done';
@@ -1609,6 +1625,14 @@ const TaskView: React.FC = () => {
     selected && findDeptMeta(selected.deptKey)?.deptName
       ? findDeptMeta(selected.deptKey)!.deptName
       : selected?.deptKey || '—';
+
+  const selectedBlockLabel = (() => {
+    if (!selected) return '';
+    const meta = findDeptMeta(selected.deptKey);
+    if (!meta) return '';
+    const block = ORG_BLOCKS.find(b => b.key === meta.blockKey);
+    return block?.label || meta.blockKey;
+  })();
 
   return (
     <div className="flex flex-col h-[calc(100vh-64px)]" style={{ background: '#e9eef7' }}>
@@ -1803,6 +1827,19 @@ const TaskView: React.FC = () => {
               />
               {listScope ? (
                 <div className="mt-1.5 flex flex-col gap-1.5">
+                  <div className="flex flex-wrap items-center gap-1.5 md:hidden">
+                    {addTaskButton({ size: 'small' })}
+                    <Select
+                      showSearch
+                      value={selectedWeek}
+                      onChange={handleWeekChange}
+                      options={WEEK_OPTIONS}
+                      placeholder="Tuần"
+                      size="small"
+                      className="min-w-[120px] flex-1"
+                      getPopupContainer={trigger => trigger.parentElement ?? document.body}
+                    />
+                  </div>
                   <div className="flex flex-wrap items-center gap-1.5">
                     <Select
                       value={filterStatus}
@@ -1950,6 +1987,35 @@ const TaskView: React.FC = () => {
                 size="middle"
                 className="task-detail-form task-md-compact-form flex-1 min-h-0"
               >
+                {isMobileDetail ? (
+                  <MobileTaskDetailBody
+                    form={detailForm}
+                    taskCode={
+                      selected.stt
+                        ? `CV-${String(selected.stt).padStart(4, '0')}`
+                        : selected.key?.slice(0, 8) || 'CV'
+                    }
+                    statusLabel={normalizeTienDoForForm(selected.tienDo) || 'Đang thực hiện'}
+                    blockLabel={selectedBlockLabel}
+                    deptLabel={selectedDeptLabel}
+                    ngayGiaoDisplay={
+                      normalizeDisplayDate(selected.ngayGiao) || selected.ngayGiao || ''
+                    }
+                    ngayCapNhatDisplay={
+                      normalizeDisplayDate(selected.ngayGioHoanThanh) ||
+                      selected.ngayGioHoanThanh ||
+                      ''
+                    }
+                    assigneeName={selected.nguoiGiao || ''}
+                    assigneeOptions={detailAssigneeOptions}
+                    followerOptions={detailFollowerOptions}
+                    saving={savingDetail}
+                    canSave={Boolean(supabaseConnected)}
+                    onBack={() => setDetailTask(null)}
+                    onSave={handleDetailSave}
+                    personInitial={personInitial}
+                  />
+                ) : (
                 <div className="task-md-detail-inner">
                   <div className="task-md-main">
                     <div className="task-md-head">
@@ -2228,7 +2294,9 @@ const TaskView: React.FC = () => {
                     </div>
                   </aside>
                 </div>
+                )}
               </Form>
+              {!isMobileDetail ? (
               <div className="task-md-sticky-save sm:hidden shrink-0">
                 <Button
                   type="primary"
@@ -2242,6 +2310,7 @@ const TaskView: React.FC = () => {
                   Lưu
                 </Button>
               </div>
+              ) : null}
             </div>
           ) : (
             <div className="task-md-detail is-mobile-hidden">

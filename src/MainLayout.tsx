@@ -419,7 +419,7 @@ const MainLayoutInner: React.FC = () => {
             </div>
           </div>
 
-          <div className="flex-1 min-w-0 flex items-center justify-end md:justify-center overflow-x-auto">
+          <div className="header-toolbar-slot flex-1 min-w-0 flex items-center justify-end md:justify-center overflow-x-auto">
             {toolbar}
           </div>
 

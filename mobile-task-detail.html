@@ -1,0 +1,317 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Chi tiết công việc</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Source+Serif+4:ital,opsz,wght@0,8..60,400;0,8..60,600;1,8..60,400&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@phosphor-icons/web@2.1.1/src/duotone/style.css">
+<style>
+:root{
+  --bg:#f3f2f2; --surface:#eae9e9; --text:#201e1d;
+  --divider:rgba(32,30,29,.16);
+  --n300:#d7d3d3; --n400:#bab6b6; --n600:#7d7979; --n700:#605d5d; --n800:#444141;
+  /* xanh coban */
+  --c:#1c3f94; --c100:#eaeef9; --c200:#ccd8f0; --c600:#17357e; --c700:#122b68; --c800:#0d1f4b;
+  /* cam */
+  --o:#e2680f; --o100:#fdf1e6; --o600:#c4560a; --o700:#a04405;
+  --s1:5px; --s2:10px; --s3:15px; --s4:20px; --s6:30px;
+  --r:2px;
+  --shadow-sm:0 1px 2px rgba(45,43,43,.14);
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--n300);font-family:"Source Serif 4",Georgia,serif;color:var(--text);-webkit-font-smoothing:antialiased}
+.screen{max-width:430px;min-height:100vh;margin:0 auto;background:var(--bg);display:flex;flex-direction:column}
+::selection{background:var(--c200)}
+:focus-visible{outline:2px solid var(--c);outline-offset:2px}
+
+/* chrome */
+.head{flex-shrink:0;padding:14px 20px 0}
+.head-row{display:flex;align-items:center;gap:14px;height:48px}
+.spacer{flex:1}
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:6px;cursor:pointer;font:inherit;
+  border:1px solid transparent;border-radius:var(--r);background:none;padding:8px 14px;color:inherit}
+.btn-ghost{color:var(--c700);padding-inline:var(--s1)}
+.btn-ghost:hover{background:rgba(28,63,148,.1)}
+.btn-ghost:active{background:rgba(28,63,148,.18)}
+.btn-icon{width:44px;height:44px;padding:0}
+.btn-primary{background:var(--o);color:var(--bg);width:100%;min-height:50px;font-weight:600;font-size:17px}
+.btn-primary:hover{background:var(--o600)}
+.btn-primary:active{background:var(--o700)}
+.avatar{width:34px;height:34px;border-radius:50%;background:var(--n300);display:flex;align-items:center;
+  justify-content:center;font-size:13px;font-weight:600;color:var(--n800)}
+.dot-badge{position:absolute;top:8px;right:9px;width:7px;height:7px;border-radius:50%;background:var(--o)}
+.crumb{display:flex;align-items:center;gap:8px;width:100%;height:44px;justify-content:flex-start;margin-left:-6px}
+.crumb .up{font-size:11.5px;letter-spacing:.13em;text-transform:uppercase;color:var(--n700)}
+.crumb .cur{font-size:11.5px;letter-spacing:.13em;text-transform:uppercase;font-weight:600;color:var(--c700)}
+
+/* body */
+.body{flex:1;overflow-y:auto;padding:4px 20px 24px}
+h1{font-weight:600;font-size:30px;line-height:1.14;letter-spacing:-.01em;margin:6px 0 12px;text-wrap:pretty}
+.meta{display:flex;align-items:center;gap:10px;margin-bottom:34px;font-size:13px;color:var(--n700)}
+.meta .sep{width:3px;height:3px;border-radius:50%;background:var(--n400)}
+.tag{display:inline-flex;align-items:center;font-size:11px;letter-spacing:.02em;padding:3px 10px;
+  border-radius:1.5px;background:var(--c100);color:var(--c800)}
+.kicker{font-size:10.5px;letter-spacing:.16em;text-transform:uppercase;color:var(--n600);margin-bottom:14px}
+.kicker.tight{margin-bottom:8px}
+.gap{margin-bottom:34px}
+
+/* progress */
+.pct{display:flex;align-items:flex-end;gap:10px;margin-bottom:6px}
+.pct b{font-weight:600;font-size:58px;line-height:.9;letter-spacing:-.03em}
+.pct .unit{font-size:22px;line-height:1;padding-bottom:5px;color:var(--n600)}
+.pct .left{font-size:13px;color:var(--n700);padding-bottom:4px}
+input[type=range]{-webkit-appearance:none;appearance:none;background:none;width:100%;height:44px;cursor:pointer}
+input[type=range]::-webkit-slider-runnable-track{height:3px;
+  background:linear-gradient(to right,var(--c) var(--fill,25%),var(--n300) var(--fill,25%))}
+input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:22px;height:22px;margin-top:-10px;
+  border-radius:50%;background:var(--c);border:3px solid var(--bg);box-shadow:var(--shadow-sm)}
+input[type=range]::-moz-range-track{height:3px;background:var(--n300)}
+input[type=range]::-moz-range-progress{height:3px;background:var(--c)}
+input[type=range]::-moz-range-thumb{width:18px;height:18px;border-radius:50%;background:var(--c);border:3px solid var(--bg)}
+
+/* segmented */
+.seg{display:flex;width:100%;border:1px solid var(--divider);border-radius:var(--r);overflow:hidden}
+.seg-opt{flex:1;display:inline-flex;align-items:center;justify-content:center;min-height:40px;
+  font-size:13px;cursor:pointer;position:relative}
+.seg-opt+.seg-opt{border-left:1px solid var(--divider)}
+.seg-opt input{position:absolute;width:1px;height:1px;opacity:0}
+.seg-opt:has(input:checked){background:var(--c);color:var(--bg)}
+.seg-opt:not(:has(input:checked)):hover{background:rgba(32,30,29,.07)}
+.seg-opt:has(input:focus-visible){outline:2px solid var(--c);outline-offset:-2px}
+
+/* stars */
+.stars{display:flex;align-items:center;margin-bottom:34px}
+.star{width:44px;height:44px;color:var(--n400)}
+.star.on{color:var(--o700)}
+.stars .label{margin-left:12px;font-size:15px;color:var(--n700)}
+
+/* people */
+.people{display:flex;align-items:center;gap:10px;margin-bottom:34px}
+.stack{display:flex}
+.chip{width:40px;height:40px;border-radius:50%;background:var(--n300);color:var(--n800);display:flex;
+  align-items:center;justify-content:center;font-size:13px;font-weight:600;box-shadow:0 0 0 3px var(--bg)}
+.chip+.chip{margin-left:-10px}
+.chip.me{background:var(--c200);color:var(--c800)}
+
+/* data rows */
+.row{display:flex;justify-content:space-between;align-items:baseline;gap:16px;padding:13px 0;
+  border-bottom:1px solid var(--divider)}
+.row:last-of-type{border-bottom:0}
+.row .k{font-size:15px;color:var(--n700)}
+.row .v{font-size:16px}
+.row .v.empty{color:var(--n600)}
+
+/* fields */
+.field{margin-bottom:18px}
+.field label{display:block;font-size:13px;margin-bottom:5px;color:rgba(32,30,29,.7)}
+.input{width:100%;min-height:42px;padding:8px 10px;font:inherit;font-size:15px;color:var(--text);
+  background:var(--surface);border:1px solid var(--divider);border-radius:var(--r);caret-color:var(--c)}
+.input::placeholder{color:rgba(32,30,29,.65);opacity:1}
+.input:hover{border-color:rgba(32,30,29,.45)}
+.input:focus-visible{border-color:var(--c);outline-offset:0}
+textarea.input{resize:vertical;min-height:60px}
+.grid3{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;margin-bottom:34px}
+.grid3 label{font-size:12px}
+
+/* docs */
+.doc{display:flex;align-items:center;gap:10px;padding:11px 0;border-bottom:1px solid var(--divider)}
+.doc .txt{flex:1;min-width:0}
+.doc .name,.doc .url{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.doc .name{font-size:16px}
+.doc .url{font-size:12.5px;color:var(--n600)}
+.doc .del{color:var(--o700)}
+a{color:var(--c700);text-decoration:none}
+a:hover{color:var(--c600)}
+
+/* history + footer */
+.history{display:flex;align-items:flex-start;gap:10px}
+.history p{margin:0;font-size:15px;font-style:italic;color:var(--n700);text-wrap:pretty}
+.save-bar{flex-shrink:0;padding:12px 20px 8px;background:var(--bg)}
+.tabbar{flex-shrink:0;display:grid;grid-template-columns:repeat(3,1fr);border-top:1px solid var(--divider);
+  padding:8px 8px 12px;background:var(--bg)}
+.tab{flex-direction:column;gap:2px;padding:6px 0;min-height:46px;color:var(--n600)}
+.tab span{font-size:11.5px;letter-spacing:.04em}
+.tab.on{color:var(--c700)}
+.hidden{display:none}
+</style>
+</head>
+<body>
+<div class="screen">
+
+  <header class="head">
+    <div class="head-row">
+      <button class="btn btn-ghost" style="height:44px;margin-left:-6px;font-size:16px">
+        <i class="ph-duotone ph-caret-left" style="font-size:19px"></i> Quay lại
+      </button>
+      <div class="spacer"></div>
+      <button class="btn btn-ghost btn-icon" aria-label="Thông báo" style="position:relative;color:var(--n700)">
+        <i class="ph-duotone ph-bell" style="font-size:22px"></i><span class="dot-badge"></span>
+      </button>
+      <div class="avatar">HT</div>
+    </div>
+    <button class="btn btn-ghost crumb">
+      <span class="up">Khối thương mại</span>
+      <span style="color:var(--n400)">/</span>
+      <span class="cur">P. KD Hobi Gỗ</span>
+      <i class="ph-duotone ph-caret-down" style="font-size:15px"></i>
+    </button>
+  </header>
+
+  <main class="body">
+    <h1>Chuẩn hoá quy trình báo giá khách sỉ</h1>
+    <div class="meta">
+      <span>CV-2451</span><span class="sep"></span><span class="tag">ĐANG THỰC HIỆN</span>
+    </div>
+
+    <div class="kicker">Tiến độ</div>
+    <div class="pct">
+      <b id="pctNum">25</b><div class="unit">%</div><div class="spacer"></div>
+      <div class="left">còn 6 ngày</div>
+    </div>
+    <input id="range" type="range" min="0" max="100" step="5" value="25" aria-label="Tiến độ" style="--fill:25%">
+    <div class="seg gap" id="segProgress" style="margin-top:2px">
+      <label class="seg-opt"><input type="radio" name="prog" value="0">0%</label>
+      <label class="seg-opt"><input type="radio" name="prog" value="25" checked>25%</label>
+      <label class="seg-opt"><input type="radio" name="prog" value="50">50%</label>
+      <label class="seg-opt"><input type="radio" name="prog" value="75">75%</label>
+      <label class="seg-opt"><input type="radio" name="prog" value="100">100%</label>
+    </div>
+
+    <div class="kicker">Mức ảnh hưởng</div>
+    <div class="stars" id="stars">
+      <button class="btn btn-ghost btn-icon star on" data-v="1" aria-label="1 sao"><i class="ph-duotone ph-star" style="font-size:26px"></i></button>
+      <button class="btn btn-ghost btn-icon star on" data-v="2" aria-label="2 sao"><i class="ph-duotone ph-star" style="font-size:26px"></i></button>
+      <button class="btn btn-ghost btn-icon star on" data-v="3" aria-label="3 sao"><i class="ph-duotone ph-star" style="font-size:26px"></i></button>
+      <button class="btn btn-ghost btn-icon star" data-v="4" aria-label="4 sao"><i class="ph-duotone ph-star" style="font-size:26px"></i></button>
+      <button class="btn btn-ghost btn-icon star" data-v="5" aria-label="5 sao"><i class="ph-duotone ph-star" style="font-size:26px"></i></button>
+      <span class="label" id="impactLabel">Trung bình</span>
+    </div>
+
+    <div class="kicker">Người liên quan</div>
+    <div class="people">
+      <div class="stack">
+        <div class="chip me">NA</div><div class="chip">TL</div><div class="chip">PH</div>
+      </div>
+      <button class="btn btn-ghost" style="height:44px;font-size:15px">
+        <i class="ph-duotone ph-user-plus" style="font-size:19px"></i> Thêm người
+      </button>
+    </div>
+
+    <div class="kicker tight">Thời gian &amp; thông tin</div>
+    <div class="row"><span class="k">Ngày tạo</span><span class="v">25/08/2026</span></div>
+    <div class="row"><span class="k">Hạn hoàn thành</span><span class="v">12/09/2026</span></div>
+    <div class="row"><span class="k">Cập nhật lần cuối</span><span class="v empty">Chưa có</span></div>
+    <div class="row"><span class="k">Loại công việc</span><span class="v">Quy trình nội bộ</span></div>
+    <div class="row"><span class="k">Người giao</span><span class="v">Trần Lê Minh</span></div>
+
+    <div class="kicker" style="margin-top:34px">Kết quả &amp; vướng mắc</div>
+    <div class="field">
+      <label for="ketqua">Kết quả đến hôm nay</label>
+      <textarea id="ketqua" class="input" rows="3" style="min-height:78px">Đã gửi catalogue + bảng giá sơ bộ; chờ CĐT phản hồi</textarea>
+    </div>
+    <div class="field gap">
+      <label for="vuongmac">Vướng mắc cần hỗ trợ</label>
+      <textarea id="vuongmac" class="input" rows="2" placeholder="Chưa có vướng mắc"></textarea>
+    </div>
+
+    <div class="kicker tight">Tài liệu</div>
+    <div id="docs">
+      <div class="doc">
+        <i class="ph-duotone ph-file-text" style="font-size:20px;color:var(--n700)"></i>
+        <div class="txt">
+          <div class="name">Catalogue Hobi Gỗ 2026</div>
+          <div class="url">drive.hobi.vn/catalogue-2026</div>
+        </div>
+        <a class="btn btn-ghost btn-icon" href="#" aria-label="Mở tài liệu" style="width:40px;height:40px"><i class="ph-duotone ph-arrow-square-out" style="font-size:20px"></i></a>
+        <button class="btn btn-ghost btn-icon del" aria-label="Xoá tài liệu" style="width:40px;height:40px"><i class="ph-duotone ph-trash" style="font-size:19px"></i></button>
+      </div>
+    </div>
+    <button class="btn btn-ghost" id="addDoc" style="height:44px;margin:4px 0 34px -6px;font-size:15px">
+      <i class="ph-duotone ph-plus" style="font-size:18px"></i> Thêm link tài liệu
+    </button>
+
+    <div class="kicker">Lãnh đạo tác động</div>
+    <div class="seg" id="segLeader" style="margin-bottom:16px">
+      <label class="seg-opt" style="min-height:42px;font-size:14px"><input type="radio" name="leader" value="no" checked>Không cần</label>
+      <label class="seg-opt" style="min-height:42px;font-size:14px"><input type="radio" name="leader" value="yes">Cần tác động</label>
+    </div>
+    <div class="field hidden" id="leaderField">
+      <label for="tacdong">Nội dung cần tác động</label>
+      <textarea id="tacdong" class="input" rows="2" placeholder="Mô tả nội dung cần lãnh đạo tác động…"></textarea>
+    </div>
+
+    <div class="kicker" style="margin-top:34px">Gia hạn</div>
+    <div class="grid3">
+      <div class="field" style="margin:0"><label for="gh1">GH 1</label><input id="gh1" class="input" type="date" value="2026-09-19" style="font-size:14px"></div>
+      <div class="field" style="margin:0"><label for="gh2">GH 2</label><input id="gh2" class="input" type="date" style="font-size:14px"></div>
+      <div class="field" style="margin:0"><label for="gh3">GH 3</label><input id="gh3" class="input" type="date" style="font-size:14px"></div>
+    </div>
+
+    <div class="kicker">Lịch sử hoạt động</div>
+    <div class="history">
+      <i class="ph-duotone ph-clock-counter-clockwise" style="font-size:20px;color:var(--n600)"></i>
+      <p>Chưa có hoạt động nào. Mọi thay đổi tiến độ sẽ được ghi lại ở đây.</p>
+    </div>
+  </main>
+
+  <div class="save-bar">
+    <button class="btn btn-primary" id="save">Lưu cập nhật</button>
+  </div>
+
+  <nav class="tabbar">
+    <button class="btn btn-ghost tab"><i class="ph-duotone ph-house" style="font-size:23px"></i><span>Tổng quan</span></button>
+    <button class="btn btn-ghost tab on"><i class="ph-duotone ph-check-square" style="font-size:23px"></i><span>Công việc</span></button>
+    <button class="btn btn-ghost tab"><i class="ph-duotone ph-note-pencil" style="font-size:23px"></i><span>Ghi chú</span></button>
+  </nav>
+</div>
+
+<script>
+const range = document.getElementById('range');
+const pctNum = document.getElementById('pctNum');
+const segProgress = document.getElementById('segProgress');
+const save = document.getElementById('save');
+
+function setProgress(v, syncSeg) {
+  range.value = v;
+  range.style.setProperty('--fill', v + '%');
+  pctNum.textContent = v;
+  if (syncSeg) {
+    segProgress.querySelectorAll('input').forEach(i => { i.checked = Number(i.value) === Number(v); });
+  }
+  save.textContent = 'Lưu cập nhật';
+}
+range.addEventListener('input', e => setProgress(e.target.value, true));
+segProgress.addEventListener('change', e => setProgress(e.target.value, false));
+
+const labels = ['Rất thấp', 'Thấp', 'Trung bình', 'Cao', 'Rất cao'];
+document.getElementById('stars').addEventListener('click', e => {
+  const btn = e.target.closest('.star');
+  if (!btn) return;
+  const v = Number(btn.dataset.v);
+  document.querySelectorAll('.star').forEach(s => s.classList.toggle('on', Number(s.dataset.v) <= v));
+  document.getElementById('impactLabel').textContent = labels[v - 1];
+});
+
+document.getElementById('segLeader').addEventListener('change', e => {
+  document.getElementById('leaderField').classList.toggle('hidden', e.target.value !== 'yes');
+});
+
+document.getElementById('docs').addEventListener('click', e => {
+  if (e.target.closest('.del')) e.target.closest('.doc').remove();
+});
+document.getElementById('addDoc').addEventListener('click', () => {
+  const d = document.querySelector('.doc');
+  if (!d) return;
+  const c = d.cloneNode(true);
+  c.querySelector('.name').textContent = 'Tài liệu mới';
+  c.querySelector('.url').textContent = 'https://…';
+  document.getElementById('docs').appendChild(c);
+});
+
+save.addEventListener('click', () => { save.textContent = 'Đã lưu'; });
+</script>
+</body>
+</html>
