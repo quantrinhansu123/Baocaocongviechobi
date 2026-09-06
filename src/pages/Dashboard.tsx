@@ -2301,18 +2301,18 @@ const Dashboard: React.FC = () => {
                 </div>
               </div>
               <div className="flex flex-wrap items-center gap-2 shrink-0">
-                {!selectedTask.status.includes('Hoàn thành') ? (
-                  <Button
-                    type="primary"
-                    className="bg-green-600 border-green-600 hover:!bg-green-700"
-                    icon={<CheckCircleOutlined />}
+                <div className="task-detail-complete-header flex items-center gap-1.5">
+                  <TaskCompleteTick
+                    completed={selectedTask.status.includes('Hoàn thành')}
                     loading={completingTaskId === selectedTask.id}
                     disabled={supabaseConnected === false}
-                    onClick={() => void handleMarkComplete(selectedTask)}
-                  >
-                    Đã hoàn thành
-                  </Button>
-                ) : null}
+                    onComplete={() => void handleMarkComplete(selectedTask)}
+                    className="task-complete-tick--on-orange"
+                  />
+                  <span className="text-white text-sm font-semibold hidden sm:inline select-none">
+                    {selectedTask.status.includes('Hoàn thành') ? 'Đã hoàn thành' : 'Hoàn thành'}
+                  </span>
+                </div>
                 <Button
                   type="primary"
                   className="bg-[#1E386B] border-[#1E386B]"
@@ -2417,12 +2417,12 @@ const Dashboard: React.FC = () => {
                             getPopupContainer={trigger => trigger.parentElement ?? document.body}
                           />
                         </Form.Item>
-                        <Form.Item name="nguoiTheoDoi" label="Người theo dõi" className="sm:col-span-2 mb-0">
+                        <Form.Item name="nguoiTheoDoi" label="Người liên quan" className="sm:col-span-2 mb-0">
                           <PersonnelMultiSelect
                             options={dashboardFollowerOptions}
                             placeholder={
                               dashboardFollowerOptions.length
-                                ? 'Tick chọn một hoặc nhiều người theo dõi'
+                                ? 'Tick chọn một hoặc nhiều người liên quan'
                                 : 'Chưa có nhân sự — thêm ở mục Nhân sự'
                             }
                             notFoundContent={

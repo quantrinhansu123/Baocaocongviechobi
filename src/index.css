@@ -236,6 +236,33 @@ body {
   opacity: 1 !important;
 }
 
+/* Ô tích trên header cam form chi tiết Dashboard */
+.task-complete-tick--on-orange .task-complete-tick.ant-btn {
+  width: 34px !important;
+  height: 34px !important;
+  border-radius: 8px !important;
+  color: #ffffff !important;
+  border: 2px solid rgba(255, 255, 255, 0.85) !important;
+  background: transparent !important;
+}
+
+.task-complete-tick--on-orange .task-complete-tick.ant-btn .anticon {
+  font-size: 18px !important;
+}
+
+.task-complete-tick--on-orange .task-complete-tick.ant-btn:hover:not(:disabled) {
+  color: #ffffff !important;
+  border-color: #ffffff !important;
+  background: rgba(255, 255, 255, 0.18) !important;
+}
+
+.task-complete-tick--on-orange .task-complete-tick--done.ant-btn,
+.task-complete-tick--on-orange .task-complete-tick--done.ant-btn:disabled {
+  color: #166534 !important;
+  border-color: #ffffff !important;
+  background: #ffffff !important;
+}
+
 .task-th-label {
   display: inline-block;
   white-space: nowrap;

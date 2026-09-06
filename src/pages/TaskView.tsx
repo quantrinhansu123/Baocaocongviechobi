@@ -987,13 +987,11 @@ const TaskView: React.FC = () => {
           );
 
           await editDataRow(editRow, activeTable);
-          const mapped = await reloadTasks();
+          await reloadTasks();
           message.success('Đã cập nhật Supabase.');
           invalidateDashboardTasksCache();
-          const refreshed = mapped?.[detailTask.deptKey]?.[detailTask.key];
-          if (refreshed) {
-            setDetailTask({ ...refreshed, key: detailTask.key, deptKey: detailTask.deptKey });
-          }
+          // Lưu xong tự thoát về danh sách
+          setDetailTask(null);
         } catch (error) {
           message.error(error instanceof Error ? error.message : 'Không thể cập nhật Supabase.');
         } finally {
@@ -1302,19 +1300,17 @@ const TaskView: React.FC = () => {
           </div>
           <div className="flex items-center gap-2 shrink-0 ml-auto flex-wrap justify-end">
             {addTaskButton({ size: 'small' })}
-            {!isTaskRecordCompleted(detailTask) ? (
-              <Button
-                type="primary"
-                size="small"
-                className="bg-green-600 border-green-600 hover:!bg-green-700 hover:!border-green-700 font-semibold"
-                icon={<CheckCircleOutlined />}
+            <div className="flex items-center gap-1.5">
+              <TaskCompleteTick
+                completed={isTaskRecordCompleted(detailTask)}
                 loading={completingTaskKey === detailTask.key}
                 disabled={!supabaseConnected}
-                onClick={() => void handleMarkComplete(detailTask.key, detailTask.deptKey)}
-              >
-                Hoàn thành
-              </Button>
-            ) : null}
+                onComplete={() => void handleMarkComplete(detailTask.key, detailTask.deptKey)}
+              />
+              <span className="text-xs font-semibold text-[#1E386B] hidden sm:inline">
+                {isTaskRecordCompleted(detailTask) ? 'Đã hoàn thành' : 'Hoàn thành'}
+              </span>
+            </div>
             <Button
               type="primary"
               size="small"
@@ -1341,19 +1337,17 @@ const TaskView: React.FC = () => {
             </p>
           </div>
           <div className="flex items-center gap-2 shrink-0 ml-auto flex-wrap justify-end">
-            {!isTaskRecordCompleted(detailTask) ? (
-              <Button
-                type="primary"
-                size="small"
-                className="bg-green-600 border-green-600 hover:!bg-green-700 hover:!border-green-700 font-semibold"
-                icon={<CheckCircleOutlined />}
+            <div className="flex items-center gap-1.5">
+              <TaskCompleteTick
+                completed={isTaskRecordCompleted(detailTask)}
                 loading={completingTaskKey === detailTask.key}
                 disabled={!supabaseConnected}
-                onClick={() => void handleMarkComplete(detailTask.key, detailTask.deptKey)}
-              >
-                Hoàn thành
-              </Button>
-            ) : null}
+                onComplete={() => void handleMarkComplete(detailTask.key, detailTask.deptKey)}
+              />
+              <span className="text-xs font-semibold text-[#1E386B] hidden sm:inline">
+                {isTaskRecordCompleted(detailTask) ? 'Đã hoàn thành' : 'Hoàn thành'}
+              </span>
+            </div>
             <Button
               type="primary"
               size="small"
@@ -1690,7 +1684,7 @@ const TaskView: React.FC = () => {
             </Form.Item>
             <Form.Item
               name="nguoiTheoDoi"
-              label="Người theo dõi"
+              label="Người liên quan"
               className="sm:col-span-2"
               initialValue={[]}
             >
@@ -1698,7 +1692,7 @@ const TaskView: React.FC = () => {
                 options={personnelOptions}
                 placeholder={
                   personnelOptions.length
-                    ? 'Tick chọn một hoặc nhiều người theo dõi'
+                    ? 'Tick chọn một hoặc nhiều người liên quan'
                     : 'Chưa có nhân sự — thêm ở mục Nhân sự'
                 }
                 notFoundContent={personnelOptions.length ? 'Không khớp' : 'Chưa có dữ liệu nhân sự'}
@@ -2166,11 +2160,11 @@ const TaskView: React.FC = () => {
                     </div>
 
                     <div className="task-md-aside-card">
-                      <p className="task-md-aside-label">Người theo dõi</p>
+                      <p className="task-md-aside-label">Người liên quan</p>
                       <Form.Item name="nguoiTheoDoi" className="mb-0">
                         <PersonnelMultiSelect
                           options={detailFollowerOptions}
-                          placeholder="Thêm người theo dõi"
+                          placeholder="Thêm người liên quan"
                         />
                       </Form.Item>
                     </div>
