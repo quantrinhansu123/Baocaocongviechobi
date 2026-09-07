@@ -11,7 +11,10 @@ var AUXILIARY_TABLE_MAP = {
   "Th\u01B0 m\u1EE5c": "thu_muc",
   "Ph\xE2n quy\u1EC1n": "phan_quyen",
   "BC chi ti\u1EBFt": "bc_chi_tiet",
-  "C\u1EA3nh b\xE1o": "canh_bao"
+  "C\u1EA3nh b\xE1o": "canh_bao",
+  "Ghi ch\xFA ph\xF2ng ban": "ghi_chu_phong_ban",
+  "Ghi ch\xFA chung": "ghi_chu_chung",
+  "Nh\xE2n s\u1EF1": "nhan_su"
 };
 var AUXILIARY_LOGICAL_NAMES = Object.keys(AUXILIARY_TABLE_MAP);
 function isAuxiliaryTableName(tableName) {
@@ -109,6 +112,25 @@ function describeSupabaseConfiguration(env = readEnv()) {
   return null;
 }
 
+// api/_lib/data/supabaseErrors.ts
+function formatSupabaseConnectError(error) {
+  const message = error instanceof Error ? error.message : String(error ?? "");
+  const cause = error instanceof Error && error.cause instanceof Error ? `${error.cause.message} ${"code" in error.cause ? String(error.cause.code ?? "") : ""}` : "";
+  const blob = `${message} ${cause}`;
+  if (blob.includes("ENOTFOUND") || blob.includes("ECONNREFUSED") || blob.includes("fetch failed") || blob.includes("getaddrinfo")) {
+    return "Kh\xF4ng k\u1EBFt n\u1ED1i \u0111\u01B0\u1EE3c Supabase (DNS/m\u1EA1ng). Project trong .env c\xF3 th\u1EC3 \u0111\xE3 x\xF3a/pause ho\u1EB7c URL sai. C\u1EADp nh\u1EADt SUPABASE_URL + SUPABASE_ANON_KEY (project m\u1EDBi), ch\u1EA1y supabase/schema.sql, r\u1ED3i restart npm run dev.";
+  }
+  return message || "Kh\xF4ng th\u1EC3 k\u1EBFt n\u1ED1i Supabase.";
+}
+function throwSupabaseError(message, table) {
+  if (message.includes("schema cache") || message.includes("Could not find the table") || message.includes("does not exist")) {
+    throw new Error(
+      `B\u1EA3ng public.${table} ch\u01B0a \u0111\xFAng tr\xEAn Supabase. M\u1EDF Supabase \u2192 SQL Editor \u2192 ch\u1EA1y to\xE0n b\u1ED9 file supabase/schema.sql \u2192 Run, r\u1ED3i npm run db:check.`
+    );
+  }
+  throw new Error(formatSupabaseConnectError(new Error(message)));
+}
+
 // api/_lib/data/supabaseClient.ts
 import { createClient } from "@supabase/supabase-js";
 var client = null;
@@ -120,16 +142,6 @@ function getSupabaseClient() {
     });
   }
   return client;
-}
-
-// api/_lib/data/supabaseErrors.ts
-function throwSupabaseError(message, table) {
-  if (message.includes("schema cache") || message.includes("Could not find the table") || message.includes("does not exist")) {
-    throw new Error(
-      `B\u1EA3ng public.${table} ch\u01B0a \u0111\xFAng tr\xEAn Supabase. M\u1EDF Supabase \u2192 SQL Editor \u2192 ch\u1EA1y to\xE0n b\u1ED9 file supabase/schema.sql \u2192 Run, r\u1ED3i npm run db:check.`
-    );
-  }
-  throw new Error(message);
 }
 
 // api/_lib/data/supabaseAuxiliaryStore.ts
@@ -329,8 +341,7 @@ function parseTtFromSelector(selector) {
 }
 function dbRowToRecord2(row) {
   const pk = String(row.tt ?? "").trim();
-  const data = { ...(row.data ?? {}) };
-  // Seed: data.TT thường là "1","2"… trong khi khóa Postgres là sg-01 / demo-…
+  const data = { ...row.data ?? {} };
   const dataTt = pickTt(data);
   if (dataTt && pk && dataTt !== pk) {
     const hasStt = ["STT", "Stt", "stt"].some((key) => {
@@ -390,7 +401,7 @@ async function editSupabaseTaskRows(logicalTable, rows) {
       throwSupabaseError(fetchError.message, table);
     }
     const mergedData = {
-      ...(existing?.data ?? {}),
+      ...existing?.data ?? {},
       ...patch
     };
     const { data: saved, error } = await supabase.from(table).update({ data: mergedData }).eq("tt", tt).select("tt,data").maybeSingle();
@@ -527,7 +538,7 @@ async function handleDataStatus(req, res) {
       configured: true,
       connected: false,
       backend: "supabase",
-      message: error instanceof Error ? error.message : "Kh\xF4ng th\u1EC3 k\u1EBFt n\u1ED1i Supabase."
+      message: formatSupabaseConnectError(error)
     });
   }
 }
@@ -550,7 +561,7 @@ async function handleDataFindGet(req, res) {
   } catch (error) {
     sendJson(res, 502, {
       table: tableName,
-      message: error instanceof Error ? error.message : "G\u1ECDi Supabase th\u1EA5t b\u1EA1i."
+      message: formatSupabaseConnectError(error)
     });
   }
 }

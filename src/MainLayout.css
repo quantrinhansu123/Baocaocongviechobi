@@ -37,9 +37,11 @@
   align-items: center;
   gap: 6px;
   overflow-x: auto;
-  padding-bottom: 0;
+  padding-bottom: 2px;
   scrollbar-width: none; /* Firefox */
   -ms-overflow-style: none; /* IE/Edge legacy */
+  -webkit-overflow-scrolling: touch;
+  scroll-behavior: smooth;
 }
 
 .topic-link-row::-webkit-scrollbar {

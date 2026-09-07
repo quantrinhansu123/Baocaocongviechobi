@@ -4,6 +4,18 @@ import { BrowserRouter } from 'react-router-dom';
 import MainLayout from './MainLayout';
 
 export default function App() {
+  const [isMobile, setIsMobile] = React.useState(
+    () => typeof window !== 'undefined' && window.innerWidth < 768
+  );
+
+  React.useEffect(() => {
+    const handleResize = () => {
+      setIsMobile(window.innerWidth < 768);
+    };
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
+
   return (
     <ConfigProvider
       theme={{
@@ -11,7 +23,7 @@ export default function App() {
           colorPrimary: '#F38320',
           colorLink: '#F38320',
           colorLinkHover: '#e07518',
-          colorInfo: '#1E386B',
+          colorInfo: '#0047AB',
           borderRadius: 8,
           borderRadiusLG: 12,
           borderRadiusSM: 6,
@@ -19,13 +31,13 @@ export default function App() {
           colorBorder: '#e2e5eb',
           colorBorderSecondary: '#ebedf1',
           /* Thanh / ô điều khiển giữ kích thước chuẩn */
-          controlHeight: 40,
-          controlHeightLG: 44,
+          controlHeight: isMobile ? 38 : 40,
+          controlHeightLG: isMobile ? 42 : 44,
           fontFamily: "'Times New Roman', Times, 'Noto Serif', Georgia, serif",
-          /* Chữ to hơn */
-          fontSize: 20,
-          fontSizeLG: 22,
-          fontSizeSM: 17,
+          /* Chữ responsive: Mobile 15px, Desktop 20px */
+          fontSize: isMobile ? 15 : 20,
+          fontSizeLG: isMobile ? 17 : 22,
+          fontSizeSM: isMobile ? 13 : 17,
           boxShadow:
             '0 1px 2px 0 rgba(16, 24, 40, 0.04), 0 1px 3px 0 rgba(16, 24, 40, 0.06)',
           boxShadowSecondary:
@@ -34,9 +46,9 @@ export default function App() {
         components: {
           Layout: {
             headerBg: '#ffffff',
-            siderBg: '#1E386B',
+            siderBg: '#0047AB',
             bodyBg: '#f4f5f7',
-            headerHeight: 64,
+            headerHeight: isMobile ? 56 : 64,
           },
           Menu: {
             darkItemBg: 'transparent',
@@ -47,33 +59,33 @@ export default function App() {
             darkItemHoverColor: '#ffffff',
             itemBorderRadius: 8,
             itemMarginInline: 12,
-            itemHeight: 44,
+            itemHeight: isMobile ? 40 : 44,
             collapsedIconSize: 18,
-            fontSize: 18,
+            fontSize: isMobile ? 15 : 18,
           },
           Button: {
             borderRadius: 8,
-            controlHeight: 40,
+            controlHeight: isMobile ? 38 : 40,
             fontWeight: 700,
-            fontSize: 18,
+            fontSize: isMobile ? 15 : 18,
           },
           Card: {
             borderRadiusLG: 12,
-            headerFontSize: 22,
+            headerFontSize: isMobile ? 17 : 22,
             boxShadowTertiary: '0 1px 2px 0 rgba(16, 24, 40, 0.05)',
           },
           Table: {
-            headerBg: '#0F274D',
+            headerBg: '#00327d',
             headerColor: '#ffffff',
-            headerSortActiveBg: '#0F274D',
-            headerSortHoverBg: '#16325f',
-            headerFilterHoverBg: '#16325f',
+            headerSortActiveBg: '#00327d',
+            headerSortHoverBg: '#0047ab',
+            headerFilterHoverBg: '#0047ab',
             rowHoverBg: '#f8fafc',
             borderColor: '#eef0f3',
             headerBorderRadius: 10,
-            cellFontSize: 14,
-            cellFontSizeMD: 14,
-            cellFontSizeSM: 13,
+            cellFontSize: isMobile ? 13 : 14,
+            cellFontSizeMD: isMobile ? 13 : 14,
+            cellFontSizeSM: 12,
             cellPaddingBlock: 6,
             cellPaddingInline: 8,
             cellPaddingBlockMD: 6,
@@ -83,18 +95,18 @@ export default function App() {
           },
           Input: {
             borderRadius: 8,
-            controlHeight: 40,
-            fontSize: 18,
+            controlHeight: isMobile ? 38 : 40,
+            fontSize: isMobile ? 15 : 18,
           },
           Select: {
             borderRadius: 8,
-            controlHeight: 40,
-            fontSize: 18,
+            controlHeight: isMobile ? 38 : 40,
+            fontSize: isMobile ? 15 : 18,
           },
           DatePicker: {
             borderRadius: 8,
-            controlHeight: 40,
-            fontSize: 18,
+            controlHeight: isMobile ? 38 : 40,
+            fontSize: isMobile ? 15 : 18,
           },
           Tabs: {
             itemSelectedColor: '#1E386B',

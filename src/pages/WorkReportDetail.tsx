@@ -1,5 +1,17 @@
-import React, { useEffect, useState } from 'react';
-import { Edit2, X, Star, Calendar, User, MessageSquare, AlertCircle, ChevronDown } from 'lucide-react';
+import React, { useEffect, useMemo, useState } from 'react';
+import {
+  CalendarOutlined,
+  CheckCircleOutlined,
+  ClockCircleOutlined,
+  ExclamationCircleOutlined,
+  MessageOutlined,
+  SearchOutlined,
+  StarFilled,
+  StarOutlined,
+  UserOutlined,
+  WarningOutlined,
+} from '@ant-design/icons';
+import { Button, Input, Modal, Select, Spin, Tag, message } from 'antd';
 import BackButton from '../components/BackButton';
 import {
   loadPersonnelSelectOptions,
@@ -11,9 +23,15 @@ import {
 export default function ReportDetailScreen() {
   const [tasks, setTasks] = useState<WorkReportTask[]>([]);
   const [loading, setLoading] = useState(true);
-  const [filterImportant, setFilterImportant] = useState(false);
-  const [filterOverdue, setFilterOverdue] = useState(false);
+  const [search, setSearch] = useState('');
+  const [filterType, setFilterType] = useState<'all' | 'important' | 'overdue' | 'upcoming' | 'completed'>('all');
   const [personnelOptions, setPersonnelOptions] = useState<PersonnelSelectOption[]>([]);
+  const [editingCell, setEditingCell] = useState<{ id: number | null; field: string | null }>({
+    id: null,
+    field: null,
+  });
+  const [selectedTask, setSelectedTask] = useState<WorkReportTask | null>(null);
+  const [commentText, setCommentText] = useState('');
 
   useEffect(() => {
     let active = true;
@@ -34,273 +52,448 @@ export default function ReportDetailScreen() {
     };
   }, []);
 
-  // State cho Inline Edit
-  const [editingCell, setEditingCell] = useState({ id: null, field: null });
+  const counts = useMemo(() => {
+    let important = 0;
+    let overdue = 0;
+    let upcoming = 0;
+    let completed = 0;
 
-  // State cho Modal
-  const [selectedTask, setSelectedTask] = useState(null);
-
-  // Xử lý lọc dữ liệu
-  const filteredTasks = tasks.filter(task => {
-    let match = true;
-    if (filterImportant && task.impact < 3) match = false;
-    if (filterOverdue && task.status !== 'Trễ hạn') match = false;
-    return match;
-  });
-
-  // Xử lý lưu dữ liệu inline
-  const handleInlineSave = (id, field, value) => {
-    setTasks(tasks.map(t => t.id === id ? { ...t, [field]: value } : t));
-    setEditingCell({ id: null, field: null });
-  };
-
-  // Render Badge Trạng thái
-  // Render Badge Trạng thái
-  const renderStatus = (status) => {
-    switch (status) {
-      case 'Hoàn thành': return <span className="px-3 py-1 bg-green-100 text-green-700 rounded-full text-xs font-semibold">🟢 Hoàn Thành</span>;
-      case 'Trễ hạn': return <span className="px-3 py-1 bg-red-100 text-red-700 rounded-full text-xs font-semibold">🔴 Quá Hạn</span>;
-      // Đổi mặc định từ Đang làm -> Sắp đến hạn (màu vàng/cam)
-      default: return <span className="px-3 py-1 bg-orange-100 text-[#F38320] rounded-full text-xs font-semibold">🟡 Sắp Đến Hạn</span>;
+    for (const t of tasks) {
+      if (t.impact >= 3) important++;
+      if (t.status === 'Trễ hạn') overdue++;
+      else if (t.status === 'Hoàn thành') completed++;
+      else upcoming++;
     }
+
+    return {
+      all: tasks.length,
+      important,
+      overdue,
+      upcoming,
+      completed,
+    };
+  }, [tasks]);
+
+  const filteredTasks = useMemo(() => {
+    return tasks.filter(task => {
+      if (filterType === 'important' && task.impact < 3) return false;
+      if (filterType === 'overdue' && task.status !== 'Trễ hạn') return false;
+      if (filterType === 'upcoming' && (task.status === 'Trễ hạn' || task.status === 'Hoàn thành')) return false;
+      if (filterType === 'completed' && task.status !== 'Hoàn thành') return false;
+
+      if (search.trim()) {
+        const q = search.trim().toLowerCase();
+        const str = [task.name, task.assignee, task.desc, task.status].join(' ').toLowerCase();
+        if (!str.includes(q)) return false;
+      }
+      return true;
+    });
+  }, [tasks, filterType, search]);
+
+  const handleInlineSave = (id: number, field: string, value: unknown) => {
+    setTasks(prev => prev.map(t => (t.id === id ? { ...t, [field]: value } : t)));
+    setEditingCell({ id: null, field: null });
+    message.success('Đã cập nhật trạng thái');
   };
 
-  // Render Cột Ảnh hưởng (Stars)
-  const renderImpact = (level) => {
+  const renderStatusBadge = (status: string) => {
+    if (status === 'Hoàn thành') {
+      return (
+        <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200">
+          <CheckCircleOutlined className="text-emerald-600 text-xs" />
+          Hoàn thành
+        </span>
+      );
+    }
+    if (status === 'Trễ hạn') {
+      return (
+        <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-semibold bg-rose-50 text-rose-700 border border-rose-200">
+          <ClockCircleOutlined className="text-rose-600 text-xs" />
+          Quá hạn
+        </span>
+      );
+    }
     return (
-      <div className="flex gap-1">
-        {[...Array(4)].map((_, i) => (
-          <Star key={i} size={16} className={i < level ? "fill-[#F38320] text-[#F38320]" : "text-gray-300"} />
-        ))}
+      <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-semibold bg-amber-50 text-amber-700 border border-amber-200">
+        <span className="w-1.5 h-1.5 rounded-full bg-amber-500 animate-pulse" />
+        Sắp đến hạn
+      </span>
+    );
+  };
+
+  const renderImpact = (level: number) => {
+    return (
+      <div className="inline-flex items-center gap-0.5">
+        {[...Array(4)].map((_, i) =>
+          i < level ? (
+            <StarFilled key={i} className="text-[#F38320] text-xs" />
+          ) : (
+            <StarOutlined key={i} className="text-slate-300 text-xs" />
+          )
+        )}
       </div>
     );
   };
 
   return (
-    <div className="min-h-screen bg-gray-50 p-6 font-sans text-gray-800">
+    <div className="flex-1 flex flex-col overflow-hidden bg-slate-100 min-h-0 p-2 sm:p-3 md:p-4 pb-20 md:pb-4">
+      <div className="flex-1 flex flex-col min-h-0 bg-white border border-slate-200/80 rounded-2xl shadow-sm overflow-hidden">
+        {/* Header: Midnight Cobalt Gradient */}
+        <div className="bg-gradient-to-r from-[#00327D] via-[#0047AB] to-[#1E386B] text-white px-3 sm:px-4 py-2.5 sm:py-3 flex items-center justify-between gap-2 shadow-sm flex-shrink-0">
+          <div className="min-w-0 flex items-center gap-2 sm:gap-3">
+            <BackButton
+              variant="light"
+              size="small"
+              label=""
+              className="!w-9 !h-9 !min-w-[36px] !p-0 !rounded-xl !border-white/25 !bg-white/10 !text-white flex items-center justify-center hover:!bg-white/20 transition-all shadow-sm shrink-0"
+            />
+            <div className="min-w-0">
+              <div className="flex items-center gap-2">
+                <h1 className="m-0 text-sm sm:text-base md:text-lg font-bold text-white leading-tight truncate flex items-center gap-1.5">
+                  <ExclamationCircleOutlined className="text-[#F38320]" />
+                  Báo Cáo Tuần Nhà Máy
+                </h1>
+                <span className="hidden sm:inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-semibold bg-white/15 text-white/90">
+                  {tasks.length} mục
+                </span>
+              </div>
+              <p className="m-0 text-[11px] text-blue-100/80 font-medium truncate">
+                {filteredTasks.length}/{tasks.length} công việc · Supabase bc_chi_tiet
+              </p>
+            </div>
+          </div>
 
-      {/* 1. Header & Filters */}
-      <div className="max-w-6xl mx-auto bg-white rounded-xl shadow-sm border border-gray-100 p-6 mb-6">
-        <div className="flex justify-between items-center mb-6 gap-3">
-          <div className="flex items-center gap-3 min-w-0">
-            <BackButton size="small" />
-            <h1 className="text-2xl font-bold text-[#1E386B] flex items-center gap-2 m-0">
-              <AlertCircle className="text-[#F38320]" />
-              Báo Cáo Tuần Nhà Máy
-            </h1>
+          <div className="flex items-center gap-1.5 shrink-0">
+            <span className="text-xs font-semibold px-2.5 py-1 bg-white/15 text-white rounded-lg border border-white/20">
+              Mức 3-4: <strong className="text-[#F38320]">{counts.important}</strong>
+            </span>
           </div>
         </div>
 
-        <div className="flex gap-4">
-          <label className={`flex items-center gap-2 px-4 py-2 rounded-full border cursor-pointer transition ${filterImportant ? 'border-[#F38320] bg-orange-50 text-[#F38320]' : 'border-gray-300'}`}>
-            <input type="checkbox" className="hidden" checked={filterImportant} onChange={() => setFilterImportant(!filterImportant)} />
-            <div className={`w-4 h-4 rounded border flex items-center justify-center ${filterImportant ? 'bg-[#F38320] border-[#F38320]' : 'border-gray-400'}`}>
-              {filterImportant && <X size={12} className="text-white" />}
-            </div>
-            <span className="font-medium text-sm">Chỉ việc quan trọng (3-4)</span>
-          </label>
+        {/* Filter & Search Bar */}
+        <div className="px-3 sm:px-4 py-2.5 border-b border-slate-200/80 bg-white flex flex-col gap-2 flex-shrink-0">
+          <div className="flex items-center gap-2">
+            <Input
+              allowClear
+              value={search}
+              onChange={e => setSearch(e.target.value)}
+              placeholder="Tìm công việc, người phụ trách..."
+              prefix={<SearchOutlined className="text-slate-400" />}
+              className="flex-1 rounded-xl bg-slate-50 border-slate-200 focus:bg-white text-xs sm:text-sm"
+            />
+            <span className="text-slate-500 text-xs shrink-0 font-medium hidden sm:inline">
+              Hiển thị <strong className="text-slate-800">{filteredTasks.length}</strong>/{tasks.length}
+            </span>
+          </div>
 
-          <label className={`flex items-center gap-2 px-4 py-2 rounded-full border cursor-pointer transition ${filterOverdue ? 'border-red-500 bg-red-50 text-red-600' : 'border-gray-300'}`}>
-            <input type="checkbox" className="hidden" checked={filterOverdue} onChange={() => setFilterOverdue(!filterOverdue)} />
-            <div className={`w-4 h-4 rounded border flex items-center justify-center ${filterOverdue ? 'bg-red-500 border-red-500' : 'border-gray-400'}`}>
-              {filterOverdue && <X size={12} className="text-white" />}
-            </div>
-            <span className="font-medium text-sm">Chỉ việc quá hạn</span>
-          </label>
+          {/* Quick Filter Chips */}
+          <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar py-0.5">
+            {[
+              { key: 'all', label: 'Tất cả', count: counts.all },
+              { key: 'important', label: '⭐ Quan trọng (3-4)', count: counts.important },
+              { key: 'overdue', label: '🔴 Quá hạn', count: counts.overdue },
+              { key: 'upcoming', label: '🟡 Sắp đến hạn', count: counts.upcoming },
+              { key: 'completed', label: '🟢 Hoàn thành', count: counts.completed },
+            ].map(chip => {
+              const active = filterType === chip.key;
+              return (
+                <button
+                  key={chip.key}
+                  type="button"
+                  onClick={() => setFilterType(chip.key as typeof filterType)}
+                  className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold whitespace-nowrap transition-all active:scale-95 ${
+                    active
+                      ? 'bg-[#0047AB] text-white shadow-sm ring-1 ring-[#0047AB]'
+                      : 'bg-slate-100 hover:bg-slate-200/70 text-slate-600 border border-slate-200/60'
+                  }`}
+                >
+                  <span>{chip.label}</span>
+                  <span
+                    className={`text-[10px] px-1.5 py-0.2 rounded-full font-bold ${
+                      active ? 'bg-white/20 text-white' : 'bg-white text-slate-600 border border-slate-200'
+                    }`}
+                  >
+                    {chip.count}
+                  </span>
+                </button>
+              );
+            })}
+          </div>
+        </div>
+
+        {/* Content Area */}
+        <div className="flex-1 overflow-y-auto p-3 md:p-4 bg-slate-50/60">
+          <Spin spinning={loading} tip="Đang tải từ Supabase...">
+            {filteredTasks.length === 0 && !loading ? (
+              <div className="p-12 text-center text-slate-400">Không có công việc nào khớp với bộ lọc</div>
+            ) : (
+              <>
+                {/* Mobile Cards (block md:hidden) */}
+                <div className="block md:hidden space-y-3">
+                  {filteredTasks.map((task, idx) => {
+                    const isOverdue =
+                      new Date(task.deadline) < new Date() && task.status !== 'Hoàn thành';
+
+                    return (
+                      <article
+                        key={task.id}
+                        onClick={() => setSelectedTask(task)}
+                        className="bg-white rounded-2xl p-3.5 border border-slate-200/80 shadow-sm hover:border-slate-300 hover:shadow-md transition-all active:scale-[0.99] cursor-pointer"
+                      >
+                        {/* Header: Title + Status */}
+                        <div className="flex items-start justify-between gap-2">
+                          <div className="min-w-0 flex-1">
+                            <div className="flex items-center gap-1.5 mb-1">
+                              <span className="text-[11px] font-bold text-slate-400">#{idx + 1}</span>
+                              {renderImpact(task.impact)}
+                            </div>
+                            <h2 className="text-sm font-bold text-slate-900 leading-snug m-0 hover:text-[#0047AB] transition">
+                              {task.name}
+                            </h2>
+                          </div>
+                          <div className="shrink-0">{renderStatusBadge(task.status)}</div>
+                        </div>
+
+                        {/* Middle: Assignee & Deadline */}
+                        <div className="pt-2.5 mt-2.5 border-t border-slate-100 flex items-center justify-between text-xs text-slate-600 flex-wrap gap-2">
+                          <div className="flex items-center gap-1.5 min-w-0">
+                            <div className="w-5 h-5 rounded-full bg-blue-50 text-[#0047AB] flex items-center justify-center font-bold text-[10px]">
+                              <UserOutlined />
+                            </div>
+                            <span className="font-semibold text-slate-800 truncate">{task.assignee || 'Chưa gán'}</span>
+                          </div>
+
+                          <div
+                            className={`flex items-center gap-1 text-[11px] ${
+                              isOverdue ? 'text-rose-600 font-bold' : 'text-slate-500'
+                            }`}
+                          >
+                            <CalendarOutlined className="text-xs" />
+                            <span>Hạn: {task.deadline}</span>
+                          </div>
+                        </div>
+
+                        {/* Description snippet if any */}
+                        {task.desc && (
+                          <p className="text-xs text-slate-500 mt-2 m-0 line-clamp-2 bg-slate-50 p-2 rounded-lg border border-slate-100">
+                            {task.desc}
+                          </p>
+                        )}
+                      </article>
+                    );
+                  })}
+                </div>
+
+                {/* Desktop Table View (hidden md:block) */}
+                <div className="hidden md:block bg-white rounded-xl border border-slate-200/80 shadow-sm overflow-hidden">
+                  <table className="w-full text-left border-collapse text-sm">
+                    <thead>
+                      <tr className="bg-[#00327D] text-white">
+                        <th className="px-4 py-3.5 font-bold text-center w-14 text-white text-xs uppercase tracking-wider">STT</th>
+                        <th className="px-4 py-3.5 font-bold text-white text-xs uppercase tracking-wider">Công việc</th>
+                        <th className="px-4 py-3.5 font-bold w-44 text-white text-xs uppercase tracking-wider">Người phụ trách</th>
+                        <th className="px-4 py-3.5 font-bold w-36 text-white text-xs uppercase tracking-wider">Hạn chót</th>
+                        <th className="px-4 py-3.5 font-bold w-36 text-white text-xs uppercase tracking-wider">Trạng thái</th>
+                        <th className="px-4 py-3.5 font-bold w-28 text-white text-xs uppercase tracking-wider text-center">Ảnh hưởng</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-100">
+                      {filteredTasks.map((task, index) => {
+                        const isOverdue =
+                          new Date(task.deadline) < new Date() && task.status !== 'Hoàn thành';
+
+                        return (
+                          <tr key={task.id} className="hover:bg-slate-50/80 transition group">
+                            <td className="px-4 py-3.5 text-center text-slate-400 font-semibold text-xs">{index + 1}</td>
+                            <td className="px-4 py-3.5">
+                              <span
+                                className="font-bold text-slate-800 cursor-pointer hover:text-[#0047AB] transition"
+                                onClick={() => setSelectedTask(task)}
+                              >
+                                {task.name}
+                              </span>
+                              {task.desc && (
+                                <p className="text-xs text-slate-400 truncate max-w-md m-0 mt-0.5">{task.desc}</p>
+                              )}
+                            </td>
+                            <td className="px-4 py-3.5">
+                              {editingCell.id === task.id && editingCell.field === 'assignee' ? (
+                                <Select
+                                  autoFocus
+                                  defaultOpen
+                                  defaultValue={task.assignee}
+                                  onChange={val => handleInlineSave(task.id, 'assignee', val)}
+                                  onBlur={() => setEditingCell({ id: null, field: null })}
+                                  className="w-full text-xs"
+                                  options={personnelOptions.map(p => ({ value: p.value, label: p.value }))}
+                                />
+                              ) : (
+                                <div
+                                  className="flex items-center gap-1.5 cursor-pointer text-slate-700 hover:text-[#0047AB] font-medium text-xs"
+                                  onClick={() => setEditingCell({ id: task.id, field: 'assignee' })}
+                                  title="Bấm để đổi người phụ trách"
+                                >
+                                  <UserOutlined className="text-slate-400 text-xs" />
+                                  <span>{task.assignee || 'Chưa gán'}</span>
+                                </div>
+                              )}
+                            </td>
+                            <td className="px-4 py-3.5">
+                              {editingCell.id === task.id && editingCell.field === 'deadline' ? (
+                                <input
+                                  type="date"
+                                  autoFocus
+                                  defaultValue={task.deadline}
+                                  onBlur={e => handleInlineSave(task.id, 'deadline', e.target.value)}
+                                  className="border border-[#0047AB] outline-none rounded px-2 py-1 text-xs w-full"
+                                />
+                              ) : (
+                                <div
+                                  className={`flex items-center gap-1.5 cursor-pointer text-xs ${
+                                    isOverdue ? 'text-rose-600 font-bold' : 'text-slate-600'
+                                  }`}
+                                  onClick={() => setEditingCell({ id: task.id, field: 'deadline' })}
+                                  title="Bấm để chỉnh deadline"
+                                >
+                                  <CalendarOutlined className="text-xs" />
+                                  <span>{task.deadline}</span>
+                                </div>
+                              )}
+                            </td>
+                            <td className="px-4 py-3.5">
+                              {editingCell.id === task.id && editingCell.field === 'status' ? (
+                                <Select
+                                  autoFocus
+                                  defaultOpen
+                                  defaultValue={task.status}
+                                  onChange={val => handleInlineSave(task.id, 'status', val)}
+                                  onBlur={() => setEditingCell({ id: null, field: null })}
+                                  className="w-full text-xs"
+                                  options={[
+                                    { value: 'Sắp đến hạn', label: '🟡 Sắp đến hạn' },
+                                    { value: 'Hoàn thành', label: '🟢 Hoàn thành' },
+                                    { value: 'Trễ hạn', label: '🔴 Quá hạn' },
+                                  ]}
+                                />
+                              ) : (
+                                <div
+                                  className="cursor-pointer inline-block"
+                                  onClick={() => setEditingCell({ id: task.id, field: 'status' })}
+                                  title="Bấm để đổi trạng thái"
+                                >
+                                  {renderStatusBadge(task.status)}
+                                </div>
+                              )}
+                            </td>
+                            <td className="px-4 py-3.5 text-center">{renderImpact(task.impact)}</td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+              </>
+            )}
+          </Spin>
         </div>
       </div>
 
-      {/* 2. Main Data Table */}
-      <div className="max-w-6xl mx-auto bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
-        {loading ? (
-          <div className="p-12 text-center text-gray-500">Đang tải từ Supabase...</div>
-        ) : filteredTasks.length === 0 ? (
-          <div className="p-12 text-center text-gray-500">Chưa có dữ liệu (bảng bc_chi_tiet)</div>
-        ) : (
-        <table className="app-data-table w-full text-left border-collapse text-base">
-          <thead>
-            <tr className="bg-[#0F274D] text-white">
-              <th className="px-4 py-4 text-base font-black text-center w-16 text-white">STT</th>
-              <th className="px-4 py-4 text-base font-black text-white">Công việc</th>
-              <th className="px-4 py-4 text-base font-black w-40 text-white">Người phụ trách</th>
-              <th className="px-4 py-4 text-base font-black w-40 text-white">Deadline</th>
-              <th className="px-4 py-4 text-base font-black w-40 text-white">Trạng thái</th>
-              <th className="px-4 py-4 text-base font-black w-32 text-white">Ảnh hưởng</th>
-            </tr>
-          </thead>
-          <tbody>
-            {filteredTasks.map((task, index) => (
-              <tr key={task.id} className="border-b hover:bg-gray-50 transition group">
-                <td className="px-4 py-5 text-center text-gray-500 font-medium">{index + 1}</td>
-
-                {/* Click mở Modal */}
-                <td className="px-4 py-5">
-                  <span
-                    className="font-medium text-[#1E386B] cursor-pointer hover:text-[#F38320] transition underline-offset-4 hover:underline"
-                    onClick={() => setSelectedTask(task)}
-                  >
-                    {task.name}
-                  </span>
-                </td>
-
-                {/* Inline Edit: Người phụ trách */}
-                <td className="px-4 py-5 relative">
-                  {editingCell.id === task.id && editingCell.field === 'assignee' ? (
-                    <div className="relative w-full">
-                      <select
-                        autoFocus
-                        className="w-full appearance-none bg-white border-2 border-[#F38320] text-gray-700 text-sm font-semibold rounded-lg pl-3 pr-8 py-1.5 outline-none shadow-sm cursor-pointer"
-                        defaultValue={task.assignee}
-                        onBlur={e => handleInlineSave(task.id, 'assignee', e.target.value)}
-                        onChange={e => handleInlineSave(task.id, 'assignee', e.target.value)}
-                      >
-                        {!personnelOptions.some(opt => opt.value === task.assignee) && task.assignee ? (
-                          <option value={task.assignee}>{task.assignee}</option>
-                        ) : null}
-                        {personnelOptions.map(opt => (
-                          <option key={opt.value} value={opt.value}>
-                            {opt.value}
-                          </option>
-                        ))}
-                      </select>
-                      <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2 text-[#0F274D]">
-                        <ChevronDown size={16} strokeWidth={2.5} />
-                      </div>
-                    </div>
-                  ) : (
-                    <div className="flex items-center gap-2 cursor-pointer group/edit" onClick={() => setEditingCell({ id: task.id, field: 'assignee' })}>
-                      <User size={16} className="text-gray-400" />
-                      {task.assignee}
-                      <Edit2 size={14} className="text-gray-300 opacity-0 group-hover/edit:opacity-100 group-hover/edit:text-[#F38320]" />
-                    </div>
-                  )}
-                </td>
-
-                {/* Inline Edit: Deadline */}
-                <td className="px-4 py-5 relative">
-                  {editingCell.id === task.id && editingCell.field === 'deadline' ? (
-                    <input
-                      type="date" autoFocus
-                      className="border border-[#F38320] outline-none rounded p-1 w-full"
-                      defaultValue={task.deadline}
-                      onBlur={(e) => handleInlineSave(task.id, 'deadline', e.target.value)}
-                    />
-                  ) : (
-                    <div className="flex items-center gap-2 cursor-pointer group/edit" onClick={() => setEditingCell({ id: task.id, field: 'deadline' })}>
-                      <Calendar size={16} className={new Date(task.deadline) < new Date() && task.status !== 'Hoàn thành' ? 'text-red-500' : 'text-gray-400'} />
-                      <span className={new Date(task.deadline) < new Date() && task.status !== 'Hoàn thành' ? 'text-red-500 font-medium' : ''}>{task.deadline}</span>
-                      <Edit2 size={14} className="text-gray-300 opacity-0 group-hover/edit:opacity-100 group-hover/edit:text-[#F38320]" />
-                    </div>
-                  )}
-                </td>
-
-                {/* Inline Edit: Trạng thái */}
-                <td className="px-4 py-5 relative">
-                  {editingCell.id === task.id && editingCell.field === 'status' ? (
-                    <div className="relative w-full">
-                      <select
-                        autoFocus
-                        className="w-full appearance-none bg-white border-2 border-[#F38320] text-gray-700 text-sm font-semibold rounded-lg pl-3 pr-8 py-1.5 outline-none shadow-sm cursor-pointer transition-all focus:ring-4 focus:ring-[#F38320]/20"
-                        defaultValue={task.status}
-                        onBlur={(e) => handleInlineSave(task.id, 'status', e.target.value)}
-                        onChange={(e) => handleInlineSave(task.id, 'status', e.target.value)}
-                      >
-                        <option value="Sắp đến hạn">🟡 Sắp Đến Hạn</option>
-                        <option value="Hoàn thành">🟢 Hoàn Thành</option>
-                        <option value="Trễ hạn">🔴 Quá Hạn</option>
-                      </select>
-                      {/* Custom Icon mũi tên thả xuống */}
-                      <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2 text-[#F38320]">
-                        <ChevronDown size={16} strokeWidth={2.5} />
-                      </div>
-                    </div>
-                  ) : (
-                    <div className="flex items-center gap-2 cursor-pointer group/edit" onClick={() => setEditingCell({ id: task.id, field: 'status' })}>
-                      {renderStatus(task.status)}
-                      <Edit2 size={14} className="text-gray-300 opacity-0 group-hover/edit:opacity-100 group-hover/edit:text-[#F38320] transition-opacity" />
-                    </div>
-                  )}
-                </td>
-
-                <td className="px-4 py-5">{renderImpact(task.impact)}</td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-        )}
-      </div>
-
-      {/* 3. Popup Detail Modal */}
+      {/* Task Detail Modal */}
       {selectedTask && (
-        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-xl shadow-xl w-full max-w-4xl overflow-hidden flex flex-col max-h-[90vh]">
-
-            {/* Header Modal */}
-            <div className="bg-[#1E386B] text-white p-5 flex justify-between items-center">
-              <h2 className="text-xl font-bold">{selectedTask.name}</h2>
-              <button onClick={() => setSelectedTask(null)} className="hover:bg-white/20 p-1 rounded transition">
-                <X size={24} />
-              </button>
+        <Modal
+          title={
+            <div className="flex items-center gap-2 text-white font-bold text-base">
+              <ExclamationCircleOutlined className="text-[#F38320]" />
+              <span>{selectedTask.name}</span>
+            </div>
+          }
+          open={Boolean(selectedTask)}
+          onCancel={() => setSelectedTask(null)}
+          footer={null}
+          width={720}
+          destroyOnClose
+          styles={{
+            header: {
+              background: 'linear-gradient(135deg, #00327D 0%, #0047AB 100%)',
+              padding: '16px 20px',
+              borderRadius: '16px 16px 0 0',
+              margin: '-20px -24px 16px -24px',
+            },
+          }}
+        >
+          <div className="space-y-4">
+            {/* Quick stats row */}
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 bg-slate-50 p-3 rounded-xl border border-slate-200/80">
+              <div>
+                <p className="text-[11px] text-slate-400 font-bold uppercase m-0">Người phụ trách</p>
+                <p className="font-bold text-slate-800 text-xs mt-1 m-0 flex items-center gap-1">
+                  <UserOutlined className="text-[#0047AB]" /> {selectedTask.assignee || '—'}
+                </p>
+              </div>
+              <div>
+                <p className="text-[11px] text-slate-400 font-bold uppercase m-0">Hạn chót</p>
+                <p className="font-bold text-slate-800 text-xs mt-1 m-0 flex items-center gap-1">
+                  <CalendarOutlined className="text-[#0047AB]" /> {selectedTask.deadline || '—'}
+                </p>
+              </div>
+              <div>
+                <p className="text-[11px] text-slate-400 font-bold uppercase m-0">Trạng thái</p>
+                <div className="mt-1">{renderStatusBadge(selectedTask.status)}</div>
+              </div>
+              <div>
+                <p className="text-[11px] text-slate-400 font-bold uppercase m-0">Mức ảnh hưởng</p>
+                <div className="mt-1">{renderImpact(selectedTask.impact)}</div>
+              </div>
             </div>
 
-            {/* Body Modal */}
-            <div className="p-6 grid grid-cols-3 gap-8 overflow-y-auto">
-              {/* Cột trái: Thông tin */}
-              <div className="col-span-1 space-y-6">
-                <div>
-                  <p className="text-sm text-gray-500 mb-1">Người phụ trách</p>
-                  <p className="font-semibold flex items-center gap-2"><User size={18} className="text-[#1E386B]" /> {selectedTask.assignee}</p>
-                </div>
-                <div>
-                  <p className="text-sm text-gray-500 mb-1">Deadline</p>
-                  <p className="font-semibold flex items-center gap-2"><Calendar size={18} className="text-[#1E386B]" /> {selectedTask.deadline}</p>
-                </div>
-                <div>
-                  <p className="text-sm text-gray-500 mb-2">Trạng thái</p>
-                  {renderStatus(selectedTask.status)}
-                </div>
-                <div>
-                  <p className="text-sm text-gray-500 mb-2">Mức độ ảnh hưởng</p>
-                  {renderImpact(selectedTask.impact)}
+            {/* Detailed Description */}
+            <div className="bg-white p-3.5 rounded-xl border border-slate-200/80">
+              <h4 className="text-xs font-bold text-[#0047AB] uppercase tracking-wide m-0 mb-1.5">Mô tả chi tiết</h4>
+              <p className="text-sm text-slate-700 leading-relaxed m-0 whitespace-pre-wrap">
+                {selectedTask.desc || 'Chưa có mô tả chi tiết cho công việc này.'}
+              </p>
+            </div>
+
+            {/* History */}
+            {selectedTask.history && (
+              <div className="bg-slate-50 p-3.5 rounded-xl border border-slate-200/80">
+                <h4 className="text-xs font-bold text-slate-700 uppercase tracking-wide m-0 mb-1.5">Lịch sử cập nhật</h4>
+                <div className="border-l-2 border-[#F38320] pl-3 py-0.5">
+                  <p className="text-xs text-slate-600 m-0">{selectedTask.history}</p>
                 </div>
               </div>
+            )}
 
-              {/* Cột phải: Mô tả & Lịch sử */}
-              <div className="col-span-2 space-y-6">
-                <div className="bg-gray-50 p-4 rounded-lg border border-gray-100">
-                  <h3 className="font-semibold text-[#1E386B] mb-2 flex items-center gap-2">Mô tả chi tiết</h3>
-                  <p className="text-gray-700 leading-relaxed">{selectedTask.desc}</p>
-                </div>
-
-                <div className="bg-gray-50 p-4 rounded-lg border border-gray-100">
-                  <h3 className="font-semibold text-[#1E386B] mb-2 flex items-center gap-2">Lịch sử cập nhật</h3>
-                  <div className="border-l-2 border-[#F38320] pl-4 py-1 ml-2">
-                    <p className="text-sm text-gray-500">Hôm qua</p>
-                    <p className="text-gray-700">{selectedTask.history}</p>
+            {/* Comment Section */}
+            <div className="border-t border-slate-100 pt-3">
+              <div className="flex items-start gap-2">
+                <MessageOutlined className="text-slate-400 mt-2 text-base" />
+                <div className="flex-1">
+                  <Input.TextArea
+                    rows={2}
+                    value={commentText}
+                    onChange={e => setCommentText(e.target.value)}
+                    placeholder="Nhập ý kiến chỉ đạo hoặc cập nhật trạng thái..."
+                    className="rounded-xl border-slate-200 text-xs"
+                  />
+                  <div className="flex justify-end mt-2">
+                    <Button
+                      type="primary"
+                      onClick={() => {
+                        if (!commentText.trim()) return;
+                        message.success('Đã gửi ý kiến chỉ đạo');
+                        setCommentText('');
+                      }}
+                      className="!bg-[#F38320] hover:!bg-[#d96f12] !border-none font-bold text-xs !rounded-xl shadow-sm"
+                    >
+                      Gửi ý kiến
+                    </Button>
                   </div>
                 </div>
               </div>
             </div>
-
-            {/* Footer Modal: Comment */}
-            <div className="border-t border-gray-200 p-5 bg-gray-50 flex items-start gap-3">
-              <MessageSquare className="text-gray-400 mt-2" />
-              <div className="flex-1">
-                <textarea
-                  className="w-full border border-gray-300 rounded-lg p-3 outline-none focus:border-[#F38320] focus:ring-1 focus:ring-[#F38320] transition resize-none"
-                  rows="2"
-                  placeholder="Thêm bình luận, chỉ đạo hoặc cập nhật trạng thái..."
-                ></textarea>
-                <div className="flex justify-end mt-2">
-                  <button className="bg-[#F38320] text-white px-6 py-2 rounded-lg font-medium hover:bg-orange-600 transition">
-                    Gửi
-                  </button>
-                </div>
-              </div>
-            </div>
-
           </div>
-        </div>
+        </Modal>
       )}
     </div>
   );

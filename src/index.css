@@ -28,6 +28,12 @@ body {
   -webkit-font-smoothing: antialiased;
 }
 
+@media (max-width: 767px) {
+  body {
+    font-size: 15px;
+  }
+}
+
 *:focus-visible {
   outline: 2px solid rgba(243, 131, 32, 0.55);
   outline-offset: 2px;
@@ -101,7 +107,8 @@ body {
 .ant-card {
   border: 1px solid rgba(16, 24, 40, 0.06) !important;
   box-shadow: var(--shadow-elevation-1) !important;
-  border-radius: 0.75rem !important; /* rounded-xl */
+  border-radius: 0.75rem !important;
+  /* rounded-xl */
   transition: box-shadow 0.2s ease;
 }
 
@@ -109,8 +116,8 @@ body {
   border-bottom: 1px solid rgba(16, 24, 40, 0.06) !important;
 }
 
-.ant-table-thead > tr > th,
-.ant-table-thead > tr > td {
+.ant-table-thead>tr>th,
+.ant-table-thead>tr>td {
   background-color: #0F274D !important;
   color: #ffffff !important;
   font-weight: 900 !important;
@@ -126,10 +133,10 @@ body {
   text-overflow: clip !important;
 }
 
-.ant-table-thead > tr > th .ant-table-column-title,
-.ant-table-thead > tr > th .anticon,
-.ant-table-thead > tr > th .ant-table-column-sorter,
-.ant-table-thead > tr > th .ant-table-filter-trigger {
+.ant-table-thead>tr>th .ant-table-column-title,
+.ant-table-thead>tr>th .anticon,
+.ant-table-thead>tr>th .ant-table-column-sorter,
+.ant-table-thead>tr>th .ant-table-filter-trigger {
   color: #ffffff !important;
   font-weight: 900 !important;
   white-space: nowrap !important;
@@ -137,11 +144,11 @@ body {
   text-overflow: clip !important;
 }
 
-.ant-table-thead > tr > th::before {
+.ant-table-thead>tr>th::before {
   background-color: rgba(255, 255, 255, 0.22) !important;
 }
 
-.ant-table-tbody > tr > td {
+.ant-table-tbody>tr>td {
   font-size: 14px !important;
   padding-top: 6px !important;
   padding-bottom: 6px !important;
@@ -228,11 +235,13 @@ body {
 }
 
 @keyframes task-overdue-blink {
+
   0%,
   100% {
     opacity: 1;
     color: #cf1322;
   }
+
   50% {
     opacity: 0.35;
     color: #ff7875;
@@ -378,14 +387,14 @@ body {
   border-color: #15803d !important;
 }
 
-.task-overdue-row > td {
+.task-overdue-row>td {
   background-color: rgba(255, 77, 79, 0.2) !important;
   box-shadow: inset 4px 0 0 #ff4d4f;
   color: #820014 !important;
   font-weight: 600;
 }
 
-.task-overdue-row:hover > td {
+.task-overdue-row:hover>td {
   background-color: rgba(255, 77, 79, 0.28) !important;
 }
 
@@ -416,13 +425,13 @@ body {
   }
 }
 
-.task-table-compact .ant-table-thead > tr > th,
-.task-table-compact .ant-table-tbody > tr > td {
+.task-table-compact .ant-table-thead>tr>th,
+.task-table-compact .ant-table-tbody>tr>td {
   padding: 6px 8px !important;
   font-size: 13px !important;
 }
 
-.task-table-compact .ant-table-thead > tr > th {
+.task-table-compact .ant-table-thead>tr>th {
   font-size: 12px !important;
   font-weight: 900 !important;
   white-space: nowrap;
@@ -436,7 +445,7 @@ body {
   width: 100%;
 }
 
-.task-table-compact.task-table-balanced .ant-table-tbody > tr > td {
+.task-table-compact.task-table-balanced .ant-table-tbody>tr>td {
   vertical-align: middle;
 }
 
@@ -553,12 +562,12 @@ body {
 }
 
 /* Tiêu đề field form — đậm, dễ đọc */
-.ant-form-item-label > label {
+.ant-form-item-label>label {
   font-weight: 700 !important;
   color: #0f274d !important;
 }
 
-.ant-form-item-label > label.ant-form-item-required:not(.ant-form-item-required-mark-optional)::before {
+.ant-form-item-label>label.ant-form-item-required:not(.ant-form-item-required-mark-optional)::before {
   font-weight: 700 !important;
 }
 
@@ -593,7 +602,7 @@ body {
   margin-bottom: 14px;
 }
 
-.task-detail-form .ant-form-item-label > label {
+.task-detail-form .ant-form-item-label>label {
   font-size: 18px !important;
 }
 
@@ -610,8 +619,19 @@ body {
 .task-detail-form .ant-input-number,
 .task-detail-form .ant-input-number-input {
   min-height: 40px !important;
-  font-size: 18px !important;
+  font-size: 15px !important;
   line-height: 1.4 !important;
+}
+
+@media (min-width: 768px) {
+  .task-detail-form .ant-input,
+  .task-detail-form .ant-input-affix-wrapper,
+  .task-detail-form .ant-select-selector,
+  .task-detail-form .ant-picker,
+  .task-detail-form .ant-input-number,
+  .task-detail-form .ant-input-number-input {
+    font-size: 18px !important;
+  }
 }
 
 .task-detail-form .ant-select-single .ant-select-selector {
@@ -620,15 +640,29 @@ body {
 
 .task-detail-form .ant-select-selection-item,
 .task-detail-form .ant-select-selection-placeholder,
-.task-detail-form .ant-picker-input > input {
-  font-size: 18px !important;
+.task-detail-form .ant-picker-input>input {
+  font-size: 15px !important;
+}
+
+@media (min-width: 768px) {
+  .task-detail-form .ant-select-selection-item,
+  .task-detail-form .ant-select-selection-placeholder,
+  .task-detail-form .ant-picker-input>input {
+    font-size: 18px !important;
+  }
 }
 
 .task-detail-form textarea.ant-input {
   min-height: 88px !important;
-  font-size: 18px !important;
+  font-size: 15px !important;
   line-height: 1.5 !important;
   padding: 8px 12px !important;
+}
+
+@media (min-width: 768px) {
+  .task-detail-form textarea.ant-input {
+    font-size: 18px !important;
+  }
 }
 
 .task-detail-form .ant-input.task-percent-suffix {
@@ -690,3 +724,48 @@ body {
   padding: 14px 16px 6px;
 }
 
+/* --- Mobile Modal & Global Touch Utilities (SKILL: mobile-ui-responsive) --- */
+@media (max-width: 767px) {
+  .ant-modal {
+    max-width: calc(100vw - 20px) !important;
+    margin: 10px auto !important;
+    top: 10px !important;
+    padding-bottom: 20px !important;
+  }
+
+  .ant-modal .ant-modal-content {
+    padding: 16px 14px !important;
+    border-radius: 12px !important;
+    max-height: calc(90vh - 20px);
+    display: flex;
+    flex-direction: column;
+  }
+
+  .ant-modal .ant-modal-header {
+    margin-bottom: 12px !important;
+    flex-shrink: 0;
+  }
+
+  .ant-modal .ant-modal-body {
+    overflow-y: auto !important;
+    -webkit-overflow-scrolling: touch;
+    flex: 1 1 auto;
+  }
+
+  .ant-modal .ant-modal-footer {
+    margin-top: 14px !important;
+    flex-shrink: 0;
+  }
+
+  .ant-modal .ant-modal-footer .ant-btn {
+    min-height: 42px !important;
+    min-width: 80px !important;
+  }
+
+  /* Tránh tràn ngang bảng Antd trên mobile */
+  .ant-table-wrapper {
+    max-width: 100% !important;
+    overflow-x: auto !important;
+    -webkit-overflow-scrolling: touch;
+  }
+}

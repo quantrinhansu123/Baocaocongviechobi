@@ -1,17 +1,17 @@
-/* TaskView — Cobalt (#1E386B) + Cam (#F38320) */
+/* TaskView — Midnight Cobalt (#0047AB), Slate Black (#0F172A) + Vibrant Orange (#F38320) */
 .task-md-shell {
-  --tv-cobalt: #1e386b;
-  --tv-cobalt-deep: #152a4f;
-  --tv-cobalt-soft: #e8eef8;
-  --tv-cobalt-mid: #2a4a7a;
+  --tv-cobalt: #0047ab;
+  --tv-cobalt-deep: #00327d;
+  --tv-cobalt-soft: #eaf1fb;
+  --tv-cobalt-mid: #1e3a8a;
   --tv-orange: #f38320;
   --tv-orange-deep: #d96f12;
   --tv-orange-soft: #fff4e8;
   --tv-orange-mid: #fdba74;
-  --tv-ink: #0f274d;
+  --tv-ink: #0f172a;
   --tv-muted: #64748b;
-  --tv-line: #d9e2ef;
-  --tv-surface: #f3f6fb;
+  --tv-line: #e2e8f0;
+  --tv-surface: #f7f9fb;
   --tv-card: #ffffff;
 
   display: flex;
@@ -252,6 +252,51 @@
   opacity: 0.55;
   cursor: wait;
   pointer-events: none;
+}
+
+/* Quick Complete Checkbox (Top-right circular button) */
+.task-list-quick-check {
+  width: 24px;
+  height: 24px;
+  border-radius: 9999px;
+  border: 2px solid #cbd5e1;
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 11px;
+  color: #fff;
+  background: #fff;
+  cursor: pointer;
+  transition: border-color 0.18s ease, background 0.18s ease, transform 0.15s ease, box-shadow 0.18s ease;
+}
+
+.task-list-quick-check:hover:not(.is-done):not(.is-loading) {
+  border-color: #0047ab;
+  background: #eff6ff;
+  box-shadow: 0 0 0 3px rgba(0, 71, 171, 0.12);
+  transform: scale(1.1);
+}
+
+.task-list-quick-check.is-done {
+  background: #10b981;
+  border-color: #10b981;
+  box-shadow: 0 1px 3px rgba(16, 185, 129, 0.25);
+  cursor: default;
+}
+
+.task-list-quick-check.is-loading {
+  opacity: 0.55;
+  cursor: wait;
+  pointer-events: none;
+}
+
+.task-filter-chips::-webkit-scrollbar {
+  display: none;
+}
+.task-filter-chips {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
 }
 
 .task-list-name {
@@ -1073,7 +1118,11 @@
   }
 
   .task-list-search .ant-input-affix-wrapper {
-    min-height: 36px !important;
+    min-height: 40px !important;
+  }
+
+  .task-list-date-range.ant-picker {
+    min-height: 40px !important;
   }
 
   .task-md-detail > .task-md-compact-form {

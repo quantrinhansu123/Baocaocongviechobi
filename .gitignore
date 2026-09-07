@@ -6,3 +6,6 @@ coverage/
 *.log
 .env*
 !.env.example
+.stitch/
+.agents/
+skills-lock.json

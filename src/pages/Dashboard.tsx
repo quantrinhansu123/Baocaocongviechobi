@@ -860,49 +860,52 @@ const Dashboard: React.FC = () => {
 
   const renderMobileTaskCard = (task: DashboardTask, accent?: 'red' | 'orange' | 'default') => {
     const borderClass =
-      accent === 'red' ? 'border-red-100' : accent === 'orange' ? 'border-orange-100' : 'border-gray-200';
+      accent === 'red' ? 'border-red-200' : accent === 'orange' ? 'border-orange-200' : 'border-slate-200';
     const titleClass =
-      accent === 'red' ? 'text-red-600' : accent === 'orange' ? 'text-[#1E386B]' : 'text-[#1E386B]';
-    const deadlineClass = accent === 'red' ? 'text-red-600 font-semibold' : 'text-gray-600';
+      accent === 'red' ? 'text-red-700' : accent === 'orange' ? 'text-[#0047AB]' : 'text-[#0F172A]';
+    const deadlineClass = accent === 'red' ? 'text-red-600 font-semibold' : 'text-slate-500';
 
     return (
       <div
         key={task.id}
         onClick={() => handleRowClick(task)}
-        className={`dashboard-mobile-task-card relative bg-white shadow-sm border ${borderClass} overflow-hidden active:scale-[0.98] transition-transform cursor-pointer`}
+        className={`dashboard-mobile-task-card relative bg-white shadow-sm rounded-xl border ${borderClass} overflow-hidden active:scale-[0.98] transition-all cursor-pointer`}
       >
-        {accent === 'red' ? <div className="absolute left-0 top-0 bottom-0 w-0.5 bg-red-500" /> : null}
-        {accent === 'orange' ? <div className="absolute left-0 top-0 bottom-0 w-0.5 bg-[#F38320]" /> : null}
-        <div className={accent ? 'pl-1.5' : ''}>
-          <p className={`task-title ${titleClass} line-clamp-2`} title={task.name}>
-            {task.name}
-          </p>
-          <div className="task-meta-row">
-            <Tag className="task-tag dept-name-tag" title={task.department}>
+        {accent === 'red' ? <div className="absolute left-0 top-0 bottom-0 w-1 bg-red-500" /> : null}
+        {accent === 'orange' ? <div className="absolute left-0 top-0 bottom-0 w-1 bg-[#F38320]" /> : null}
+        <div className={accent ? 'pl-2' : ''}>
+          <div className="flex items-start justify-between gap-2">
+            <p className={`task-title ${titleClass} font-bold text-sm line-clamp-2 flex-1 m-0`} title={task.name}>
+              {task.name}
+            </p>
+            {/* Quick Complete Checkbox (Top-right) */}
+            <div className="shrink-0 pt-0.5" onClick={e => e.stopPropagation()}>
+              {renderCompleteTick(task)}
+            </div>
+          </div>
+          <div className="task-meta-row mt-1">
+            <Tag className="task-tag dept-name-tag m-0 text-xs" title={task.department}>
               {task.department}
             </Tag>
-            <span className={`task-deadline ${deadlineClass}`}>Ngày hoàn thành: {task.deadline}</span>
+            <span className={`task-deadline text-xs ${deadlineClass}`}>Hạn: {task.deadline}</span>
           </div>
-          <div className="mt-1.5">
+          <div className="mt-2">
             <TaskProgressBar value={task.tienDoPhanTram} className="max-w-none" />
           </div>
-          <div className="task-footer">
-            <span className="task-assignee" title={task.assignee}>
-              <User size={10} className="shrink-0" />
+          <div className="task-footer mt-2 flex items-center justify-between text-xs">
+            <span className="task-assignee flex items-center gap-1 text-slate-600 font-medium" title={task.assignee}>
+              <User size={12} className="shrink-0 text-slate-400" />
               {task.assignee}
             </span>
-            <span className="inline-flex items-center gap-1.5">
-              <span title={task.status}>{renderStatusCompact(task.status)}</span>
-              {renderCompleteTick(task)}
-            </span>
+            <span title={task.status}>{renderStatusCompact(task.status)}</span>
           </div>
           {task.impact >= 3 ? (
-            <div className="task-impact" aria-label={`Mức ảnh hưởng ${task.impact}`}>
+            <div className="task-impact mt-1" aria-label={`Mức ảnh hưởng ${task.impact}`}>
               {[...Array(4)].map((_, i) => (
                 <Star
                   key={i}
                   size={10}
-                  className={i < task.impact ? 'fill-[#F38320] text-[#1E386B]' : 'text-gray-300'}
+                  className={i < task.impact ? 'fill-[#F38320] text-[#0047AB]' : 'text-gray-300'}
                 />
               ))}
             </div>
@@ -1364,32 +1367,28 @@ const Dashboard: React.FC = () => {
 
   // --- MOBILE FILTERS (Tab-specific) ---
   const reportFiltersNode = (
-    <div className="block md:hidden bg-white p-2 rounded-lg shadow-sm mb-2">
-      <div className="grid grid-cols-2 gap-2">
+    <div className="block md:hidden dashboard-mobile-filters mb-3">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
         <Select
           showSearch
-          size="small"
           value={filterWeek}
           onChange={setFilterWeek}
-          className="filter-select rounded-sm"
-          style={{ width: '100%' }}
+          className="filter-select w-full"
           options={[{ value: 'all', label: 'Tất cả các tuần' }, ...weekOptions]}
           placeholder="Chọn tuần"
+          popupMatchSelectWidth={false}
         />
         <Select
-          size="small"
           value={filterDept}
           onChange={setFilterDept}
-          className="filter-select rounded-sm"
-          style={{ width: '100%' }}
+          className="filter-select w-full"
           options={DEPARTMENT_FILTER_OPTIONS}
+          popupMatchSelectWidth={false}
         />
         <Select
-          size="small"
           value={filterPriority}
           onChange={setFilterPriority}
-          className="filter-select rounded-sm"
-          style={{ width: '100%' }}
+          className="filter-select w-full"
           options={[
             { value: 'all', label: 'Mọi mức độ' },
             { value: 'high', label: '⭐ Quan trọng (3-4)' },
@@ -1397,11 +1396,10 @@ const Dashboard: React.FC = () => {
           ]}
         />
         <Select
-          size="small"
           value={filterStatus}
           onChange={setFilterStatus}
-          className="filter-select rounded-sm"
-          style={{ width: '100%' }}
+          className="filter-select w-full"
+          popupMatchSelectWidth={false}
           options={[
             { value: 'all', label: 'Tất cả trạng thái' },
             { value: 'in_progress', label: ' Đang Làm' },
@@ -1412,58 +1410,57 @@ const Dashboard: React.FC = () => {
             { value: 'ext_3', label: ' Gia Hạn 3' },
           ]}
         />
-        <Select
-          showSearch
-          optionFilterProp="label"
-          size="small"
-          value={filterPersonnel}
-          onChange={setFilterPersonnel}
-          className="filter-select rounded-sm"
-          style={{ width: '100%' }}
-          options={dashboardPersonnelFilterOptions}
-        />
-        <DatePicker.RangePicker
-          size="small"
-          className="col-span-2 w-full"
-          format="DD/MM/YYYY"
-          value={filterNgayGiaoRange}
-          onChange={dates =>
-            setFilterNgayGiaoRange(dates ? [dates[0] ?? null, dates[1] ?? null] : null)
-          }
-          placeholder={['Ngày giao từ', 'Đến ngày']}
-          allowEmpty={[true, true]}
-        />
+        <div className="sm:col-span-2">
+          <Select
+            showSearch
+            optionFilterProp="label"
+            value={filterPersonnel}
+            onChange={setFilterPersonnel}
+            className="filter-select w-full"
+            options={dashboardPersonnelFilterOptions}
+            placeholder="Tất cả nhân sự"
+            popupMatchSelectWidth={false}
+          />
+        </div>
+        <div className="sm:col-span-2">
+          <DatePicker.RangePicker
+            className="w-full"
+            format="DD/MM/YYYY"
+            value={filterNgayGiaoRange}
+            onChange={dates =>
+              setFilterNgayGiaoRange(dates ? [dates[0] ?? null, dates[1] ?? null] : null)
+            }
+            placeholder={['Ngày giao từ', 'Đến ngày']}
+            allowEmpty={[true, true]}
+          />
+        </div>
       </div>
     </div>
   );
 
   const alertFiltersNode = (
-    <div className="block md:hidden bg-white p-2 rounded-lg shadow-sm mb-2">
-      <div className="grid grid-cols-2 gap-2">
+    <div className="block md:hidden dashboard-mobile-filters mb-3">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
         <Select
           showSearch
-          size="small"
           value={filterWeek}
           onChange={setFilterWeek}
-          className="filter-select rounded-sm"
-          style={{ width: '100%' }}
+          className="filter-select w-full"
           options={[{ value: 'all', label: 'Tất cả các tuần' }, ...weekOptions]}
           placeholder="Chọn tuần"
+          popupMatchSelectWidth={false}
         />
         <Select
-          size="small"
           value={filterDept}
           onChange={setFilterDept}
-          className="filter-select rounded-sm"
-          style={{ width: '100%' }}
+          className="filter-select w-full"
           options={DEPARTMENT_FILTER_OPTIONS}
+          popupMatchSelectWidth={false}
         />
         <Select
-          size="small"
           value={filterPriority}
           onChange={setFilterPriority}
-          className="filter-select rounded-sm"
-          style={{ width: '100%' }}
+          className="filter-select w-full"
           options={[
             { value: 'all', label: 'Mọi mức độ' },
             { value: 'high', label: '⭐ Quan trọng (3-4)' },
@@ -1471,11 +1468,10 @@ const Dashboard: React.FC = () => {
           ]}
         />
         <Select
-          size="small"
           value={filterStatus}
           onChange={setFilterStatus}
-          className="filter-select rounded-sm"
-          style={{ width: '100%' }}
+          className="filter-select w-full"
+          popupMatchSelectWidth={false}
           options={[
             { value: 'all', label: 'Tất cả trạng thái' },
             { value: 'in_progress', label: ' Đang Làm' },
@@ -1499,9 +1495,9 @@ const Dashboard: React.FC = () => {
         filterKey: 'total' as const,
         value: displayStats.total,
         icon: FileTextOutlined,
-        iconClass: 'text-blue-500',
-        valueClass: 'text-[#1e3a8a]',
-        cardClass: 'bg-white border-gray-100',
+        iconClass: 'text-[#0047AB]',
+        valueClass: 'text-[#0047AB]',
+        cardClass: 'bg-white border-blue-100',
       },
       {
         key: 'completed',
@@ -1510,9 +1506,9 @@ const Dashboard: React.FC = () => {
         filterKey: 'completed' as const,
         value: displayStats.completed,
         icon: CheckCircleOutlined,
-        iconClass: 'text-green-500',
+        iconClass: 'text-emerald-500',
         valueClass: 'text-[#10b981]',
-        cardClass: 'bg-white border-gray-100',
+        cardClass: 'bg-white border-emerald-100',
       },
       {
         key: 'overdue',
@@ -1533,9 +1529,9 @@ const Dashboard: React.FC = () => {
         filterKey: 'priority' as const,
         value: displayStats.highPriority,
         icon: FireOutlined,
-        iconClass: 'text-orange-600',
-        valueClass: 'text-[#ea580c]',
-        cardClass: 'bg-orange-50 border-orange-100',
+        iconClass: 'text-[#F38320]',
+        valueClass: 'text-[#F38320]',
+        cardClass: 'bg-orange-50/70 border-orange-100',
         labelClass: 'text-orange-700 font-medium',
       },
     ],

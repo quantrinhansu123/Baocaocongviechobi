@@ -179,7 +179,7 @@ const MainLayoutInner: React.FC = () => {
   }, [location.pathname]);
 
   const totalIncomplete = useMemo(
-    () => Object.values(incompleteByDept).reduce((sum, n) => sum + n, 0),
+    () => Object.values(incompleteByDept).reduce<number>((sum, n) => sum + Number(n || 0), 0),
     [incompleteByDept]
   );
 
@@ -389,7 +389,7 @@ const MainLayoutInner: React.FC = () => {
 
       <Layout className="main flex flex-col min-w-0" style={{ flex: 1 }}>
         {/* --- COMMON HEADER --- */}
-        <Header className="p-0 flex items-center justify-between shadow-sm px-3 md:px-4 z-10 min-h-16 h-auto py-2 border-b bg-white border-gray-200 gap-2 md:gap-3">
+        <Header className="p-0 flex items-center justify-between shadow-sm px-2.5 md:px-4 z-10 min-h-14 md:min-h-16 h-14 md:h-16 border-b bg-white border-gray-200 gap-1.5 md:gap-3">
 
           <div className="flex items-center shrink-0">
             {/* Desktop: Nút gập Sider */}
@@ -405,16 +405,16 @@ const MainLayoutInner: React.FC = () => {
               <button
                 type="button"
                 aria-label="Mở menu"
-                className="mr-2 flex items-center justify-center w-10 h-10 rounded-lg transition-all shrink-0 bg-orange-50 text-[#1E386B] border-2 border-[#F38320]/40 hover:bg-orange-100 shadow-sm"
+                className="mr-1.5 flex items-center justify-center w-9 h-9 rounded-lg transition-all shrink-0 bg-orange-50 text-[#1E386B] border-2 border-[#F38320]/40 hover:bg-orange-100 shadow-sm"
                 onClick={() => setMobileMenuOpen(true)}
               >
-                <MenuOutlined className="text-[22px] font-bold" />
+                <MenuOutlined className="text-[20px] font-bold" />
               </button>
               <div
                 className="custom-navbar-brand cursor-pointer flex items-center"
                 onClick={() => navigate('/')}
               >
-                <img src={logo} alt="Hobiwood Logo" className="h-8 w-auto object-contain" />
+                <img src={logo} alt="Hobiwood Logo" className="h-7 w-auto object-contain" />
               </div>
             </div>
           </div>
@@ -423,15 +423,15 @@ const MainLayoutInner: React.FC = () => {
             {toolbar}
           </div>
 
-          <Space size="middle" className="md:size-large shrink-0">
+          <Space size="small" className="md:size-large shrink-0">
             <Badge count={3} dot offset={[-2, 2]} color="#1E386B">
-              <div className="h-9 w-9 flex items-center justify-center rounded-full cursor-pointer transition-colors hover:bg-gray-100 text-gray-700">
-                <BellOutlined className="text-xl text-[#1E386B]" />
+              <div className="h-8 w-8 md:h-9 md:w-9 flex items-center justify-center rounded-full cursor-pointer transition-colors hover:bg-gray-100 text-gray-700">
+                <BellOutlined className="text-lg md:text-xl text-[#1E386B]" />
               </div>
             </Badge>
             <Dropdown menu={{ items: userMenuItems }} placement="bottomRight" trigger={['click']}>
-              <Space className="cursor-pointer p-1 md:px-2 rounded-lg transition-colors hover:bg-gray-100">
-                <Avatar icon={<UserOutlined />} className="bg-[#F38320]" />
+              <Space className="cursor-pointer p-0.5 md:px-2 rounded-lg transition-colors hover:bg-gray-100">
+                <Avatar icon={<UserOutlined />} className="bg-[#F38320]" size="small" />
                 <div className="hidden md:block">
                   <div className="text-sm font-bold leading-none text-[rgba(0,0,0,0.88)]">Anh Tuyển</div>
                 </div>

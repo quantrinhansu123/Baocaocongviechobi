@@ -1826,36 +1826,63 @@ const TaskView: React.FC = () => {
                 disabled={!listScope}
               />
               {listScope ? (
-                <div className="mt-1.5 flex flex-col gap-1.5">
-                  <div className="flex flex-wrap items-center gap-1.5 md:hidden">
-                    {addTaskButton({ size: 'small' })}
+                <div className="task-filter-chips flex items-center gap-1.5 overflow-x-auto py-1.5 mt-2 no-scrollbar">
+                  {[
+                    { value: 'all', label: 'Tất cả' },
+                    { value: 'dang_lam', label: 'Đang thực hiện' },
+                    { value: 'hoan_thanh', label: 'Hoàn thành' },
+                    { value: 'qua_han', label: 'Quá hạn' },
+                  ].map(chip => {
+                    const isSelected = filterStatus === chip.value;
+                    return (
+                      <button
+                        key={chip.value}
+                        type="button"
+                        onClick={() => setFilterStatus(chip.value)}
+                        className={`px-3 py-1 rounded-full text-xs font-semibold whitespace-nowrap transition-all ${
+                          isSelected
+                            ? 'bg-[#0047AB] text-white shadow-sm'
+                            : 'bg-white text-slate-700 border border-slate-200 hover:border-[#0047AB]'
+                        }`}
+                      >
+                        {chip.label}
+                      </button>
+                    );
+                  })}
+                </div>
+              ) : null}
+              {listScope ? (
+                <div className="mt-2 flex flex-col gap-2">
+                  <div className="flex items-center gap-2 md:hidden">
+                    {addTaskButton({ size: 'middle' })}
                     <Select
                       showSearch
                       value={selectedWeek}
                       onChange={handleWeekChange}
                       options={WEEK_OPTIONS}
                       placeholder="Tuần"
-                      size="small"
+                      size="middle"
                       className="min-w-[120px] flex-1"
+                      popupMatchSelectWidth={false}
                       getPopupContainer={trigger => trigger.parentElement ?? document.body}
                     />
                   </div>
-                  <div className="flex flex-wrap items-center gap-1.5">
+                  <div className="flex items-center gap-2">
                     <Select
                       value={filterStatus}
                       onChange={setFilterStatus}
                       options={LIST_STATUS_FILTER_OPTIONS}
                       className="min-w-[120px] flex-1"
-                      size="small"
+                      size="middle"
                       placeholder="Trạng thái"
+                      popupMatchSelectWidth={false}
                     />
-                    <Text type="secondary" className="text-[12px] shrink-0 font-semibold">
+                    <Text type="secondary" className="text-[12px] shrink-0 font-semibold px-1">
                       {listSearchFiltered.length}/{tableRows.length}
                     </Text>
                   </div>
                   <DatePicker.RangePicker
                     className="task-list-date-range w-full"
-                    size="small"
                     format="DD/MM/YYYY"
                     value={filterNgayGiaoRange}
                     onChange={dates =>
@@ -1869,7 +1896,7 @@ const TaskView: React.FC = () => {
                   />
                   {hasActiveListFilters ? (
                     <Button
-                      size="small"
+                      size="middle"
                       icon={<ClearOutlined />}
                       onClick={clearListFilters}
                       className="self-start"
@@ -1926,15 +1953,37 @@ const TaskView: React.FC = () => {
                           <span className="task-list-card-rail" aria-hidden />
                           <div className="task-list-card-body">
                             <div className="task-list-card-head">
-                              <p className="task-list-name" title={row.congViec}>
-                                {row.congViec}
-                              </p>
-                              <span
-                                className="task-md-person-avatar task-list-card-avatar"
-                                title={row.nguoiPhuTrach || 'Chưa gán'}
-                              >
-                                {personInitial(row.nguoiPhuTrach)}
-                              </span>
+                              <div className="flex-1 min-w-0 pr-2">
+                                <p className="task-list-name" title={row.congViec}>
+                                  {row.congViec}
+                                </p>
+                                <p className="text-[11px] text-slate-500 font-medium truncate mt-0.5">
+                                  {deptMeta?.deptName || row.phongBan || row.deptKey}
+                                </p>
+                              </div>
+                              <div className="flex items-center gap-1.5 shrink-0">
+                                <span className={`task-list-badge ${badge.cls}`}>{badge.label}</span>
+                                {/* Ô TÍCH HOÀN THÀNH NGAY (Quick Complete Checkbox) */}
+                                <span
+                                  role="checkbox"
+                                  aria-checked={done}
+                                  aria-label={done ? 'Đã hoàn thành' : 'Đánh dấu hoàn thành'}
+                                  title={done ? 'Đã hoàn thành' : 'Tích để hoàn thành'}
+                                  className={`task-list-quick-check${done ? ' is-done' : ''}${
+                                    completingTaskKey === row.key ? ' is-loading' : ''
+                                  }`}
+                                  onClick={event => {
+                                    event.preventDefault();
+                                    event.stopPropagation();
+                                    if (done || !supabaseConnected || completingTaskKey === row.key) {
+                                      return;
+                                    }
+                                    void handleMarkComplete(row.key, row.deptKey);
+                                  }}
+                                >
+                                  {done ? <CheckOutlined /> : null}
+                                </span>
+                              </div>
                             </div>
 
                             <div className="task-list-card-progress">
@@ -1952,30 +2001,20 @@ const TaskView: React.FC = () => {
                             </div>
 
                             <div className="task-list-card-foot">
-                              <span
-                                role="checkbox"
-                                aria-checked={done}
-                                aria-label={done ? 'Đã hoàn thành' : 'Đánh dấu hoàn thành'}
-                                title={done ? 'Đã hoàn thành' : 'Tích để hoàn thành'}
-                                className={`task-list-check${done ? ' is-done' : ''}${
-                                  completingTaskKey === row.key ? ' is-loading' : ''
-                                }`}
-                                onClick={event => {
-                                  event.preventDefault();
-                                  event.stopPropagation();
-                                  if (done || !supabaseConnected || completingTaskKey === row.key) {
-                                    return;
-                                  }
-                                  void handleMarkComplete(row.key, row.deptKey);
-                                }}
-                              >
-                                {done ? <CheckOutlined /> : null}
-                              </span>
-                              <span className={`task-list-badge ${badge.cls}`}>{badge.label}</span>
-                              <span className="task-list-sub truncate">
-                                {deptMeta?.deptName || row.phongBan || row.deptKey}
+                              <div className="flex items-center gap-1.5 min-w-0">
+                                <span
+                                  className="task-md-person-avatar task-list-card-avatar"
+                                  title={row.nguoiPhuTrach || 'Chưa gán'}
+                                >
+                                  {personInitial(row.nguoiPhuTrach)}
+                                </span>
+                                <span className="text-xs font-semibold text-slate-700 truncate">
+                                  {row.nguoiPhuTrach || 'Chưa giao'}
+                                </span>
+                              </div>
+                              <span className="task-list-sub truncate ml-auto">
                                 {row.ngayGiao
-                                  ? ` · ${normalizeDisplayDate(row.ngayGiao) || row.ngayGiao}`
+                                  ? `Hạn: ${normalizeDisplayDate(row.deadline || row.ngayGiao) || row.deadline || row.ngayGiao}`
                                   : ''}
                               </span>
                             </div>

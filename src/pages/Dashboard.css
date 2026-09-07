@@ -32,7 +32,32 @@
   }
 }
 
-/* Mobile filters — thanh gọn, chữ rõ */
+/* Mobile filters — chạm chuẩn 40px, chữ rõ */
+.dashboard-mobile-filters {
+  background: #ffffff;
+  border-radius: 12px;
+  padding: 10px 12px;
+  border: 1px solid #e8edf5;
+  box-shadow: 0 1px 3px rgba(15, 39, 77, 0.05);
+}
+
+.dashboard-mobile-filters .filter-select .ant-select-selector,
+.dashboard-mobile-filters .ant-picker {
+  min-height: 40px !important;
+  height: 40px !important;
+  border-radius: 8px !important;
+  display: flex !important;
+  align-items: center !important;
+  border-color: #dbe3ef !important;
+}
+
+.dashboard-mobile-filters .filter-select .ant-select-selection-item,
+.dashboard-mobile-filters .filter-select .ant-select-selection-placeholder,
+.dashboard-mobile-filters .ant-picker-input > input {
+  font-size: 14px !important;
+  line-height: 38px !important;
+}
+
 @media (max-width: 767px) {
   .dashboard-filters .ant-space {
     width: 100%;
@@ -51,25 +76,19 @@
   .dashboard-filters .filter-select {
     width: 100% !important;
   }
-
-  .dashboard-filters .filter-select .ant-select-selector {
-    height: 36px !important;
-    padding: 0 10px !important;
-    border-radius: 8px !important;
-  }
-
-  .dashboard-filters .filter-select .ant-select-selection-item,
-  .dashboard-filters .filter-select .ant-select-selection-placeholder {
-    font-size: 16px !important;
-    line-height: 34px !important;
-  }
 }
 
 /* KPI — chữ to, thẻ không phình quá mức */
 .dashboard-kpi-grid {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 0.75rem;
+  gap: 0.625rem;
+}
+
+@media (min-width: 480px) {
+  .dashboard-kpi-grid {
+    gap: 0.75rem;
+  }
 }
 
 @media (min-width: 768px) {
@@ -88,16 +107,24 @@
   display: flex;
   flex-direction: row;
   align-items: center;
-  gap: 0.875rem;
-  padding: 0.875rem 1rem;
+  gap: 0.625rem;
+  padding: 0.625rem 0.75rem;
   border-radius: 0.75rem;
-  min-height: 4.5rem;
+  min-height: 4.25rem;
   border-width: 1px;
   border-style: solid;
   cursor: pointer;
   appearance: none;
   font: inherit;
   transition: transform 0.15s ease, box-shadow 0.15s ease;
+}
+
+@media (min-width: 768px) {
+  .dashboard-kpi-card {
+    gap: 0.875rem;
+    padding: 0.875rem 1rem;
+    min-height: 4.5rem;
+  }
 }
 
 .dashboard-kpi-card:hover {
@@ -108,22 +135,11 @@
 .dashboard-kpi-card-active {
   outline: 2px solid #f38320;
   outline-offset: 2px;
-  box-shadow: 0 6px 16px rgba(30, 56, 107, 0.14) !important;
-}
-
-@media (min-width: 768px) {
-  .dashboard-kpi-card {
-    gap: 1rem;
-    padding: 1rem 1.25rem;
-    min-height: 5rem;
-    border-radius: 0.875rem;
-  }
 }
 
 .dashboard-kpi-card .kpi-icon {
-  font-size: 1.75rem;
+  font-size: 1.5rem;
   flex-shrink: 0;
-  line-height: 1;
 }
 
 @media (min-width: 768px) {
@@ -133,10 +149,10 @@
 }
 
 .dashboard-kpi-card .kpi-label {
-  font-size: 1.05rem;
-  line-height: 1.3;
-  margin: 0 0 0.25rem;
-  font-weight: 600;
+  font-size: 0.8rem;
+  margin-bottom: 0.15rem;
+  font-weight: 700;
+  line-height: 1.25;
 }
 
 @media (min-width: 768px) {
@@ -148,9 +164,15 @@
 
 .dashboard-kpi-card .kpi-value {
   display: block;
-  font-size: 1.85rem;
+  font-size: 1.45rem;
   font-weight: 800;
   line-height: 1.1;
+}
+
+@media (min-width: 400px) {
+  .dashboard-kpi-card .kpi-value {
+    font-size: 1.75rem;
+  }
 }
 
 @media (min-width: 768px) {
