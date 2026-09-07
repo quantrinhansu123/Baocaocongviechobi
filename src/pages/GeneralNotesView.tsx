@@ -23,6 +23,16 @@ import BackButton from '../components/BackButton';
 import { useHeaderToolbar } from '../contexts/HeaderToolbarContext';
 import { ORG_BLOCKS } from '../data/orgBlocks';
 import {
+  loadPersonnelSelectOptions,
+  type PersonnelSelectOption,
+} from '../services/auxiliaryData';
+import PersonnelMentionMenu, {
+  applyPersonnelMention,
+  filterPersonnelMentions,
+  findActiveMention,
+  type MentionMatch,
+} from '../components/PersonnelMentionMenu';
+import {
   loadGeneralNotesFromSupabase,
   loadWorkNotesFromSupabase,
   syncGeneralNotesToSupabase,
@@ -197,6 +207,12 @@ const GeneralNotesView: React.FC = () => {
   const [loadingRemote, setLoadingRemote] = useState(true);
   const [supabaseConnected, setSupabaseConnected] = useState<boolean | null>(null);
   const [syncing, setSyncing] = useState(false);
+  const [personnelOptions, setPersonnelOptions] = useState<PersonnelSelectOption[]>([]);
+  const [mentionState, setMentionState] = useState<{
+    noteId: string;
+    match: MentionMatch;
+    index: number;
+  } | null>(null);
   const textareaRefs = useRef<Record<string, HTMLTextAreaElement | null>>({});
   const syncReadyRef = useRef(false);
   const syncTimerRef = useRef<number | null>(null);
@@ -209,6 +225,14 @@ const GeneralNotesView: React.FC = () => {
   const [archiveItems, setArchiveItems] = useState<ArchiveItem[]>([]);
   const [filterDate, setFilterDate] = useState<Dayjs | null>(null);
   const [filterDept, setFilterDept] = useState<string>('all');
+
+  const mentionOptions = useMemo(
+    () =>
+      mentionState
+        ? filterPersonnelMentions(personnelOptions, mentionState.match.query)
+        : [],
+    [mentionState, personnelOptions]
+  );
 
   useEffect(() => {
     let cancelled = false;
@@ -245,6 +269,14 @@ const GeneralNotesView: React.FC = () => {
     }
 
     void hydrateFromSupabase();
+    void loadPersonnelSelectOptions()
+      .then(options => {
+        if (!cancelled) setPersonnelOptions(options);
+      })
+      .catch(() => {
+        if (!cancelled) setPersonnelOptions([]);
+      });
+
     return () => {
       cancelled = true;
     };
@@ -298,10 +330,61 @@ const GeneralNotesView: React.FC = () => {
     persist(notes.map(note => (note.id === noteId ? { ...note, ...patch } : note)));
   };
 
-  const handleBodyChange = (noteId: string, raw: string) => {
+  const syncMentionFromCaret = useCallback(
+    (noteId: string, value: string, caret: number) => {
+      const match = findActiveMention(value, caret);
+      if (!match) {
+        setMentionState(null);
+        return;
+      }
+      setMentionState(prev => ({
+        noteId,
+        match,
+        index:
+          prev && prev.noteId === noteId && prev.match.query === match.query
+            ? prev.index
+            : 0,
+      }));
+    },
+    []
+  );
+
+  const handleBodyChange = (noteId: string, raw: string, caret?: number) => {
     const lines = raw.replace(/\r\n/g, '\n').split('\n');
     updateNote(noteId, { lines: lines.length ? lines : [''] });
+    const nextCaret = typeof caret === 'number' ? caret : raw.length;
+    syncMentionFromCaret(noteId, raw, nextCaret);
   };
+
+  const insertMention = useCallback(
+    (noteId: string, option: PersonnelSelectOption) => {
+      const el = textareaRefs.current[noteId];
+      const note = notesRef.current.find(item => item.id === noteId);
+      if (!note || !mentionState || mentionState.noteId !== noteId) {
+        setMentionState(null);
+        return;
+      }
+      const value = noteBodyText(note);
+      const caret = el?.selectionStart ?? mentionState.match.end;
+      const match = findActiveMention(value, caret) ?? mentionState.match;
+      const { next, caret: nextCaret } = applyPersonnelMention(value, match, option.label);
+      const lines = next.replace(/\r\n/g, '\n').split('\n');
+      persist(
+        notesRef.current.map(item =>
+          item.id === noteId ? { ...item, lines: lines.length ? lines : [''] } : item
+        )
+      );
+      setMentionState(null);
+      requestAnimationFrame(() => {
+        const node = textareaRefs.current[noteId];
+        if (!node) return;
+        node.focus();
+        node.selectionStart = nextCaret;
+        node.selectionEnd = nextCaret;
+      });
+    },
+    [mentionState, persist]
+  );
 
   const appendNote = (text = '') => {
     const created = createNote(text);
@@ -373,6 +456,48 @@ const GeneralNotesView: React.FC = () => {
     if (index < 0) return;
     const note = notes[index];
 
+    const mentionOpen =
+      mentionState?.noteId === noteId &&
+      (mentionOptions.length > 0 || Boolean(mentionState.match));
+
+    if (mentionOpen) {
+      if (event.key === 'ArrowDown') {
+        event.preventDefault();
+        if (mentionOptions.length === 0) return;
+        setMentionState(prev =>
+          prev ? { ...prev, index: (prev.index + 1) % mentionOptions.length } : prev
+        );
+        return;
+      }
+      if (event.key === 'ArrowUp') {
+        event.preventDefault();
+        if (mentionOptions.length === 0) return;
+        setMentionState(prev =>
+          prev
+            ? {
+                ...prev,
+                index: (prev.index - 1 + mentionOptions.length) % mentionOptions.length,
+              }
+            : prev
+        );
+        return;
+      }
+      if (event.key === 'Escape') {
+        event.preventDefault();
+        setMentionState(null);
+        return;
+      }
+      if ((event.key === 'Enter' || event.key === 'Tab') && mentionOptions.length > 0) {
+        event.preventDefault();
+        const opt =
+          mentionOptions[
+            Math.min(Math.max(mentionState?.index ?? 0, 0), mentionOptions.length - 1)
+          ];
+        if (opt) insertMention(noteId, opt);
+        return;
+      }
+    }
+
     // 2 dấu cách liên tiếp → xuống dòng cùng ý
     if (event.key === ' ' || event.key === 'Spacebar') {
       const start = el.selectionStart;
@@ -381,7 +506,7 @@ const GeneralNotesView: React.FC = () => {
       if (start === end && start > 0 && value[start - 1] === ' ') {
         event.preventDefault();
         const nextValue = `${value.slice(0, start - 1)}\n${value.slice(end)}`;
-        handleBodyChange(noteId, nextValue);
+        handleBodyChange(noteId, nextValue, start);
         requestAnimationFrame(() => {
           const node = textareaRefs.current[noteId];
           if (!node) return;
@@ -396,6 +521,7 @@ const GeneralNotesView: React.FC = () => {
 
     if (event.key === 'Enter') {
       event.preventDefault();
+      setMentionState(null);
       const start = el.selectionStart;
       const end = el.selectionEnd;
       const value = el.value;
@@ -427,6 +553,7 @@ const GeneralNotesView: React.FC = () => {
         return;
       }
       event.preventDefault();
+      setMentionState(null);
       const prev = visible[pos - 1];
       persist(notes.filter(n => n.id !== noteId));
       setFocusNoteId(prev.id);
@@ -518,7 +645,8 @@ const GeneralNotesView: React.FC = () => {
     <div className="flex-1 flex flex-col overflow-hidden bg-gray-50 min-h-0">
       <div className="px-3 py-2 border-b border-gray-200 flex flex-wrap items-center gap-2 bg-white shrink-0 lg:hidden">
         <Text type="secondary" className="text-xs font-medium">
-          <strong>2 dấu cách</strong> xuống dòng · <strong>Enter</strong> ý mới
+          <strong>2 dấu cách</strong> xuống dòng · <strong>Enter</strong> ý mới ·{' '}
+          <strong>@</strong> gắn nhân sự
         </Text>
         <label className="inline-flex items-center gap-1.5 text-xs font-semibold text-gray-600 ml-auto cursor-pointer select-none">
           <Checkbox checked={showHidden} onChange={e => setShowHidden(e.target.checked)} />
@@ -555,21 +683,50 @@ const GeneralNotesView: React.FC = () => {
                 >
                   −
                 </span>
-                <textarea
-                  ref={node => {
-                    textareaRefs.current[note.id] = node;
-                  }}
-                  value={noteBodyText(note)}
-                  onChange={e => handleBodyChange(note.id, e.target.value)}
-                  onKeyDown={e => handleIdeaKeyDown(note.id, e)}
-                  rows={Math.max(1, note.lines.length)}
-                  spellCheck={false}
-                  disabled={note.hidden && !showHidden}
-                  className={`work-notes-idea-input flex-1 min-w-0 resize-none outline-none bg-transparent ${
-                    note.hidden ? 'line-through text-gray-400' : 'text-gray-900'
-                  }`}
-                  placeholder="Nội dung ghi chú..."
-                />
+                <div className="relative flex-1 min-w-0">
+                  <textarea
+                    ref={node => {
+                      textareaRefs.current[note.id] = node;
+                    }}
+                    value={noteBodyText(note)}
+                    onChange={e =>
+                      handleBodyChange(note.id, e.target.value, e.target.selectionStart)
+                    }
+                    onSelect={e => {
+                      const target = e.currentTarget;
+                      syncMentionFromCaret(note.id, target.value, target.selectionStart);
+                    }}
+                    onBlur={() => {
+                      window.setTimeout(() => {
+                        setMentionState(prev => (prev?.noteId === note.id ? null : prev));
+                      }, 120);
+                    }}
+                    onKeyDown={e => handleIdeaKeyDown(note.id, e)}
+                    rows={Math.max(1, note.lines.length)}
+                    spellCheck={false}
+                    disabled={note.hidden && !showHidden}
+                    className={`work-notes-idea-input w-full min-w-0 resize-none outline-none bg-transparent ${
+                      note.hidden ? 'line-through text-gray-400' : 'text-gray-900'
+                    }`}
+                    placeholder="Nội dung ghi chú... (@ để gắn nhân sự)"
+                  />
+                  <PersonnelMentionMenu
+                    open={mentionState?.noteId === note.id && !(note.hidden && !showHidden)}
+                    options={mentionState?.noteId === note.id ? mentionOptions : []}
+                    activeIndex={mentionState?.noteId === note.id ? mentionState.index : 0}
+                    onHoverIndex={index =>
+                      setMentionState(prev =>
+                        prev?.noteId === note.id ? { ...prev, index } : prev
+                      )
+                    }
+                    onSelect={option => insertMention(note.id, option)}
+                    emptyText={
+                      personnelOptions.length
+                        ? 'Không khớp nhân sự'
+                        : 'Chưa có dữ liệu nhân sự'
+                    }
+                  />
+                </div>
                 {note.hidden ? (
                   <Button
                     size="middle"
