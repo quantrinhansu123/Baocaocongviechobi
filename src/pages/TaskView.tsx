@@ -14,6 +14,9 @@ import {
   DatePicker,
   Space,
   Grid,
+  Drawer,
+  Badge,
+  Tabs,
 } from 'antd';
 import type { ColumnsType } from 'antd/es/table';
 import {
@@ -32,6 +35,9 @@ import {
   InfoCircleOutlined,
   CheckOutlined,
   SwapOutlined,
+  MessageOutlined,
+  MoreOutlined,
+  HistoryOutlined,
 } from '@ant-design/icons';
 import { Star } from 'lucide-react';
 import dayjs from 'dayjs';
@@ -411,6 +417,7 @@ const TaskView: React.FC = () => {
   const [taskLoading, setTaskLoading] = useState(false);
   const [savingDetail, setSavingDetail] = useState(false);
   const [sendingChat, setSendingChat] = useState(false);
+  const [chatDrawerOpen, setChatDrawerOpen] = useState(false);
   const [tienDoModalOpen, setTienDoModalOpen] = useState(false);
   const [savingTienDo, setSavingTienDo] = useState(false);
   const [deletingTaskKey, setDeletingTaskKey] = useState<string | null>(null);
@@ -1679,6 +1686,13 @@ const TaskView: React.FC = () => {
   const selected = detailTask;
   const screens = Grid.useBreakpoint();
   const isMobileDetail = screens.md === false || screens.md === undefined;
+  // FAB chat chỉ trên mobile; desktop/tablet dùng cột phải Trao đổi
+  const useFloatingChat = isMobileDetail;
+  const chatCount = normalizeChatMessages(selected?.chatMessages).length;
+
+  useEffect(() => {
+    if (!selected) setChatDrawerOpen(false);
+  }, [selected]);
 
   const statusPillClass = (status: string) => {
     if (status.includes('Hoàn thành')) return 'task-md-status-pill--done';
@@ -1885,14 +1899,29 @@ const TaskView: React.FC = () => {
             }`}
           >
             <div className="task-list-head">
-              <h2 className="task-list-title">
-                {listScope ? 'Danh sách công việc' : 'Chọn đầu mục ở thanh link phía trên'}
-              </h2>
+              <div className="task-list-head-row">
+                <h2 className="task-list-title">
+                  {listScope ? 'Công việc' : 'Chọn đầu mục'}
+                </h2>
+                {listScope ? (
+                  <Button
+                    type="primary"
+                    size="small"
+                    icon={<PlusOutlined />}
+                    className="task-list-add-btn"
+                    disabled={!canCreateTask}
+                    loading={supabaseConnected === null}
+                    onClick={() => openCreateModal()}
+                  >
+                    Thêm
+                  </Button>
+                ) : null}
+              </div>
               <Input
                 className="task-list-search"
                 allowClear
                 prefix={<SearchOutlined className="text-gray-400" />}
-                placeholder="Tìm kiếm công việc"
+                placeholder="Tìm kiếm công việc..."
                 value={listSearch}
                 onChange={e => setListSearch(e.target.value)}
                 disabled={!listScope}
@@ -1903,7 +1932,6 @@ const TaskView: React.FC = () => {
                     { value: 'all', label: 'Tất cả' },
                     { value: 'dang_lam', label: 'Đang thực hiện' },
                     { value: 'hoan_thanh', label: 'Hoàn thành' },
-                    { value: 'qua_han', label: 'Quá hạn' },
                   ].map(chip => {
                     const isSelected = filterStatus === chip.value;
                     return (
@@ -1913,8 +1941,8 @@ const TaskView: React.FC = () => {
                         onClick={() => setFilterStatus(chip.value)}
                         className={`px-3 py-1 rounded-full text-xs font-semibold whitespace-nowrap transition-all ${
                           isSelected
-                            ? 'bg-[#0047AB] text-white shadow-sm'
-                            : 'bg-white text-slate-700 border border-slate-200 hover:border-[#0047AB]'
+                            ? 'bg-[#1E386B] text-white shadow-sm'
+                            : 'bg-white text-slate-700 border border-slate-200 hover:border-[#1E386B]'
                         }`}
                       >
                         {chip.label}
@@ -1926,7 +1954,6 @@ const TaskView: React.FC = () => {
               {listScope ? (
                 <div className="mt-2 flex flex-col gap-2">
                   <div className="flex items-center gap-2 md:hidden">
-                    {addTaskButton({ size: 'middle' })}
                     <Select
                       showSearch
                       value={selectedWeek}
@@ -1946,7 +1973,7 @@ const TaskView: React.FC = () => {
                       options={LIST_STATUS_FILTER_OPTIONS}
                       className="min-w-[120px] flex-1"
                       size="middle"
-                      placeholder="Trạng thái"
+                      placeholder="Tất cả trạng thái"
                       popupMatchSelectWidth={false}
                     />
                     <Text type="secondary" className="text-[12px] shrink-0 font-semibold px-1">
@@ -2002,24 +2029,19 @@ const TaskView: React.FC = () => {
                       const done = isTaskRecordCompleted(row);
                       const active = selected?.key === row.key;
                       const badge = listBadgeMeta(row.tienDo);
-                      const railCls = badge.cls.replace('task-list-badge', 'task-list-card');
                       const deptMeta = findDeptMeta(row.deptKey);
                       const progress = clampProgressPercent(row.tienDoPhanTram);
-                      const progressCls =
-                        progress >= 100
-                          ? 'task-list-progress-tag--done'
-                          : progress >= 60
-                            ? 'task-list-progress-tag--high'
-                            : progress > 0
-                              ? 'task-list-progress-tag--mid'
-                              : 'task-list-progress-tag--low';
+                      const deadlineRaw = row.deadline || row.ngayGiao;
+                      const deadlineLabel = deadlineRaw
+                        ? normalizeDisplayDate(deadlineRaw) || deadlineRaw
+                        : '';
                       return (
                         <button
                           key={row.key}
                           type="button"
                           className={`task-list-item task-list-card${active ? ' is-active' : ''}${
                             done ? ' is-done' : ''
-                          } ${railCls}`}
+                          }`}
                           onClick={() => openDetail(row.key, row.deptKey)}
                         >
                           <span className="task-list-card-rail" aria-hidden />
@@ -2029,13 +2051,12 @@ const TaskView: React.FC = () => {
                                 <p className="task-list-name" title={row.congViec}>
                                   {row.congViec}
                                 </p>
-                                <p className="text-[11px] text-slate-500 font-medium truncate mt-0.5">
-                                  {deptMeta?.deptName || row.phongBan || row.deptKey}
+                                <p className="task-list-dept-line">
+                                  {(deptMeta?.deptName || row.phongBan || row.deptKey || '').toUpperCase()}
                                 </p>
                               </div>
                               <div className="flex items-center gap-1.5 shrink-0">
                                 <span className={`task-list-badge ${badge.cls}`}>{badge.label}</span>
-                                {/* Ô TÍCH HOÀN THÀNH NGAY (Quick Complete Checkbox) */}
                                 <span
                                   role="checkbox"
                                   aria-checked={done}
@@ -2064,12 +2085,7 @@ const TaskView: React.FC = () => {
                                 showInfo={false}
                                 className="task-list-card-progress-bar"
                               />
-                              <span
-                                className={`task-list-progress-tag ${progressCls}`}
-                                title={`Tiến độ hoàn thành ${progress}%`}
-                              >
-                                {progress}%
-                              </span>
+                              <span className="task-list-progress-pct">{progress}%</span>
                             </div>
 
                             <div className="task-list-card-foot">
@@ -2084,11 +2100,9 @@ const TaskView: React.FC = () => {
                                   {row.nguoiPhuTrach || 'Chưa giao'}
                                 </span>
                               </div>
-                              <span className="task-list-sub truncate ml-auto">
-                                {row.ngayGiao
-                                  ? `Hạn: ${normalizeDisplayDate(row.deadline || row.ngayGiao) || row.deadline || row.ngayGiao}`
-                                  : ''}
-                              </span>
+                              {deadlineLabel ? (
+                                <span className="task-list-sub shrink-0">Hạn: {deadlineLabel}</span>
+                              ) : null}
                             </div>
                           </div>
                         </button>
@@ -2142,13 +2156,16 @@ const TaskView: React.FC = () => {
                   <div className="task-md-main">
                     <div className="task-md-head">
                       <p className="task-md-head-title">Chi tiết công việc</p>
-                      <Button
-                        type="text"
-                        size="small"
-                        icon={<CloseOutlined />}
-                        onClick={() => setDetailTask(null)}
-                        aria-label="Đóng chi tiết"
-                      />
+                      <div className="flex items-center gap-1">
+                        <Button type="text" size="small" icon={<MoreOutlined />} aria-label="Thêm" />
+                        <Button
+                          type="text"
+                          size="small"
+                          icon={<CloseOutlined />}
+                          onClick={() => setDetailTask(null)}
+                          aria-label="Đóng chi tiết"
+                        />
+                      </div>
                     </div>
 
                     <div className="task-md-body">
@@ -2164,40 +2181,64 @@ const TaskView: React.FC = () => {
                         />
                       </Form.Item>
 
-                      <div className="mb-1">
-                        <div className="task-md-meta-row">
-                          <FolderOutlined className="task-md-meta-icon" />
-                          <span className="task-md-meta-label">Phòng ban</span>
-                          <span className="task-md-meta-value truncate" style={{ color: 'var(--tv-cobalt)' }}>
-                            {selectedDeptLabel}
-                          </span>
-                        </div>
-                        <div className="task-md-meta-row">
-                          <CalendarOutlined className="task-md-meta-icon" />
-                          <span className="task-md-meta-label">Thời hạn</span>
-                          <div className="task-md-meta-value">
-                            <Form.Item name="ycXong" className="mb-0">
-                              <DatePicker
-                                className="w-full max-w-[220px]"
-                                format="DD/MM/YYYY"
-                                placeholder="Chọn thời hạn"
-                                size="small"
-                                variant="borderless"
-                              />
-                            </Form.Item>
-                          </div>
-                        </div>
-                        <div className="task-md-meta-row">
-                          <ClockCircleOutlined className="task-md-meta-icon" />
-                          <span className="task-md-meta-label">TG hoàn thành</span>
-                          <span className="task-md-meta-value text-emerald-700">
-                            {selected.ngayGioHoanThanh
-                              ? normalizeDisplayDate(selected.ngayGioHoanThanh) ||
-                                selected.ngayGioHoanThanh
-                              : '—'}
-                          </span>
-                        </div>
-                      </div>
+                      <Form.Item
+                        shouldUpdate={(prev, next) =>
+                          prev.tienDo !== next.tienDo || prev.ycXong !== next.ycXong
+                        }
+                        noStyle
+                      >
+                        {() => {
+                          const status =
+                            (detailForm.getFieldValue('tienDo') as string) ||
+                            selected.tienDo ||
+                            'Đang thực hiện';
+                          return (
+                            <div className="task-md-meta-grid">
+                              <div className="task-md-meta-cell">
+                                <span className="task-md-meta-cell-label">
+                                  <FolderOutlined /> Phòng
+                                </span>
+                                <span className="task-md-meta-cell-value" title={selectedDeptLabel}>
+                                  {selectedDeptLabel}
+                                </span>
+                              </div>
+                              <div className="task-md-meta-cell">
+                                <span className="task-md-meta-cell-label">
+                                  <CalendarOutlined /> Hạn
+                                </span>
+                                <span className="task-md-meta-cell-value">
+                                  <Form.Item name="ycXong" className="mb-0">
+                                    <DatePicker
+                                      className="w-full"
+                                      format="DD/MM/YYYY"
+                                      placeholder="Chọn hạn"
+                                      size="small"
+                                      variant="borderless"
+                                    />
+                                  </Form.Item>
+                                </span>
+                              </div>
+                              <div className="task-md-meta-cell">
+                                <span className="task-md-meta-cell-label">
+                                  <CheckCircleOutlined /> Trạng thái
+                                </span>
+                                <span className="task-md-meta-cell-value">{status}</span>
+                              </div>
+                              <div className="task-md-meta-cell">
+                                <span className="task-md-meta-cell-label">
+                                  <ClockCircleOutlined /> TG HT
+                                </span>
+                                <span className="task-md-meta-cell-value text-emerald-700">
+                                  {selected.ngayGioHoanThanh
+                                    ? normalizeDisplayDate(selected.ngayGioHoanThanh) ||
+                                      selected.ngayGioHoanThanh
+                                    : '—'}
+                                </span>
+                              </div>
+                            </div>
+                          );
+                        }}
+                      </Form.Item>
 
                       <Form.Item
                         shouldUpdate={(prev, next) =>
@@ -2256,7 +2297,7 @@ const TaskView: React.FC = () => {
                       <div className="task-md-center-stack">
                         <div className="task-md-aside-card task-md-goal-alert">
                           <InfoCircleOutlined />
-                          <span>Chưa liên kết với mục tiêu / Lựa chọn mục tiêu</span>
+                          <span>Chưa liên kết với mục tiêu — Lựa chọn mục tiêu</span>
                         </div>
 
                         <div className="task-md-center-grid">
@@ -2420,13 +2461,42 @@ const TaskView: React.FC = () => {
                     </div>
                   </div>
 
-                  <TaskChatPanel
-                    messages={normalizeChatMessages(selected.chatMessages)}
-                    sending={sendingChat}
-                    disabled={!supabaseConnected}
-                    onSend={handleSendTaskChat}
-                    personInitial={personInitial}
-                  />
+                  {!useFloatingChat ? (
+                    <aside className="task-md-right" aria-label="Trao đổi và hoạt động">
+                      <Tabs
+                        defaultActiveKey="chat"
+                        className="task-md-right-tabs"
+                        items={[
+                          {
+                            key: 'chat',
+                            label: 'Trao đổi',
+                            children: (
+                              <TaskChatPanel
+                                messages={normalizeChatMessages(selected.chatMessages)}
+                                sending={sendingChat}
+                                disabled={!supabaseConnected}
+                                onSend={handleSendTaskChat}
+                                personInitial={personInitial}
+                                hideHead
+                                className="task-md-chat--rail"
+                              />
+                            ),
+                          },
+                          {
+                            key: 'activity',
+                            label: 'Hoạt động',
+                            children: (
+                              <div className="task-md-activity-pane">
+                                <HistoryOutlined />
+                                <p className="m-0">Chưa có hoạt động</p>
+                                <span>Mọi thay đổi tiến độ sẽ được ghi lại ở đây.</span>
+                              </div>
+                            ),
+                          },
+                        ]}
+                      />
+                    </aside>
+                  ) : null}
                 </div>
                 )}
               </Form>
@@ -2457,6 +2527,46 @@ const TaskView: React.FC = () => {
           )}
         </div>
       </div>
+
+      {selected && useFloatingChat && !chatDrawerOpen ? (
+        <button
+          type="button"
+          className="task-chat-fab"
+          onClick={() => setChatDrawerOpen(true)}
+          aria-label="Mở chat công việc"
+        >
+          <Badge count={chatCount} overflowCount={99} size="small" offset={[-2, 2]}>
+            <span className="task-chat-fab-icon">
+              <MessageOutlined />
+            </span>
+          </Badge>
+          <span className="task-chat-fab-label">Chat</span>
+        </button>
+      ) : null}
+      {selected && useFloatingChat ? (
+          <Drawer
+            title={`Chat công việc${chatCount ? ` · ${chatCount} tin` : ''}`}
+            placement={isMobileDetail ? 'bottom' : 'right'}
+            open={chatDrawerOpen}
+            onClose={() => setChatDrawerOpen(false)}
+            height={isMobileDetail ? '42vh' : undefined}
+            width={isMobileDetail ? undefined : 380}
+            destroyOnClose={false}
+            className="task-chat-drawer"
+            styles={{
+              body: { padding: 0, display: 'flex', flexDirection: 'column', height: '100%', overflow: 'hidden' },
+            }}
+          >
+            <TaskChatPanel
+              messages={normalizeChatMessages(selected.chatMessages)}
+              sending={sendingChat}
+              disabled={!supabaseConnected}
+              onSend={handleSendTaskChat}
+              personInitial={personInitial}
+              className="task-md-chat--drawer"
+            />
+          </Drawer>
+      ) : null}
     </div>
   );
 };

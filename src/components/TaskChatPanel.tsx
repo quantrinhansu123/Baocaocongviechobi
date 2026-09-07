@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { Button, Input, Spin } from 'antd';
-import { SendOutlined } from '@ant-design/icons';
+import { MessageOutlined, PaperClipOutlined, SendOutlined } from '@ant-design/icons';
 import dayjs from 'dayjs';
 import type { TaskChatMessage } from '../types/task';
 
@@ -10,6 +10,8 @@ type TaskChatPanelProps = {
   disabled?: boolean;
   onSend: (text: string) => void | Promise<void>;
   personInitial: (name: string) => string;
+  className?: string;
+  hideHead?: boolean;
 };
 
 function formatChatTime(ts: number): string {
@@ -26,6 +28,8 @@ const TaskChatPanel: React.FC<TaskChatPanelProps> = ({
   disabled = false,
   onSend,
   personInitial,
+  className = '',
+  hideHead = false,
 }) => {
   const [draft, setDraft] = useState('');
   const listRef = useRef<HTMLDivElement>(null);
@@ -49,16 +53,20 @@ const TaskChatPanel: React.FC<TaskChatPanelProps> = ({
   };
 
   return (
-    <aside className="task-md-chat" aria-label="Chat công việc">
-      <div className="task-md-chat-head">
-        <p className="task-md-chat-title">Chat công việc</p>
-        <span className="task-md-chat-count">{sorted.length} tin</span>
-      </div>
+    <aside className={`task-md-chat ${className}`.trim()} aria-label="Chat công việc">
+      {!hideHead ? (
+        <div className="task-md-chat-head">
+          <p className="task-md-chat-title">Chat công việc</p>
+          <span className="task-md-chat-count">{sorted.length} tin</span>
+        </div>
+      ) : null}
 
       <div ref={listRef} className="task-md-chat-list">
         {sorted.length === 0 ? (
           <div className="task-md-chat-empty">
-            Chưa có tin nhắn. Gửi trao đổi để lưu lịch sử cho công việc này.
+            <MessageOutlined className="task-md-chat-empty-icon" />
+            <p className="m-0">Chưa có tin nhắn</p>
+            <span>Gửi trao đổi để lưu lịch sử cho công việc này.</span>
           </div>
         ) : (
           sorted.map(msg => (
@@ -84,6 +92,9 @@ const TaskChatPanel: React.FC<TaskChatPanelProps> = ({
       </div>
 
       <div ref={composerRef} className="task-md-chat-composer">
+        <span className="task-md-chat-attach" aria-hidden>
+          <PaperClipOutlined />
+        </span>
         <Input.TextArea
           value={draft}
           onChange={e => setDraft(e.target.value)}
