@@ -13,6 +13,16 @@ import {
   syncWorkNotesToSupabase,
   type WorkNoteIdea,
 } from '../services/workNotesData';
+import {
+  loadPersonnelSelectOptions,
+  type PersonnelSelectOption,
+} from '../services/auxiliaryData';
+import PersonnelMentionMenu, {
+  applyPersonnelMention,
+  filterPersonnelMentions,
+  findActiveMention,
+  type MentionMatch,
+} from '../components/PersonnelMentionMenu';
 
 const { Text } = Typography;
 
@@ -150,12 +160,26 @@ const WorkNotesView: React.FC = () => {
   const [loadingRemote, setLoadingRemote] = useState(true);
   const [supabaseConnected, setSupabaseConnected] = useState<boolean | null>(null);
   const [syncing, setSyncing] = useState(false);
+  const [personnelOptions, setPersonnelOptions] = useState<PersonnelSelectOption[]>([]);
+  const [mentionState, setMentionState] = useState<{
+    ideaId: string;
+    match: MentionMatch;
+    index: number;
+  } | null>(null);
   const textareaRefs = useRef<Record<string, HTMLTextAreaElement | null>>({});
   const syncReadyRef = useRef(false);
   const syncTimerRef = useRef<number | null>(null);
   const notesRef = useRef(notes);
   notesRef.current = notes;
   const { setToolbar, clearToolbar } = useHeaderToolbar();
+
+  const mentionOptions = useMemo(
+    () =>
+      mentionState
+        ? filterPersonnelMentions(personnelOptions, mentionState.match.query)
+        : [],
+    [mentionState, personnelOptions]
+  );
 
   const activeBlock = useMemo(
     () => ORG_BLOCKS.find(block => block.key === activeBlockKey) ?? ORG_BLOCKS[0],
@@ -223,6 +247,14 @@ const WorkNotesView: React.FC = () => {
     }
 
     void hydrateFromSupabase();
+    void loadPersonnelSelectOptions()
+      .then(options => {
+        if (!cancelled) setPersonnelOptions(options);
+      })
+      .catch(() => {
+        if (!cancelled) setPersonnelOptions([]);
+      });
+
     return () => {
       cancelled = true;
     };
@@ -344,10 +376,62 @@ const WorkNotesView: React.FC = () => {
     persist(notes.map(idea => (idea.id === ideaId ? { ...idea, ...patch } : idea)));
   };
 
-  const handleBodyChange = (ideaId: string, raw: string) => {
+  const syncMentionFromCaret = useCallback(
+    (ideaId: string, value: string, caret: number) => {
+      const match = findActiveMention(value, caret);
+      if (!match) {
+        setMentionState(null);
+        return;
+      }
+      setMentionState(prev => ({
+        ideaId,
+        match,
+        index:
+          prev && prev.ideaId === ideaId && prev.match.query === match.query
+            ? prev.index
+            : 0,
+      }));
+    },
+    []
+  );
+
+  const handleBodyChange = (ideaId: string, raw: string, caret?: number) => {
     const lines = raw.replace(/\r\n/g, '\n').split('\n');
     updateIdea(ideaId, { lines: lines.length ? lines : [''] });
+    const nextCaret = typeof caret === 'number' ? caret : raw.length;
+    syncMentionFromCaret(ideaId, raw, nextCaret);
   };
+
+  const insertMention = useCallback(
+    (ideaId: string, option: PersonnelSelectOption) => {
+      const el = textareaRefs.current[ideaId];
+      const idea = notesRef.current.find(item => item.id === ideaId);
+      if (!idea || !mentionState || mentionState.ideaId !== ideaId) {
+        setMentionState(null);
+        return;
+      }
+      const value = ideaBodyText(idea);
+      const caret = el?.selectionStart ?? mentionState.match.end;
+      const match =
+        findActiveMention(value, caret) ?? mentionState.match;
+      const { next, caret: nextCaret } = applyPersonnelMention(value, match, option.label);
+      const lines = next.replace(/\r\n/g, '\n').split('\n');
+      persist(
+        notesRef.current.map(item =>
+          item.id === ideaId ? { ...item, lines: lines.length ? lines : [''] } : item
+        )
+      );
+      setMentionState(null);
+      requestAnimationFrame(() => {
+        const node = textareaRefs.current[ideaId];
+        if (!node) return;
+        node.focus();
+        node.selectionStart = nextCaret;
+        node.selectionEnd = nextCaret;
+      });
+    },
+    [mentionState, persist]
+  );
 
   const appendIdea = (deptKey: string, text = '') => {
     const meta = resolveDeptMeta(deptKey);
@@ -369,6 +453,53 @@ const WorkNotesView: React.FC = () => {
     if (index < 0) return;
     const idea = notes[index];
 
+    const mentionOpen =
+      mentionState?.ideaId === ideaId &&
+      (mentionOptions.length > 0 || Boolean(mentionState.match));
+
+    if (mentionOpen) {
+      if (event.key === 'ArrowDown') {
+        event.preventDefault();
+        if (mentionOptions.length === 0) return;
+        setMentionState(prev =>
+          prev
+            ? { ...prev, index: (prev.index + 1) % mentionOptions.length }
+            : prev
+        );
+        return;
+      }
+      if (event.key === 'ArrowUp') {
+        event.preventDefault();
+        if (mentionOptions.length === 0) return;
+        setMentionState(prev =>
+          prev
+            ? {
+                ...prev,
+                index: (prev.index - 1 + mentionOptions.length) % mentionOptions.length,
+              }
+            : prev
+        );
+        return;
+      }
+      if (event.key === 'Escape') {
+        event.preventDefault();
+        setMentionState(null);
+        return;
+      }
+      if (
+        (event.key === 'Enter' || event.key === 'Tab') &&
+        mentionOptions.length > 0
+      ) {
+        event.preventDefault();
+        const opt =
+          mentionOptions[
+            Math.min(Math.max(mentionState?.index ?? 0, 0), mentionOptions.length - 1)
+          ];
+        if (opt) insertMention(ideaId, opt);
+        return;
+      }
+    }
+
     // 2 dấu cách liên tiếp → xuống dòng cùng ý
     if (event.key === ' ' || event.key === 'Spacebar') {
       const start = el.selectionStart;
@@ -377,7 +508,7 @@ const WorkNotesView: React.FC = () => {
       if (start === end && start > 0 && value[start - 1] === ' ') {
         event.preventDefault();
         const nextValue = `${value.slice(0, start - 1)}\n${value.slice(end)}`;
-        handleBodyChange(ideaId, nextValue);
+        handleBodyChange(ideaId, nextValue, start);
         requestAnimationFrame(() => {
           const node = textareaRefs.current[ideaId];
           if (!node) return;
@@ -392,6 +523,7 @@ const WorkNotesView: React.FC = () => {
 
     if (event.key === 'Enter') {
       event.preventDefault();
+      setMentionState(null);
       const start = el.selectionStart;
       const end = el.selectionEnd;
       const value = el.value;
@@ -431,6 +563,7 @@ const WorkNotesView: React.FC = () => {
         return;
       }
       event.preventDefault();
+      setMentionState(null);
       const prev = visible[pos - 1];
       persist(notes.filter(n => n.id !== ideaId));
       setFocusIdeaId(prev.id);
@@ -648,7 +781,8 @@ const WorkNotesView: React.FC = () => {
               {activeDeptKey
                 ? 'Đang lọc theo phòng đã chọn'
                 : 'Đang hiện tất cả phòng trong khối'}{' '}
-              · <strong>2 dấu cách</strong> xuống dòng · <strong>Enter</strong> ý mới
+              · <strong>2 dấu cách</strong> xuống dòng · <strong>Enter</strong> ý mới ·{' '}
+              <strong>@</strong> gắn nhân sự
             </Text>
             <label className="inline-flex items-center gap-1.5 text-xs md:text-sm font-semibold text-gray-600 ml-auto cursor-pointer select-none">
               <Checkbox checked={showHidden} onChange={e => setShowHidden(e.target.checked)} />
@@ -718,21 +852,71 @@ const WorkNotesView: React.FC = () => {
                             >
                               −
                             </span>
-                            <textarea
-                              ref={node => {
-                                textareaRefs.current[idea.id] = node;
-                              }}
-                              value={ideaBodyText(idea)}
-                              onChange={e => handleBodyChange(idea.id, e.target.value)}
-                              onKeyDown={e => handleIdeaKeyDown(idea.id, e)}
-                              rows={Math.max(1, idea.lines.length)}
-                              spellCheck={false}
-                              disabled={idea.hidden && !showHidden}
-                              className={`work-notes-idea-input flex-1 min-w-0 resize-none outline-none bg-transparent ${
-                                idea.hidden ? 'line-through text-gray-400' : 'text-gray-900'
-                              }`}
-                              placeholder="Nội dung ghi chú..."
-                            />
+                            <div className="relative flex-1 min-w-0">
+                              <textarea
+                                ref={node => {
+                                  textareaRefs.current[idea.id] = node;
+                                }}
+                                value={ideaBodyText(idea)}
+                                onChange={e =>
+                                  handleBodyChange(
+                                    idea.id,
+                                    e.target.value,
+                                    e.target.selectionStart
+                                  )
+                                }
+                                onSelect={e => {
+                                  const target = e.currentTarget;
+                                  syncMentionFromCaret(
+                                    idea.id,
+                                    target.value,
+                                    target.selectionStart
+                                  );
+                                }}
+                                onBlur={() => {
+                                  window.setTimeout(() => {
+                                    setMentionState(prev =>
+                                      prev?.ideaId === idea.id ? null : prev
+                                    );
+                                  }, 120);
+                                }}
+                                onKeyDown={e => handleIdeaKeyDown(idea.id, e)}
+                                rows={Math.max(1, idea.lines.length)}
+                                spellCheck={false}
+                                disabled={idea.hidden && !showHidden}
+                                className={`work-notes-idea-input w-full min-w-0 resize-none outline-none bg-transparent ${
+                                  idea.hidden ? 'line-through text-gray-400' : 'text-gray-900'
+                                }`}
+                                placeholder="Nội dung ghi chú... (@ để gắn nhân sự)"
+                              />
+                              <PersonnelMentionMenu
+                                open={
+                                  mentionState?.ideaId === idea.id &&
+                                  !(idea.hidden && !showHidden)
+                                }
+                                options={
+                                  mentionState?.ideaId === idea.id ? mentionOptions : []
+                                }
+                                activeIndex={
+                                  mentionState?.ideaId === idea.id
+                                    ? mentionState.index
+                                    : 0
+                                }
+                                onHoverIndex={index =>
+                                  setMentionState(prev =>
+                                    prev?.ideaId === idea.id
+                                      ? { ...prev, index }
+                                      : prev
+                                  )
+                                }
+                                onSelect={option => insertMention(idea.id, option)}
+                                emptyText={
+                                  personnelOptions.length
+                                    ? 'Không khớp nhân sự'
+                                    : 'Chưa có dữ liệu nhân sự'
+                                }
+                              />
+                            </div>
                             {idea.hidden ? (
                               <Button
                                 size="middle"
