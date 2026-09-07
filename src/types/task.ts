@@ -1,3 +1,16 @@
+export type TaskDocLink = {
+  ten: string;
+  link: string;
+};
+
+/** Tin nhắn chat gắn với một công việc (lưu trong jsonb data). */
+export type TaskChatMessage = {
+  id: string;
+  author: string;
+  text: string;
+  createdAt: number;
+};
+
 export type TaskRecord = {
   stt: number;
   kyBaoCao: string;
@@ -16,6 +29,8 @@ export type TaskRecord = {
   tenTaiLieu: string;
   /** Nhiều link tài liệu */
   taiLieuLinks: TaskDocLink[];
+  /** Lịch sử chat của công việc */
+  chatMessages: TaskChatMessage[];
   tienDo: string;
   /** Phần trăm tiến độ công việc (0–100) */
   tienDoPhanTram: number;
@@ -29,9 +44,4 @@ export type TaskRecord = {
   /** Khóa dòng (cột TT) — dùng khi Edit/Delete */
   rowKey?: string | null;
   sourceRow?: Record<string, unknown>;
-};
-
-export type TaskDocLink = {
-  ten: string;
-  link: string;
 };

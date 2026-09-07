@@ -63,6 +63,7 @@ import {
 } from '../services/auxiliaryData';
 import PersonnelMultiSelect from '../components/PersonnelMultiSelect';
 import TaskDocLinksField from '../components/TaskDocLinksField';
+import TaskChatPanel from '../components/TaskChatPanel';
 import { useHeaderToolbar } from '../contexts/HeaderToolbarContext';
 import {
   buildCompleteTaskRow,
@@ -75,6 +76,7 @@ import {
   buildTienDoEditRow,
   isTaskRecordCompleted,
   mapRowsToTasksByDept,
+  normalizeChatMessages,
   normalizeTaiLieuLinks,
   normalizeTienDoForForm,
   primaryTaiLieuLink,
@@ -408,6 +410,7 @@ const TaskView: React.FC = () => {
   const [creatingTask, setCreatingTask] = useState(false);
   const [taskLoading, setTaskLoading] = useState(false);
   const [savingDetail, setSavingDetail] = useState(false);
+  const [sendingChat, setSendingChat] = useState(false);
   const [tienDoModalOpen, setTienDoModalOpen] = useState(false);
   const [savingTienDo, setSavingTienDo] = useState(false);
   const [deletingTaskKey, setDeletingTaskKey] = useState<string | null>(null);
@@ -985,6 +988,7 @@ const TaskView: React.FC = () => {
           canLD: values.canLD as string,
           noiDungCanTacDong: (values.noiDungCanTacDong as string) || '',
           anhHuong: Number(values.anhHuong),
+          chatMessages: normalizeChatMessages(detailTask.chatMessages),
         };
 
         setSavingDetail(true);
@@ -1015,6 +1019,74 @@ const TaskView: React.FC = () => {
       })
       .catch(() => {});
   };
+
+  const handleSendTaskChat = useCallback(
+    async (text: string) => {
+      if (!detailTask || !supabaseConnected) {
+        message.error('Chưa kết nối Supabase.');
+        return;
+      }
+      const activeTable = resolveActiveTable(detailTask.deptKey);
+      if (!activeTable || !detailTask.sourceRow) {
+        message.error('Không xác định được bản ghi để lưu chat.');
+        return;
+      }
+
+      const nextMessage = {
+        id: `chat-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
+        author: 'Anh Tuyển',
+        text: text.trim(),
+        createdAt: Date.now(),
+      };
+      const nextMessages = normalizeChatMessages([
+        ...(detailTask.chatMessages ?? []),
+        nextMessage,
+      ]);
+      const updatedTask: TaskRecord = {
+        ...detailTask,
+        chatMessages: nextMessages,
+      };
+
+      setSendingChat(true);
+      try {
+        const sourceRow = await hydrateSourceRowKey(detailTask.sourceRow, activeTable);
+        if (!hasRowKey(sourceRow, detailTask.rowKey, activeTable)) {
+          message.error('Không tìm thấy khóa TT trên Supabase. F5 tải lại danh sách.');
+          return;
+        }
+        const editRow = buildTaskEditRow(
+          { ...updatedTask, sourceRow, rowKey: detailTask.rowKey },
+          sourceRow,
+          activeTable
+        );
+        await editDataRow(editRow, activeTable);
+
+        setDetailTask(prev =>
+          prev && prev.key === detailTask.key
+            ? { ...prev, chatMessages: nextMessages, sourceRow }
+            : prev
+        );
+        setTasksByDept(prev => {
+          const next = cloneTasksMap(prev);
+          const bucket = next[detailTask.deptKey] ?? {};
+          if (bucket[detailTask.key]) {
+            bucket[detailTask.key] = {
+              ...bucket[detailTask.key],
+              chatMessages: nextMessages,
+              sourceRow,
+            };
+            next[detailTask.deptKey] = bucket;
+          }
+          return next;
+        });
+      } catch (error) {
+        message.error(error instanceof Error ? error.message : 'Không lưu được tin nhắn.');
+      } finally {
+        setSendingChat(false);
+      }
+    },
+    [detailTask, message, resolveActiveTable, supabaseConnected]
+  );
 
   const openTienDoModal = () => {
     if (!detailTask) {
@@ -2180,169 +2252,181 @@ const TaskView: React.FC = () => {
                           );
                         }}
                       </Form.Item>
+
+                      <div className="task-md-center-stack">
+                        <div className="task-md-aside-card task-md-goal-alert">
+                          <InfoCircleOutlined />
+                          <span>Chưa liên kết với mục tiêu / Lựa chọn mục tiêu</span>
+                        </div>
+
+                        <div className="task-md-center-grid">
+                          <div className="task-md-aside-card">
+                            <p className="task-md-aside-label">Người phụ trách</p>
+                            <Form.Item
+                              name="nguoiGiao"
+                              className="mb-0"
+                              rules={[{ required: true, message: 'Chọn người phụ trách' }]}
+                            >
+                              <Select
+                                showSearch
+                                allowClear
+                                optionFilterProp="label"
+                                options={detailAssigneeOptions}
+                                optionLabelProp="value"
+                                size="small"
+                                placeholder="Chọn nhân sự"
+                              />
+                            </Form.Item>
+                          </div>
+
+                          <div className="task-md-aside-card">
+                            <p className="task-md-aside-label">Người liên quan</p>
+                            <Form.Item name="nguoiTheoDoi" className="mb-0">
+                              <PersonnelMultiSelect
+                                options={detailFollowerOptions}
+                                placeholder="Thêm người liên quan"
+                              />
+                            </Form.Item>
+                          </div>
+                        </div>
+
+                        <div className="task-md-aside-card">
+                          <p className="task-md-aside-label">Thời gian</p>
+                          <div className="task-md-time-grid">
+                            <div className="task-md-time-item">
+                              <span className="task-md-meta-label">TG tạo</span>
+                              <p className="task-md-time-value">
+                                {normalizeDisplayDate(selected.ngayGiao) || selected.ngayGiao || '—'}
+                              </p>
+                            </div>
+                            <div className="task-md-time-item">
+                              <span className="task-md-meta-label">TG cập nhật</span>
+                              <p className="task-md-time-value">
+                                {normalizeDisplayDate(selected.ngayGioHoanThanh) ||
+                                  selected.ngayGioHoanThanh ||
+                                  '—'}
+                              </p>
+                            </div>
+                          </div>
+                        </div>
+
+                        <div className="task-md-aside-card">
+                          <p className="task-md-aside-label">Tiến độ & ảnh hưởng</p>
+                          <div className="task-md-progress-block task-md-progress-block--row">
+                            <span className="task-md-progress-caption">
+                              Tiến độ <span className="text-red-500">*</span>
+                            </span>
+                            <Form.Item
+                              shouldUpdate={(prev, next) =>
+                                prev.tienDoPhanTram !== next.tienDoPhanTram
+                              }
+                              noStyle
+                            >
+                              {() => (
+                                <TaskProgressBar
+                                  value={clampProgressPercent(
+                                    detailForm.getFieldValue('tienDoPhanTram')
+                                  )}
+                                  className="task-md-progress-bar-inline"
+                                  showInfo={false}
+                                />
+                              )}
+                            </Form.Item>
+                            <Space.Compact size="small" className="task-md-progress-compact">
+                              <Form.Item
+                                name="tienDoPhanTram"
+                                noStyle
+                                rules={[
+                                  { required: true, message: 'Nhập tiến độ' },
+                                  { type: 'number', min: 0, max: 100, message: '0–100' },
+                                ]}
+                              >
+                                <InputNumber min={0} max={100} controls={false} />
+                              </Form.Item>
+                              <Input
+                                className="task-percent-suffix"
+                                value="%"
+                                readOnly
+                                tabIndex={-1}
+                              />
+                            </Space.Compact>
+                          </div>
+                          <Form.Item
+                            name="anhHuong"
+                            label="Mức ảnh hưởng"
+                            className="mb-0 mt-2"
+                            rules={[{ required: true, message: 'Chọn mức độ' }]}
+                          >
+                            <Select
+                              size="small"
+                              options={[1, 2, 3, 4].map(level => ({
+                                value: level,
+                                label: `${level} sao`,
+                              }))}
+                            />
+                          </Form.Item>
+                        </div>
+
+                        <div className="task-md-aside-card">
+                          <p className="task-md-aside-label">Thông tin khác</p>
+                          <Form.Item name="vuongMac" label="Vướng mắc" className="mb-2">
+                            <Input.TextArea rows={2} placeholder="Vướng mắc cần hỗ trợ..." />
+                          </Form.Item>
+                          <Form.Item name="ketQua" label="Kết quả công việc" className="mb-2">
+                            <Input.TextArea rows={2} placeholder="Kết quả đạt được..." />
+                          </Form.Item>
+                          <p className="task-md-field-caption">Link tài liệu</p>
+                          <div className="mb-2">
+                            <TaskDocLinksField name="taiLieuLinks" size="small" />
+                          </div>
+                          <div className="grid grid-cols-2 gap-x-2">
+                            <Form.Item name="ngayGiao" label="Ngày giao" className="mb-2">
+                              <DatePicker className="w-full" format="DD/MM/YYYY" size="small" />
+                            </Form.Item>
+                            <Form.Item name="canLD" label="Cần LĐ tác động" className="mb-2">
+                              <Select
+                                size="small"
+                                options={[
+                                  { value: 'Không', label: 'Không' },
+                                  { value: 'Có', label: 'Có' },
+                                ]}
+                              />
+                            </Form.Item>
+                          </div>
+                          <Form.Item
+                            name="noiDungCanTacDong"
+                            label="Nội dung cần tác động"
+                            className="mb-2"
+                          >
+                            <Input.TextArea
+                              rows={2}
+                              placeholder="Mô tả nội dung cần lãnh đạo tác động..."
+                            />
+                          </Form.Item>
+                          <p className="task-md-field-caption">Gia hạn</p>
+                          <div className="grid grid-cols-3 gap-x-2">
+                            <Form.Item name="giaHan1" label="GH 1" className="mb-0">
+                              <DatePicker className="w-full" format="DD/MM/YYYY" size="small" />
+                            </Form.Item>
+                            <Form.Item name="giaHan2" label="GH 2" className="mb-0">
+                              <DatePicker className="w-full" format="DD/MM/YYYY" size="small" />
+                            </Form.Item>
+                            <Form.Item name="giaHan3" label="GH 3" className="mb-0">
+                              <DatePicker className="w-full" format="DD/MM/YYYY" size="small" />
+                            </Form.Item>
+                          </div>
+                        </div>
+                      </div>
                     </div>
                   </div>
 
-                  <aside className="task-md-aside">
-                    <div className="task-md-aside-card task-md-goal-alert">
-                      <InfoCircleOutlined />
-                      <span>Chưa liên kết với mục tiêu / Lựa chọn mục tiêu</span>
-                    </div>
-
-                    <div className="task-md-aside-card">
-                      <p className="task-md-aside-label">Người phụ trách</p>
-                      <Form.Item
-                        name="nguoiGiao"
-                        className="mb-0"
-                        rules={[{ required: true, message: 'Chọn người phụ trách' }]}
-                      >
-                        <Select
-                          showSearch
-                          allowClear
-                          optionFilterProp="label"
-                          options={detailAssigneeOptions}
-                          optionLabelProp="value"
-                          size="small"
-                          placeholder="Chọn nhân sự"
-                        />
-                      </Form.Item>
-                    </div>
-
-                    <div className="task-md-aside-card">
-                      <p className="task-md-aside-label">Người liên quan</p>
-                      <Form.Item name="nguoiTheoDoi" className="mb-0">
-                        <PersonnelMultiSelect
-                          options={detailFollowerOptions}
-                          placeholder="Thêm người liên quan"
-                        />
-                      </Form.Item>
-                    </div>
-
-                    <div className="task-md-aside-card">
-                      <p className="task-md-aside-label">Thời gian</p>
-                      <div className="task-md-time-grid">
-                        <div className="task-md-time-item">
-                          <span className="task-md-meta-label">TG tạo</span>
-                          <p className="task-md-time-value">
-                            {normalizeDisplayDate(selected.ngayGiao) || selected.ngayGiao || '—'}
-                          </p>
-                        </div>
-                        <div className="task-md-time-item">
-                          <span className="task-md-meta-label">TG cập nhật</span>
-                          <p className="task-md-time-value">
-                            {normalizeDisplayDate(selected.ngayGioHoanThanh) ||
-                              selected.ngayGioHoanThanh ||
-                              '—'}
-                          </p>
-                        </div>
-                      </div>
-                    </div>
-
-                    <div className="task-md-aside-card">
-                      <p className="task-md-aside-label">Tiến độ & ảnh hưởng</p>
-                      <div className="task-md-progress-block task-md-progress-block--row">
-                        <span className="task-md-progress-caption">
-                          Tiến độ <span className="text-red-500">*</span>
-                        </span>
-                        <Form.Item
-                          shouldUpdate={(prev, next) => prev.tienDoPhanTram !== next.tienDoPhanTram}
-                          noStyle
-                        >
-                          {() => (
-                            <TaskProgressBar
-                              value={clampProgressPercent(detailForm.getFieldValue('tienDoPhanTram'))}
-                              className="task-md-progress-bar-inline"
-                              showInfo={false}
-                            />
-                          )}
-                        </Form.Item>
-                        <Space.Compact size="small" className="task-md-progress-compact">
-                          <Form.Item
-                            name="tienDoPhanTram"
-                            noStyle
-                            rules={[
-                              { required: true, message: 'Nhập tiến độ' },
-                              { type: 'number', min: 0, max: 100, message: '0–100' },
-                            ]}
-                          >
-                            <InputNumber min={0} max={100} controls={false} />
-                          </Form.Item>
-                          <Input className="task-percent-suffix" value="%" readOnly tabIndex={-1} />
-                        </Space.Compact>
-                      </div>
-                      <Form.Item
-                        name="anhHuong"
-                        label="Mức ảnh hưởng"
-                        className="mb-0 mt-2"
-                        rules={[{ required: true, message: 'Chọn mức độ' }]}
-                      >
-                        <Select
-                          size="small"
-                          options={[1, 2, 3, 4].map(level => ({
-                            value: level,
-                            label: `${level} sao`,
-                          }))}
-                        />
-                      </Form.Item>
-                    </div>
-
-                    <div className="task-md-aside-card">
-                      <p className="task-md-aside-label">Thông tin khác</p>
-                      <Form.Item name="vuongMac" label="Vướng mắc" className="mb-2">
-                        <Input.TextArea rows={2} placeholder="Vướng mắc cần hỗ trợ..." />
-                      </Form.Item>
-                      <Form.Item name="ketQua" label="Kết quả công việc" className="mb-2">
-                        <Input.TextArea rows={2} placeholder="Kết quả đạt được..." />
-                      </Form.Item>
-                      <p className="task-md-field-caption">Link tài liệu</p>
-                      <div className="mb-2">
-                        <TaskDocLinksField name="taiLieuLinks" size="small" />
-                      </div>
-                      <div className="grid grid-cols-2 gap-x-2">
-                        <Form.Item name="ngayGiao" label="Ngày giao" className="mb-2">
-                          <DatePicker className="w-full" format="DD/MM/YYYY" size="small" />
-                        </Form.Item>
-                        <Form.Item name="canLD" label="Cần LĐ tác động" className="mb-2">
-                          <Select
-                            size="small"
-                            options={[
-                              { value: 'Không', label: 'Không' },
-                              { value: 'Có', label: 'Có' },
-                            ]}
-                          />
-                        </Form.Item>
-                      </div>
-                      <Form.Item
-                        name="noiDungCanTacDong"
-                        label="Nội dung cần tác động"
-                        className="mb-2"
-                      >
-                        <Input.TextArea
-                          rows={2}
-                          placeholder="Mô tả nội dung cần lãnh đạo tác động..."
-                        />
-                      </Form.Item>
-                      <p className="task-md-field-caption">Gia hạn</p>
-                      <div className="grid grid-cols-3 gap-x-2">
-                        <Form.Item name="giaHan1" label="GH 1" className="mb-0">
-                          <DatePicker className="w-full" format="DD/MM/YYYY" size="small" />
-                        </Form.Item>
-                        <Form.Item name="giaHan2" label="GH 2" className="mb-0">
-                          <DatePicker className="w-full" format="DD/MM/YYYY" size="small" />
-                        </Form.Item>
-                        <Form.Item name="giaHan3" label="GH 3" className="mb-0">
-                          <DatePicker className="w-full" format="DD/MM/YYYY" size="small" />
-                        </Form.Item>
-                      </div>
-                    </div>
-
-                    <div className="task-md-aside-card">
-                      <p className="task-md-aside-label">Lịch sử hoạt động</p>
-                      <div className="task-md-activity-empty">
-                        Chưa có lịch sử hoạt động cho công việc này.
-                      </div>
-                    </div>
-                  </aside>
+                  <TaskChatPanel
+                    messages={normalizeChatMessages(selected.chatMessages)}
+                    sending={sendingChat}
+                    disabled={!supabaseConnected}
+                    onSend={handleSendTaskChat}
+                    personInitial={personInitial}
+                  />
                 </div>
                 )}
               </Form>

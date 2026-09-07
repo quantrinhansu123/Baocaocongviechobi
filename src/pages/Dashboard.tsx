@@ -71,6 +71,7 @@ import {
   hydrateSourceRowKey,
   normalizeTaiLieuLinks,
   normalizeTienDoForForm,
+  parseChatMessagesFromRow,
   primaryTaiLieuLink,
   TIEN_DO_EDIT_OPTIONS,
 } from '../services/taskData';
@@ -541,6 +542,9 @@ const Dashboard: React.FC = () => {
           canLD: (values.canLD as string) || 'Không',
           noiDungCanTacDong: (values.noiDungCanTacDong as string) || '',
           anhHuong: Number(values.anhHuong) || 1,
+          chatMessages: selectedTask.sourceRow
+            ? parseChatMessagesFromRow(selectedTask.sourceRow)
+            : [],
           rowKey: selectedTask.rowKey,
           sourceRow: selectedTask.sourceRow,
         };

@@ -7,7 +7,7 @@ import {
   TASK_ROW_KEY_COLUMN,
 } from './rowKey';
 import { ORG_BLOCKS } from '../data/orgBlocks';
-import type { TaskDocLink, TaskRecord } from '../types/task';
+import type { TaskChatMessage, TaskDocLink, TaskRecord } from '../types/task';
 import {
   formatRecordDate,
   formatUnknownAsDisplayDate,
@@ -191,8 +191,61 @@ const NOI_DUNG_CAN_TAC_DONG_KEYS = [
   'noiDungCanTacDong',
   'NoiDungCanTacDong',
 ];
+const CHAT_MESSAGES_KEYS = [
+  'LỊCH SỬ CHAT',
+  'Lịch sử chat',
+  'Lich su chat',
+  'chatMessages',
+  'ChatMessages',
+  'CHAT',
+];
 
 export { hasRowKey, pickRowKey, TASK_ROW_KEY_COLUMN } from './rowKey';
+
+export function normalizeChatMessages(
+  messages: Array<Partial<TaskChatMessage> | null | undefined> | null | undefined
+): TaskChatMessage[] {
+  if (!Array.isArray(messages)) return [];
+  return messages
+    .map(item => {
+      if (!item || typeof item !== 'object') return null;
+      const text = String(item.text ?? '').trim();
+      if (!text) return null;
+      const createdAt = Number(item.createdAt);
+      return {
+        id:
+          typeof item.id === 'string' && item.id
+            ? item.id
+            : `chat-${createdAt || Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
+        author: String(item.author ?? '').trim() || 'Người dùng',
+        text,
+        createdAt: Number.isFinite(createdAt) && createdAt > 0 ? createdAt : Date.now(),
+      } satisfies TaskChatMessage;
+    })
+    .filter((item): item is TaskChatMessage => Boolean(item))
+    .sort((a, b) => a.createdAt - b.createdAt);
+}
+
+export function parseChatMessagesFromRow(row: Record<string, unknown>): TaskChatMessage[] {
+  const raw = pickField(row, CHAT_MESSAGES_KEYS);
+  if (!raw) return [];
+  try {
+    const parsed = JSON.parse(raw) as unknown;
+    if (Array.isArray(parsed)) {
+      return normalizeChatMessages(parsed as Array<Partial<TaskChatMessage>>);
+    }
+  } catch {
+    // ignore
+  }
+  return [];
+}
+
+function applyChatMessagesToRow(
+  row: Record<string, unknown>,
+  messagesInput?: TaskChatMessage[] | null
+): void {
+  row['LỊCH SỬ CHAT'] = JSON.stringify(normalizeChatMessages(messagesInput));
+}
 
 export function normalizeTaiLieuLinks(
   links: Array<{ ten?: string; link?: string } | null | undefined> | null | undefined
@@ -774,6 +827,7 @@ export function mapRowToTaskRecord(
       linkKQ: primaryLink.link,
       tenTaiLieu: primaryLink.ten,
       taiLieuLinks,
+      chatMessages: parseChatMessagesFromRow(row),
       tienDo: tienDoVal,
       tienDoPhanTram: isCompleted ? Math.max(pickTienDoPhanTram(row), 100) : pickTienDoPhanTram(row),
       trangThai: trangThaiVal,
@@ -872,6 +926,7 @@ export function buildTaskEditRow(
         ? [{ ten: task.tenTaiLieu || '', link: task.linkKQ || '' }]
         : []
   );
+  applyChatMessagesToRow(row, task.chatMessages);
   row['VƯỚNG MẮC'] = task.vuongMac;
   row['CẦN LĐ TÁC ĐỘNG'] = task.canLD.trim() || 'Không';
   row['NỘI DUNG CẦN TÁC ĐỘNG'] = (task.noiDungCanTacDong || '').trim();
