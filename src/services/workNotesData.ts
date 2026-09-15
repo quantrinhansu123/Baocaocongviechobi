@@ -1,4 +1,4 @@
-import { addDataRow, deleteDataRow, editDataRow, findDataRows } from './dataApi';
+import { addDataRow, deleteDataRow, findDataRows } from './dataApi';
 
 export const TABLE_GHI_CHU_PHONG_BAN = 'Ghi chú phòng ban';
 export const TABLE_GHI_CHU_CHUNG = 'Ghi chú chung';
@@ -94,59 +94,62 @@ export async function loadGeneralNotesFromSupabase(): Promise<GeneralNoteIdea[]>
     .sort((a, b) => a.createdAt - b.createdAt);
 }
 
-async function upsertRows(
-  table: string,
-  localRows: Record<string, unknown>[],
-  remoteIds: Set<string>
-) {
+/** Ghi từng dòng bằng upsert (onConflict id) — tránh lỗi duplicate key khi sync song song. */
+async function upsertAllRows(table: string, localRows: Record<string, unknown>[]) {
   for (const row of localRows) {
     const id = String(row.id ?? '').trim();
     if (!id) continue;
-    if (remoteIds.has(id)) {
-      await editDataRow(row, table);
-    } else {
-      await addDataRow(row, table);
-      remoteIds.add(id);
-    }
+    await addDataRow(row, table);
   }
+}
+
+let workNotesSyncChain: Promise<void> = Promise.resolve();
+let generalNotesSyncChain: Promise<void> = Promise.resolve();
+
+function enqueueSync(chain: Promise<void>, run: () => Promise<void>): Promise<void> {
+  return chain.then(run, run);
 }
 
 export async function syncWorkNotesToSupabase(notes: WorkNoteIdea[]): Promise<void> {
-  const result = await findDataRows({ table: TABLE_GHI_CHU_PHONG_BAN });
-  const remoteIds = new Set(
-    result.rows.map(row => String(row.id ?? row.key ?? '').trim()).filter(Boolean)
-  );
-  const localIds = new Set(notes.map(note => note.id));
+  const run = async () => {
+    const result = await findDataRows({ table: TABLE_GHI_CHU_PHONG_BAN });
+    const remoteIds = new Set(
+      result.rows.map(row => String(row.id ?? row.key ?? '').trim()).filter(Boolean)
+    );
+    const localIds = new Set(notes.map(note => note.id));
 
-  for (const id of remoteIds) {
-    if (!localIds.has(id)) {
-      await deleteDataRow({ id }, TABLE_GHI_CHU_PHONG_BAN);
+    for (const id of remoteIds) {
+      if (!localIds.has(id)) {
+        await deleteDataRow({ id }, TABLE_GHI_CHU_PHONG_BAN);
+      }
     }
-  }
 
-  await upsertRows(
-    TABLE_GHI_CHU_PHONG_BAN,
-    notes.map(workNoteToRow),
-    remoteIds
-  );
+    await upsertAllRows(TABLE_GHI_CHU_PHONG_BAN, notes.map(workNoteToRow));
+  };
+
+  const next = enqueueSync(workNotesSyncChain, run);
+  workNotesSyncChain = next.catch(() => undefined);
+  await next;
 }
 
 export async function syncGeneralNotesToSupabase(notes: GeneralNoteIdea[]): Promise<void> {
-  const result = await findDataRows({ table: TABLE_GHI_CHU_CHUNG });
-  const remoteIds = new Set(
-    result.rows.map(row => String(row.id ?? row.key ?? '').trim()).filter(Boolean)
-  );
-  const localIds = new Set(notes.map(note => note.id));
+  const run = async () => {
+    const result = await findDataRows({ table: TABLE_GHI_CHU_CHUNG });
+    const remoteIds = new Set(
+      result.rows.map(row => String(row.id ?? row.key ?? '').trim()).filter(Boolean)
+    );
+    const localIds = new Set(notes.map(note => note.id));
 
-  for (const id of remoteIds) {
-    if (!localIds.has(id)) {
-      await deleteDataRow({ id }, TABLE_GHI_CHU_CHUNG);
+    for (const id of remoteIds) {
+      if (!localIds.has(id)) {
+        await deleteDataRow({ id }, TABLE_GHI_CHU_CHUNG);
+      }
     }
-  }
 
-  await upsertRows(
-    TABLE_GHI_CHU_CHUNG,
-    notes.map(generalNoteToRow),
-    remoteIds
-  );
+    await upsertAllRows(TABLE_GHI_CHU_CHUNG, notes.map(generalNoteToRow));
+  };
+
+  const next = enqueueSync(generalNotesSyncChain, run);
+  generalNotesSyncChain = next.catch(() => undefined);
+  await next;
 }

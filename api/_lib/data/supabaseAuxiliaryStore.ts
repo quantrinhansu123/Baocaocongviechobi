@@ -64,7 +64,10 @@ export async function addSupabaseAuxiliaryRows(
   const supabase = getSupabaseClient();
   const payload = rows.map(recordToDb);
 
-  const { data, error } = await supabase.from(table).insert(payload).select('id,data');
+  const { data, error } = await supabase
+    .from(table)
+    .upsert(payload, { onConflict: 'id' })
+    .select('id,data');
   if (error) {
     throwSupabaseError(error.message, table);
   }
