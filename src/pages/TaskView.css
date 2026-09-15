@@ -875,12 +875,70 @@
   align-self: stretch;
 }
 
-.task-md-chat-bubble {
-  background: #fff;
-  border: 1px solid #e2e8f0;
-  border-radius: 10px;
-  padding: 8px 10px;
-  box-shadow: 0 1px 2px rgba(15, 39, 77, 0.04);
+.task-md-chat-bubble.is-mentioned {
+  background: #fff7f7;
+  border-color: #fecaca;
+  box-shadow: inset 3px 0 0 #ef4444;
+}
+
+.task-md-chat-mention {
+  color: #dc2626;
+  font-weight: 800;
+  background: #fef2f2;
+  border-radius: 4px;
+  padding: 0 3px;
+}
+
+.task-md-chat-mention.is-self {
+  background: #fee2e2;
+  color: #b91c1c;
+}
+
+.task-md-chat-mention-flag {
+  margin-left: auto;
+  display: inline-flex;
+  align-items: center;
+  flex-shrink: 0;
+  padding: 1px 7px;
+  border-radius: 999px;
+  background: #ef4444;
+  color: #fff;
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.02em;
+  line-height: 1.4;
+}
+
+.task-md-chat-alert {
+  flex-shrink: 0;
+  margin: 8px 10px 0;
+  padding: 6px 10px;
+  border-radius: 8px;
+  background: #fef2f2;
+  border: 1px solid #fecaca;
+  color: #b91c1c;
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.task-md-chat-mention-dock {
+  flex: 0 0 auto;
+  padding: 0 10px 4px;
+}
+
+.task-md-chat-mention-dock .work-notes-mention-menu {
+  position: relative;
+  top: auto;
+  left: auto;
+  right: auto;
+  max-height: min(42vh, 320px);
+  box-shadow: 0 -8px 22px rgba(15, 39, 77, 0.12);
+}
+
+.task-md-chat-tab-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
 }
 
 .task-md-chat-bubble-top {

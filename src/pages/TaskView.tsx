@@ -55,7 +55,8 @@ import {
 import { addDataRow, deleteDataRow, editDataRow, findDataRows } from '../services/dataApi';
 import { invalidateDashboardTasksCache } from '../services/dashboardData';
 import {
-  loadPersonnelSelectOptions,
+  loadPersonnel,
+  personnelToSelectOptions,
   mergePersonnelOption,
   mergePersonnelOptions,
   type PersonnelSelectOption,
@@ -63,6 +64,7 @@ import {
 import PersonnelMultiSelect from '../components/PersonnelMultiSelect';
 import TaskDocLinksField from '../components/TaskDocLinksField';
 import TaskChatPanel from '../components/TaskChatPanel';
+import { textMentionsName } from '../components/PersonnelMentionMenu';
 import { useHeaderToolbar } from '../contexts/HeaderToolbarContext';
 import {
   buildCompleteTaskRow,
@@ -86,6 +88,7 @@ import {
 import { TASK_COMPLETED_STATUS_LABEL } from '../utils/taskDate';
 
 const { Text } = Typography;
+const TASK_CHAT_AUTHOR = 'Anh Tuyển';
 
 // ─── GENERATE 52 TUẦN ────────────────────────────────────────────────────────
 const generateWeeks = () => {
@@ -420,6 +423,7 @@ const TaskView: React.FC = () => {
   const [tienDoDraft, setTienDoDraft] = useState('Chưa bắt đầu');
   const [supabaseConnected, setSupabaseConnected] = useState<boolean | null>(null);
   const [personnelOptions, setPersonnelOptions] = useState<PersonnelSelectOption[]>([]);
+  const [mentionPersonnel, setMentionPersonnel] = useState<PersonnelSelectOption[]>([]);
   const [form] = Form.useForm();
   const [detailForm] = Form.useForm();
   const [filterStatus, setFilterStatus] = useState('all');
@@ -446,12 +450,17 @@ const TaskView: React.FC = () => {
 
   useEffect(() => {
     let cancelled = false;
-    void loadPersonnelSelectOptions()
-      .then(options => {
-        if (!cancelled) setPersonnelOptions(options);
+    void loadPersonnel()
+      .then(rows => {
+        if (cancelled) return;
+        setPersonnelOptions(personnelToSelectOptions(rows));
+        setMentionPersonnel(personnelToSelectOptions(rows, { includeLeft: true }));
       })
       .catch(() => {
-        if (!cancelled) setPersonnelOptions([]);
+        if (!cancelled) {
+          setPersonnelOptions([]);
+          setMentionPersonnel([]);
+        }
       });
     return () => {
       cancelled = true;
@@ -466,6 +475,17 @@ const TaskView: React.FC = () => {
   const detailFollowerOptions = useMemo(
     () => mergePersonnelOptions(personnelOptions, detailTask?.nguoiTheoDoi),
     [personnelOptions, detailTask?.nguoiTheoDoi]
+  );
+
+  const chatMentionPeople = useMemo(
+    () =>
+      mergePersonnelOptions(
+        mentionPersonnel.length ? mentionPersonnel : personnelOptions,
+        [detailTask?.nguoiGiao, ...(detailTask?.nguoiTheoDoi ?? []), TASK_CHAT_AUTHOR].filter(
+          (name): name is string => Boolean(name && name.trim())
+        )
+      ),
+    [mentionPersonnel, personnelOptions, detailTask?.nguoiGiao, detailTask?.nguoiTheoDoi]
   );
 
   useEffect(() => {
@@ -1035,7 +1055,7 @@ const TaskView: React.FC = () => {
 
       const nextMessage = {
         id: `chat-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
-        author: 'Anh Tuyển',
+        author: TASK_CHAT_AUTHOR,
         text: text.trim(),
         createdAt: Date.now(),
       };
@@ -1654,6 +1674,9 @@ const TaskView: React.FC = () => {
   const useFloatingChat =
     isMobileDetail || screens.xl === false || screens.xl === undefined;
   const chatCount = normalizeChatMessages(selected?.chatMessages).length;
+  const chatMentionCount = normalizeChatMessages(selected?.chatMessages).filter(
+    msg => msg.author !== TASK_CHAT_AUTHOR && textMentionsName(msg.text, TASK_CHAT_AUTHOR)
+  ).length;
 
   useEffect(() => {
     if (!selected) {
@@ -2398,7 +2421,19 @@ const TaskView: React.FC = () => {
                         items={[
                           {
                             key: 'chat',
-                            label: 'Trao đổi',
+                            label: (
+                              <span className="task-md-chat-tab-label">
+                                Trao đổi
+                                {chatMentionCount > 0 ? (
+                                  <Badge
+                                    count={chatMentionCount}
+                                    overflowCount={99}
+                                    size="small"
+                                    color="#ef4444"
+                                  />
+                                ) : null}
+                              </span>
+                            ),
                             children: (
                               <TaskChatPanel
                                 messages={normalizeChatMessages(selected.chatMessages)}
@@ -2406,6 +2441,8 @@ const TaskView: React.FC = () => {
                                 disabled={!supabaseConnected}
                                 onSend={handleSendTaskChat}
                                 personInitial={personInitial}
+                                mentionPeople={chatMentionPeople}
+                                currentUserName={TASK_CHAT_AUTHOR}
                                 hideHead
                                 className="task-md-chat--rail"
                               />
@@ -2464,7 +2501,13 @@ const TaskView: React.FC = () => {
           onClick={() => setChatDrawerOpen(true)}
           aria-label="Mở chat công việc"
         >
-          <Badge count={chatCount} overflowCount={99} size="small" offset={[-2, 2]}>
+          <Badge
+            count={chatMentionCount > 0 ? chatMentionCount : chatCount}
+            overflowCount={99}
+            size="small"
+            offset={[-2, 2]}
+            color={chatMentionCount > 0 ? '#ef4444' : '#64748b'}
+          >
             <span className="task-chat-fab-icon">
               <MessageOutlined />
             </span>
@@ -2474,7 +2517,11 @@ const TaskView: React.FC = () => {
       ) : null}
       {selected && useFloatingChat ? (
           <Drawer
-            title={`Chat công việc${chatCount ? ` · ${chatCount} tin` : ''}`}
+            title={
+              chatMentionCount > 0
+                ? `Chat công việc · ${chatMentionCount} tin gắn bạn`
+                : `Chat công việc${chatCount ? ` · ${chatCount} tin` : ''}`
+            }
             placement={isMobileDetail ? 'bottom' : 'right'}
             open={chatDrawerOpen}
             onClose={() => setChatDrawerOpen(false)}
@@ -2492,6 +2539,8 @@ const TaskView: React.FC = () => {
               disabled={!supabaseConnected}
               onSend={handleSendTaskChat}
               personInitial={personInitial}
+              mentionPeople={chatMentionPeople}
+              currentUserName={TASK_CHAT_AUTHOR}
               className="task-md-chat--drawer"
             />
           </Drawer>

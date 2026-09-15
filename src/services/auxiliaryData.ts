@@ -166,13 +166,13 @@ export async function loadAdminUsers(): Promise<AdminUser[]> {
 function mapPersonnelRow(row: Record<string, unknown>): PersonnelRecord {
   return {
     key: pickField(row, ['id', 'key']),
-    name: pickField(row, ['name', 'Tên', 'Họ tên']),
+    name: pickField(row, ['name', 'Tên', 'Họ tên', 'Họ và tên', 'hoten', 'ho_ten']),
     department: pickField(row, ['department', 'Phòng ban']),
     position: pickField(row, ['position', 'Chức vụ']),
     email: pickField(row, ['email', 'Email']),
     phone: pickField(row, ['phone', 'SĐT', 'Điện thoại']),
     status: pickField(row, ['status', 'Trạng thái']) || 'Đang làm',
-    joinDate: pickField(row, ['joinDate', 'Ngày vào làm']),
+    joinDate: pickField(row, ['joinDate', 'Ngày vào làm', 'Ngày vào']),
   };
 }
 
@@ -201,18 +201,24 @@ export type PersonnelSelectOption = {
   description?: string;
 };
 
-/** Options sổ xuống Người phụ trách — value/label = họ tên (chỉ hiện tên khi chọn). */
-export async function loadPersonnelSelectOptions(): Promise<PersonnelSelectOption[]> {
-  const rows = await loadPersonnel();
-  const seen = new Set<string>();
+export function personnelToSelectOptions(
+  rows: PersonnelRecord[],
+  opts?: { includeLeft?: boolean }
+): PersonnelSelectOption[] {
   const options: PersonnelSelectOption[] = [];
+  const seen = new Set<string>();
 
   for (const row of rows) {
     const name = row.name.trim();
-    if (!name || seen.has(name)) continue;
-    if (row.status === 'Đã nghỉ') continue;
-    seen.add(name);
-    const description = [row.position, row.department].filter(Boolean).join(' · ');
+    if (!name) continue;
+    if (!opts?.includeLeft && row.status === 'Đã nghỉ') continue;
+    if (!opts?.includeLeft) {
+      if (seen.has(name)) continue;
+      seen.add(name);
+    }
+    const description = [row.position, row.department, row.status === 'Đã nghỉ' ? 'Đã nghỉ' : '']
+      .filter(Boolean)
+      .join(' · ');
     options.push({
       value: name,
       label: name,
@@ -220,7 +226,15 @@ export async function loadPersonnelSelectOptions(): Promise<PersonnelSelectOptio
     });
   }
 
-  return options.sort((a, b) => a.value.localeCompare(b.value, 'vi'));
+  return options.sort((a, b) => a.label.localeCompare(b.label, 'vi'));
+}
+
+/** Options sổ xuống Người phụ trách — value/label = họ tên (chỉ hiện tên khi chọn). */
+export async function loadPersonnelSelectOptions(opts?: {
+  includeLeft?: boolean;
+}): Promise<PersonnelSelectOption[]> {
+  const rows = await loadPersonnel();
+  return personnelToSelectOptions(rows, opts);
 }
 
 export function mergePersonnelOption(
