@@ -1,4 +1,4 @@
-import React, { Suspense, lazy, useEffect, useMemo, useState } from 'react';
+import React, { Suspense, lazy, useEffect, useMemo, useRef, useState } from 'react';
 import { Layout, Badge, Avatar, Dropdown, Space, Drawer, Menu, Spin } from 'antd';
 import type { MenuProps } from 'antd';
 import {
@@ -121,6 +121,12 @@ function sidebarOpenKeys(pathname: string): string[] {
   return ['/tasks'];
 }
 
+function isClickOnNestedMenuItem(domEvent?: { target?: EventTarget | null }): boolean {
+  const target = domEvent?.target;
+  if (!(target instanceof Element)) return false;
+  return Boolean(target.closest('.ant-menu-item'));
+}
+
 const MainLayout: React.FC = () => {
   return (
     <HeaderToolbarProvider>
@@ -140,6 +146,7 @@ const MainLayoutInner: React.FC = () => {
   }); // Desktop Sider — iPad mặc định thu gọn
   const [menuOpenKeys, setMenuOpenKeys] = useState<string[]>(['/tasks']);
   const [incompleteByDept, setIncompleteByDept] = useState<Record<string, number>>({});
+  const skipBlockTitleNavRef = useRef(false);
 
   useEffect(() => {
     const mq = window.matchMedia('(max-width: 1199px)');
@@ -217,17 +224,36 @@ const MainLayoutInner: React.FC = () => {
           return {
             key: blockPath,
             label: renderMenuLabelWithCount(block.label, blockCount),
-            onTitleClick: () => {
+            onTitleClick: ({ domEvent }) => {
+              if (skipBlockTitleNavRef.current) return;
+              if (isClickOnNestedMenuItem(domEvent)) return;
+              const target = (domEvent?.target as Element | undefined) ?? null;
+              if (target?.closest('.ant-menu-submenu-arrow')) return;
               navigate(blockPath);
               setMenuOpenKeys(previousKeys =>
                 Array.from(new Set([...previousKeys, '/tasks', blockPath]))
               );
               setMobileMenuOpen(false);
             },
-            children: block.depts.map(dept => ({
-              key: `/tasks/${block.key}/${dept.key}`,
-              label: renderMenuLabelWithCount(dept.label, incompleteByDept[dept.key] ?? 0),
-            })),
+            children: block.depts.map(dept => {
+              const deptPath = `/tasks/${block.key}/${dept.key}`;
+              return {
+                key: deptPath,
+                label: renderMenuLabelWithCount(dept.label, incompleteByDept[dept.key] ?? 0),
+                onClick: ({ domEvent }) => {
+                  skipBlockTitleNavRef.current = true;
+                  window.setTimeout(() => {
+                    skipBlockTitleNavRef.current = false;
+                  }, 50);
+                  domEvent.stopPropagation();
+                  navigate(deptPath);
+                  setMenuOpenKeys(previousKeys =>
+                    Array.from(new Set([...previousKeys, '/tasks', blockPath]))
+                  );
+                  setMobileMenuOpen(false);
+                },
+              };
+            }),
           };
         }),
       },
@@ -285,28 +311,36 @@ const MainLayoutInner: React.FC = () => {
     setMenuOpenKeys(keys as string[]);
   };
 
-  const handleMenuClick: MenuProps['onClick'] = ({ key }) => {
-    if (key === '/') {
+  const handleMenuClick: MenuProps['onClick'] = ({ key, keyPath }) => {
+    const clickedKey = String(keyPath?.[0] || key);
+    if (clickedKey === '/') {
       navigate('/');
       setMobileMenuOpen(false);
       return;
     }
-    if (key === '/tasks' || key.startsWith('/tasks/')) {
-      navigate(key);
+    if (clickedKey === '/tasks' || clickedKey.startsWith('/tasks/')) {
+      const parts = clickedKey.split('/').filter(Boolean);
+      if (parts.length >= 3) {
+        skipBlockTitleNavRef.current = true;
+        window.setTimeout(() => {
+          skipBlockTitleNavRef.current = false;
+        }, 50);
+      }
+      navigate(clickedKey);
       setMobileMenuOpen(false);
       return;
     }
-    if (key === '/general-notes') {
+    if (clickedKey === '/general-notes') {
       navigate('/general-notes');
       setMobileMenuOpen(false);
       return;
     }
-    if (key === '/work-notes') {
+    if (clickedKey === '/work-notes') {
       navigate('/work-notes');
       setMobileMenuOpen(false);
       return;
     }
-    if (key === '/personnel') {
+    if (clickedKey === '/personnel') {
       navigate('/personnel');
       setMobileMenuOpen(false);
     }
@@ -329,6 +363,12 @@ const MainLayoutInner: React.FC = () => {
     location.pathname === '/general-notes';
   const showTopicLinks =
     location.pathname === '/' || location.pathname.startsWith('/tasks');
+  const tasksMenuClassName = [
+    'border-none sidebar-report-menu sidebar-tasks-menu',
+    activeDeptKey ? 'is-dept-scope' : activeBlockKey ? 'is-block-scope' : '',
+  ]
+    .filter(Boolean)
+    .join(' ');
 
   return (
     <MobileShellProvider openMenu={() => setMobileMenuOpen(true)}>
@@ -392,7 +432,7 @@ const MainLayoutInner: React.FC = () => {
               items={tasksMenuItems}
               onClick={handleMenuClick}
               inlineIndent={14}
-              className="border-none sidebar-report-menu sidebar-tasks-menu"
+              className={tasksMenuClassName}
             />
           </div>
         </div>
@@ -462,7 +502,7 @@ const MainLayoutInner: React.FC = () => {
               </Link>
               {TASK_MENU_TREE.map(block => {
                 const href = `/tasks/${block.key}`;
-                const active = activeBlockKey === block.key;
+                const active = activeBlockKey === block.key && !activeDeptKey;
                 return (
                   <Link
                     key={block.key}
@@ -566,7 +606,7 @@ const MainLayoutInner: React.FC = () => {
               items={tasksMenuItems}
               onClick={handleMenuClick}
               inlineIndent={14}
-              className="border-none sidebar-report-menu sidebar-tasks-menu"
+              className={tasksMenuClassName}
               style={{ backgroundColor: 'transparent' }}
             />
           </div>

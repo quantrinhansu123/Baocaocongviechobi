@@ -320,15 +320,15 @@
     color: #ffffff !important;
 }
 
-/* Khối đang xem (tổng khối): nổi cam rõ hơn so với chỉ đang mở */
-.sidebar-report-menu.ant-menu-dark .ant-menu-sub .ant-menu-submenu-selected > .ant-menu-submenu-title {
+/* Khối đang xem (tổng khối): chỉ khi đang xem cả khối, không khi đang xem 1 phòng */
+.sidebar-tasks-menu.is-block-scope.ant-menu-dark .ant-menu-sub .ant-menu-submenu-selected > .ant-menu-submenu-title {
     background: #f38320 !important;
     color: #ffffff !important;
     font-weight: 800;
     box-shadow: inset 3px 0 0 #ffffff;
 }
 
-.sidebar-report-menu.ant-menu-dark .ant-menu-sub .ant-menu-submenu-selected > .ant-menu-submenu-title .sidebar-menu-count-badge {
+.sidebar-tasks-menu.is-block-scope.ant-menu-dark .ant-menu-sub .ant-menu-submenu-selected > .ant-menu-submenu-title .sidebar-menu-count-badge {
     background: #ffffff !important;
     color: #f38320 !important;
     border: 1px solid rgba(255, 255, 255, 0.9);

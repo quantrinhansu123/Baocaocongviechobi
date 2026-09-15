@@ -154,8 +154,12 @@
 }
 
 .task-list-dept-line {
-  margin: 2px 0 0;
-  font-size: 11px;
+  margin: 0;
+  max-width: 36%;
+  padding-right: 6px;
+  margin-right: 2px;
+  border-right: 1px solid #d8e0ea;
+  font-size: 10.5px;
   font-weight: 700;
   letter-spacing: 0.04em;
   color: #64748b;
@@ -163,15 +167,27 @@
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+  flex-shrink: 1;
+}
+
+.task-list-assignee {
+  min-width: 0;
+  font-size: 12px;
+  font-weight: 600;
+  color: #334155;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .task-list-progress-pct {
   flex-shrink: 0;
-  font-size: 12px;
+  font-size: 11px;
   font-weight: 800;
   color: var(--tv-orange);
-  min-width: 36px;
+  min-width: 32px;
   text-align: right;
+  font-variant-numeric: tabular-nums;
 }
 
 .task-list-search .ant-input-affix-wrapper {
@@ -225,6 +241,19 @@
     #eef2f7;
 }
 
+.task-list-group-label {
+  margin: 2px 4px 6px;
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  color: var(--tv-cobalt);
+  text-transform: uppercase;
+}
+
+.task-list-scroll > div:first-child > .task-list-group-label {
+  margin-top: 0;
+}
+
 .task-list-item {
   --card-rail: #94a3b8;
   position: relative;
@@ -233,14 +262,14 @@
   text-align: left;
   border: 1px solid rgba(30, 56, 107, 0.1);
   background: linear-gradient(180deg, #ffffff 0%, #fbfcfe 100%);
-  border-radius: 14px;
+  border-radius: 12px;
   padding: 0;
-  margin-bottom: 10px;
+  margin-bottom: 8px;
   cursor: pointer;
   overflow: hidden;
   box-shadow:
     0 1px 2px rgba(15, 39, 77, 0.04),
-    0 8px 20px -12px rgba(15, 39, 77, 0.18);
+    0 6px 16px -12px rgba(15, 39, 77, 0.16);
   transition:
     background 0.18s ease,
     border-color 0.18s ease,
@@ -297,7 +326,7 @@
   width: 4px;
   flex-shrink: 0;
   background: var(--card-rail);
-  border-radius: 14px 0 0 14px;
+  border-radius: 12px 0 0 12px;
 }
 
 .task-list-card-body {
@@ -305,38 +334,33 @@
   min-width: 0;
   display: flex;
   flex-direction: column;
-  gap: 8px;
-  padding: 12px 12px 11px 12px;
-}
-
-.task-list-card-title-block {
-  min-width: 0;
-  width: 100%;
+  gap: 6px;
+  padding: 9px 10px 8px;
 }
 
 .task-list-card-head {
   display: flex;
-  align-items: flex-start;
-  gap: 10px;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
 }
 
 .task-list-card-actions {
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  gap: 8px;
-  padding-top: 2px;
-  border-top: 1px dashed rgba(30, 56, 107, 0.12);
+  justify-content: flex-end;
+  gap: 6px;
+  flex-shrink: 0;
 }
 
 .task-list-card-avatar {
-  width: 32px !important;
-  height: 32px !important;
-  font-size: 11px !important;
+  width: 20px !important;
+  height: 20px !important;
+  font-size: 9px !important;
   font-weight: 800 !important;
   flex-shrink: 0;
-  border: 2px solid #fff !important;
-  box-shadow: 0 0 0 1px rgba(30, 56, 107, 0.12);
+  border: 1px solid #fff !important;
+  box-shadow: 0 0 0 1px rgba(30, 56, 107, 0.1);
 }
 
 .task-list-check {
@@ -375,10 +399,10 @@
 
 /* Quick Complete Checkbox (Top-right circular button) */
 .task-list-quick-check {
-  width: 24px;
-  height: 24px;
+  width: 20px;
+  height: 20px;
   border-radius: 9999px;
-  border: 2px solid #cbd5e1;
+  border: 1.5px solid #cbd5e1;
   flex-shrink: 0;
   display: inline-flex;
   align-items: center;
@@ -420,15 +444,15 @@
 
 .task-list-name {
   margin: 0;
-  width: 100%;
+  flex: 1 1 auto;
   min-width: 0;
-  font-size: 14.5px;
+  font-size: 13.5px;
   font-weight: 700;
   letter-spacing: -0.01em;
   color: var(--tv-ink);
   line-height: 1.35;
   display: -webkit-box;
-  -webkit-line-clamp: 3;
+  -webkit-line-clamp: 2;
   -webkit-box-orient: vertical;
   overflow: hidden;
   word-break: break-word;
@@ -441,20 +465,29 @@
 .task-list-card-foot {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 10px;
   min-width: 0;
+}
+
+.task-list-card-meta {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+  flex: 1 1 auto;
+  overflow: hidden;
 }
 
 .task-list-badge {
   display: inline-flex;
   align-items: center;
-  padding: 3px 9px;
-  border-radius: 8px;
-  font-size: 10.5px;
+  padding: 2px 7px;
+  border-radius: 6px;
+  font-size: 10px;
   font-weight: 800;
   letter-spacing: 0.04em;
   text-transform: uppercase;
-  line-height: 1.4;
+  line-height: 1.35;
   flex-shrink: 0;
 }
 
@@ -493,18 +526,38 @@
 .task-list-card-progress {
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: 6px;
+  flex: 1 1 140px;
+  min-width: 96px;
+}
+
+.task-list-panel:not(.task-list-panel--wide) .task-list-card-foot {
+  flex-wrap: wrap;
+}
+
+.task-list-panel:not(.task-list-panel--wide) .task-list-card-progress {
+  flex: 1 1 100%;
 }
 
 .task-list-card-progress-bar.task-progress-bar {
-  flex: 1;
+  flex: 1 1 auto;
   min-width: 0;
+  max-width: none;
+  width: auto;
+  margin: 0;
   pointer-events: none;
 }
 
 .task-list-card-progress-bar .ant-progress {
   margin: 0 !important;
   line-height: 1 !important;
+  width: 100% !important;
+  display: block !important;
+}
+
+.task-list-card-progress-bar .ant-progress-outer,
+.task-list-card-progress-bar .ant-progress-inner {
+  width: 100% !important;
 }
 
 .task-list-card-progress-bar .ant-progress-inner {
@@ -513,7 +566,7 @@
 }
 
 .task-list-card-progress-bar .ant-progress-bg {
-  height: 7px !important;
+  height: 5px !important;
   border-radius: 999px !important;
   background: var(--tv-orange) !important;
 }
@@ -539,11 +592,12 @@
 }
 
 .task-list-sub {
-  flex: 1;
+  flex: 0 0 auto;
   min-width: 0;
-  font-size: 12px;
+  font-size: 11px;
   color: var(--tv-muted);
   font-weight: 600;
+  white-space: nowrap;
 }
 
 /* ── Chi tiết ── */
@@ -1800,25 +1854,34 @@
   }
 
   .task-list-name {
-    font-size: 15px;
+    font-size: 14px;
   }
 
   .task-list-badge {
-    font-size: 10.5px;
-    padding: 3px 8px;
+    font-size: 10px;
+    padding: 2px 7px;
   }
 
   .task-list-progress-tag {
-    font-size: 12.5px;
-  }
-
-  .task-list-sub {
     font-size: 12px;
   }
 
+  .task-list-sub {
+    font-size: 11px;
+  }
+
   .task-list-card-body {
-    padding: 13px 13px 12px;
-    gap: 11px;
+    padding: 10px 10px 9px;
+    gap: 6px;
+  }
+
+  .task-list-card-foot {
+    flex-wrap: wrap;
+  }
+
+  .task-list-card-progress {
+    flex: 1 1 100%;
+    max-width: none;
   }
 
   .task-list-search .ant-input-affix-wrapper {
