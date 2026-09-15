@@ -2297,19 +2297,19 @@ const TaskView: React.FC = () => {
                                 tabIndex={-1}
                               />
                             </Space.Compact>
-                          </div>
-                          <div className="task-md-complete-row">
-                            <TaskCompleteTick
-                              completed={isTaskRecordCompleted(selected)}
-                              loading={completingTaskKey === selected.key}
-                              disabled={!supabaseConnected}
-                              onComplete={() =>
-                                void handleMarkComplete(selected.key, selected.deptKey)
-                              }
-                            />
-                            <span className="task-md-complete-label">
-                              {isTaskRecordCompleted(selected) ? 'Đã hoàn thành' : 'Hoàn thành'}
-                            </span>
+                            <div className="task-md-complete-inline">
+                              <TaskCompleteTick
+                                completed={isTaskRecordCompleted(selected)}
+                                loading={completingTaskKey === selected.key}
+                                disabled={!supabaseConnected}
+                                onComplete={() =>
+                                  void handleMarkComplete(selected.key, selected.deptKey)
+                                }
+                              />
+                              <span className="task-md-complete-label">
+                                {isTaskRecordCompleted(selected) ? 'Đã hoàn thành' : 'Hoàn thành'}
+                              </span>
+                            </div>
                           </div>
                         </section>
 

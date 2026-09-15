@@ -1179,19 +1179,36 @@
   gap: 6px;
 }
 
-.task-md-complete-row {
-  display: flex;
+.task-md-complete-row,
+.task-md-complete-inline {
+  display: inline-flex;
   align-items: center;
-  gap: 10px;
-  margin-top: 10px;
-  padding-top: 10px;
-  border-top: 1px dashed var(--tv-line);
+  gap: 8px;
+  flex-shrink: 0;
+  white-space: nowrap;
+}
+
+.task-md-complete-inline {
+  margin-left: 2px;
+  padding-left: 10px;
+  border-left: 1px dashed var(--tv-line);
+}
+
+.task-md-complete-inline .task-complete-tick.ant-btn {
+  width: 32px !important;
+  height: 32px !important;
+  border-radius: 8px !important;
+}
+
+.task-md-complete-inline .task-complete-tick.ant-btn .anticon {
+  font-size: 18px !important;
 }
 
 .task-md-complete-label {
   font-size: 14px;
   font-weight: 800;
   color: var(--tv-cobalt);
+  white-space: nowrap;
 }
 
 .task-md-title-input.ant-input {
@@ -1291,6 +1308,7 @@
 
 .task-md-progress-block--row {
   flex-direction: row;
+  flex-wrap: nowrap;
   align-items: center;
   gap: 8px;
 }
