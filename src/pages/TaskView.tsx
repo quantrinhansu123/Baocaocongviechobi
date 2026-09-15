@@ -20,24 +20,17 @@ import {
 } from 'antd';
 import type { ColumnsType } from 'antd/es/table';
 import {
-  CheckSquareOutlined,
   CheckCircleOutlined,
   PlusOutlined,
-  UserOutlined,
-  CalendarOutlined,
-  ClockCircleOutlined,
-  WarningOutlined,
-  ThunderboltOutlined,
-  ClearOutlined,
-  CloseOutlined,
   FolderOutlined,
   SearchOutlined,
-  InfoCircleOutlined,
   CheckOutlined,
-  SwapOutlined,
   MessageOutlined,
-  MoreOutlined,
   HistoryOutlined,
+  MenuFoldOutlined,
+  MenuUnfoldOutlined,
+  ClearOutlined,
+  CloseOutlined,
 } from '@ant-design/icons';
 import { Star } from 'lucide-react';
 import dayjs from 'dayjs';
@@ -418,6 +411,7 @@ const TaskView: React.FC = () => {
   const [savingDetail, setSavingDetail] = useState(false);
   const [sendingChat, setSendingChat] = useState(false);
   const [chatDrawerOpen, setChatDrawerOpen] = useState(false);
+  const [listPanelCollapsed, setListPanelCollapsed] = useState(false);
   const [tienDoModalOpen, setTienDoModalOpen] = useState(false);
   const [savingTienDo, setSavingTienDo] = useState(false);
   const [deletingTaskKey, setDeletingTaskKey] = useState<string | null>(null);
@@ -1226,7 +1220,10 @@ const TaskView: React.FC = () => {
     const t = tasksByDept[deptKey]?.[taskKey];
     if (!t) return;
     setDetailTask({ ...t, key: taskKey, deptKey });
-    // Giữ listScope theo URL (tổng khối / phòng ban) để Quay lại đúng chỗ
+    // iPad / tablet: thu danh sách vào trong để chi tiết rộng hơn
+    if (typeof window !== 'undefined' && window.matchMedia('(max-width: 1199px) and (min-width: 768px)').matches) {
+      setListPanelCollapsed(true);
+    }
   };
 
   const handleMarkComplete = async (taskKey: string, deptKey: string) => {
@@ -1686,20 +1683,17 @@ const TaskView: React.FC = () => {
   const selected = detailTask;
   const screens = Grid.useBreakpoint();
   const isMobileDetail = screens.md === false || screens.md === undefined;
-  // FAB chat chỉ trên mobile; desktop/tablet dùng cột phải Trao đổi
-  const useFloatingChat = isMobileDetail;
+  // iPad / <1200px: chat FAB + drawer — chỉ 2 cột list|detail cho cân
+  const useFloatingChat =
+    isMobileDetail || screens.xl === false || screens.xl === undefined;
   const chatCount = normalizeChatMessages(selected?.chatMessages).length;
 
   useEffect(() => {
-    if (!selected) setChatDrawerOpen(false);
+    if (!selected) {
+      setChatDrawerOpen(false);
+      setListPanelCollapsed(false);
+    }
   }, [selected]);
-
-  const statusPillClass = (status: string) => {
-    if (status.includes('Hoàn thành')) return 'task-md-status-pill--done';
-    if (status === 'Hủy' || status === 'Huỷ') return 'task-md-status-pill--cancel';
-    if (status === 'Tạm dừng') return 'task-md-status-pill--paused';
-    return 'task-md-status-pill--progress';
-  };
 
   const personInitial = (name: string) => {
     const parts = (name || '').trim().split(/\s+/).filter(Boolean);
@@ -1721,7 +1715,7 @@ const TaskView: React.FC = () => {
   })();
 
   return (
-    <div className="flex flex-col h-[calc(100vh-64px)]" style={{ background: '#e9eef7' }}>
+    <div className="flex flex-col flex-1 min-h-0 h-full" style={{ background: '#e9eef7' }}>
       <Modal
         title="Tạo công việc mới"
         open={createOpen}
@@ -1896,26 +1890,53 @@ const TaskView: React.FC = () => {
           <section
             className={`task-list-panel${!selected ? ' task-list-panel--wide' : ''}${
               selected ? '' : ' is-mobile-visible'
-            }`}
+            }${listPanelCollapsed && selected && !isMobileDetail ? ' is-collapsed' : ''}`}
           >
+            {listPanelCollapsed && selected && !isMobileDetail ? (
+              <div className="task-list-collapsed-rail">
+                <button
+                  type="button"
+                  className="task-list-expand-btn"
+                  onClick={() => setListPanelCollapsed(false)}
+                  aria-label="Mở lại danh sách"
+                  title="Mở lại danh sách công việc"
+                >
+                  <MenuUnfoldOutlined />
+                </button>
+                <span className="task-list-collapsed-label">Công việc</span>
+              </div>
+            ) : null}
             <div className="task-list-head">
               <div className="task-list-head-row">
                 <h2 className="task-list-title">
                   {listScope ? 'Công việc' : 'Chọn đầu mục'}
                 </h2>
-                {listScope ? (
-                  <Button
-                    type="primary"
-                    size="small"
-                    icon={<PlusOutlined />}
-                    className="task-list-add-btn"
-                    disabled={!canCreateTask}
-                    loading={supabaseConnected === null}
-                    onClick={() => openCreateModal()}
-                  >
-                    Thêm
-                  </Button>
-                ) : null}
+                <div className="task-list-head-actions">
+                  {selected && !isMobileDetail ? (
+                    <Button
+                      type="text"
+                      size="small"
+                      icon={<MenuFoldOutlined />}
+                      className="task-list-collapse-btn"
+                      onClick={() => setListPanelCollapsed(true)}
+                      aria-label="Thu gọn danh sách"
+                      title="Thu gọn danh sách vào trong"
+                    />
+                  ) : null}
+                  {listScope ? (
+                    <Button
+                      type="primary"
+                      size="small"
+                      icon={<PlusOutlined />}
+                      className="task-list-add-btn"
+                      disabled={!canCreateTask}
+                      loading={supabaseConnected === null}
+                      onClick={() => openCreateModal()}
+                    >
+                      Thêm
+                    </Button>
+                  ) : null}
+                </div>
               </div>
               <Input
                 className="task-list-search"
@@ -2155,9 +2176,39 @@ const TaskView: React.FC = () => {
                 <div className="task-md-detail-inner">
                   <div className="task-md-main">
                     <div className="task-md-head">
-                      <p className="task-md-head-title">Chi tiết công việc</p>
-                      <div className="flex items-center gap-1">
-                        <Button type="text" size="small" icon={<MoreOutlined />} aria-label="Thêm" />
+                      <div className="flex items-center gap-1 min-w-0">
+                        {listPanelCollapsed ? (
+                          <Button
+                            type="text"
+                            size="small"
+                            icon={<MenuUnfoldOutlined />}
+                            onClick={() => setListPanelCollapsed(false)}
+                            aria-label="Mở lại danh sách"
+                            title="Mở lại danh sách"
+                          />
+                        ) : (
+                          <Button
+                            type="text"
+                            size="small"
+                            icon={<MenuFoldOutlined />}
+                            onClick={() => setListPanelCollapsed(true)}
+                            aria-label="Thu gọn danh sách"
+                            title="Thu gọn danh sách vào trong"
+                          />
+                        )}
+                        <p className="task-md-head-title">Chi tiết công việc</p>
+                      </div>
+                      <div className="flex items-center gap-1.5">
+                        <Button
+                          type="primary"
+                          size="small"
+                          className="bg-[#F38320] border-[#F38320] font-semibold"
+                          loading={savingDetail}
+                          onClick={handleDetailSave}
+                          disabled={!supabaseConnected}
+                        >
+                          Lưu
+                        </Button>
                         <Button
                           type="text"
                           size="small"
@@ -2172,7 +2223,7 @@ const TaskView: React.FC = () => {
                       <Form.Item
                         name="congViec"
                         rules={[{ required: true, message: 'Nhập công việc' }]}
-                        className="mb-1"
+                        className="mb-2 task-md-body-sticky-title"
                       >
                         <Input.TextArea
                           autoSize={{ minRows: 1, maxRows: 3 }}
@@ -2181,178 +2232,41 @@ const TaskView: React.FC = () => {
                         />
                       </Form.Item>
 
-                      <Form.Item
-                        shouldUpdate={(prev, next) =>
-                          prev.tienDo !== next.tienDo || prev.ycXong !== next.ycXong
-                        }
-                        noStyle
-                      >
-                        {() => {
-                          const status =
-                            (detailForm.getFieldValue('tienDo') as string) ||
-                            selected.tienDo ||
-                            'Đang thực hiện';
-                          return (
-                            <div className="task-md-meta-grid">
-                              <div className="task-md-meta-cell">
-                                <span className="task-md-meta-cell-label">
-                                  <FolderOutlined /> Phòng
-                                </span>
-                                <span className="task-md-meta-cell-value" title={selectedDeptLabel}>
-                                  {selectedDeptLabel}
-                                </span>
-                              </div>
-                              <div className="task-md-meta-cell">
-                                <span className="task-md-meta-cell-label">
-                                  <CalendarOutlined /> Hạn
-                                </span>
-                                <span className="task-md-meta-cell-value">
-                                  <Form.Item name="ycXong" className="mb-0">
-                                    <DatePicker
-                                      className="w-full"
-                                      format="DD/MM/YYYY"
-                                      placeholder="Chọn hạn"
-                                      size="small"
-                                      variant="borderless"
-                                    />
-                                  </Form.Item>
-                                </span>
-                              </div>
-                              <div className="task-md-meta-cell">
-                                <span className="task-md-meta-cell-label">
-                                  <CheckCircleOutlined /> Trạng thái
-                                </span>
-                                <span className="task-md-meta-cell-value">{status}</span>
-                              </div>
-                              <div className="task-md-meta-cell">
-                                <span className="task-md-meta-cell-label">
-                                  <ClockCircleOutlined /> TG HT
-                                </span>
-                                <span className="task-md-meta-cell-value text-emerald-700">
-                                  {selected.ngayGioHoanThanh
-                                    ? normalizeDisplayDate(selected.ngayGioHoanThanh) ||
-                                      selected.ngayGioHoanThanh
-                                    : '—'}
-                                </span>
-                              </div>
-                            </div>
-                          );
-                        }}
-                      </Form.Item>
-
-                      <Form.Item
-                        shouldUpdate={(prev, next) =>
-                          prev.tienDo !== next.tienDo || prev.nguoiGiao !== next.nguoiGiao
-                        }
-                        className="mb-0"
-                      >
-                        {() => {
-                          const status =
-                            (detailForm.getFieldValue('tienDo') as string) ||
-                            selected.tienDo ||
-                            'Đang thực hiện';
-                          const assignee =
-                            (detailForm.getFieldValue('nguoiGiao') as string) ||
-                            selected.nguoiGiao ||
-                            '';
-                          const assigneeOpt = detailAssigneeOptions.find(
-                            o => o.value === assignee
-                          );
-                          const assigneeRole = assigneeOpt?.description || '';
-                          const done = (status || '').includes('Hoàn thành');
-                          return (
-                            <div className="task-md-status-bar">
-                              <div className={`task-md-status-pill ${statusPillClass(status)}`}>
-                                <span className="task-md-status-pill-icon">
-                                  {done ? <CheckOutlined /> : <CheckCircleOutlined />}
-                                </span>
-                                <Form.Item name="tienDo" className="mb-0 min-w-0 flex-1">
-                                  <Select
-                                    size="middle"
-                                    variant="borderless"
-                                    className="w-full min-w-[120px]"
-                                    options={[...TIEN_DO_EDIT_OPTIONS]}
-                                    disabled={!supabaseConnected}
-                                    suffixIcon={<span style={{ fontSize: 10, color: '#fff' }}>▼</span>}
-                                  />
-                                </Form.Item>
-                              </div>
-                              <div className="task-md-status-assignee">
-                                <span className="task-md-person-avatar">{personInitial(assignee)}</span>
-                                <div className="task-md-status-assignee-text">
-                                  <p className="task-md-status-assignee-name">
-                                    {assignee || 'Chưa giao'}
-                                  </p>
-                                  {assigneeRole ? (
-                                    <p className="task-md-status-assignee-role">{assigneeRole}</p>
-                                  ) : null}
-                                </div>
-                                <SwapOutlined className="task-md-status-assignee-swap" />
-                              </div>
-                            </div>
-                          );
-                        }}
-                      </Form.Item>
+                      <p className="task-md-dept-chip" title={selectedDeptLabel}>
+                        <FolderOutlined /> {selectedDeptLabel}
+                        {selectedBlockLabel ? ` · ${selectedBlockLabel}` : ''}
+                      </p>
 
                       <div className="task-md-center-stack">
-                        <div className="task-md-aside-card task-md-goal-alert">
-                          <InfoCircleOutlined />
-                          <span>Chưa liên kết với mục tiêu — Lựa chọn mục tiêu</span>
-                        </div>
-
-                        <div className="task-md-center-grid">
-                          <div className="task-md-aside-card">
-                            <p className="task-md-aside-label">Người phụ trách</p>
+                        {/* 1. Trạng thái & tiến độ */}
+                        <section className="task-md-section">
+                          <p className="task-md-section-title">1. Trạng thái &amp; tiến độ</p>
+                          <div className="task-md-section-grid">
                             <Form.Item
-                              name="nguoiGiao"
-                              className="mb-0"
-                              rules={[{ required: true, message: 'Chọn người phụ trách' }]}
+                              name="tienDo"
+                              label="Trạng thái"
+                              className="mb-2"
+                              rules={[{ required: true, message: 'Chọn trạng thái' }]}
                             >
                               <Select
-                                showSearch
-                                allowClear
-                                optionFilterProp="label"
-                                options={detailAssigneeOptions}
-                                optionLabelProp="value"
-                                size="small"
-                                placeholder="Chọn nhân sự"
+                                options={[...TIEN_DO_EDIT_OPTIONS]}
+                                disabled={!supabaseConnected}
+                              />
+                            </Form.Item>
+                            <Form.Item
+                              name="anhHuong"
+                              label="Mức ảnh hưởng"
+                              className="mb-2"
+                              rules={[{ required: true, message: 'Chọn mức độ' }]}
+                            >
+                              <Select
+                                options={[1, 2, 3, 4].map(level => ({
+                                  value: level,
+                                  label: `${level} sao`,
+                                }))}
                               />
                             </Form.Item>
                           </div>
-
-                          <div className="task-md-aside-card">
-                            <p className="task-md-aside-label">Người liên quan</p>
-                            <Form.Item name="nguoiTheoDoi" className="mb-0">
-                              <PersonnelMultiSelect
-                                options={detailFollowerOptions}
-                                placeholder="Thêm người liên quan"
-                              />
-                            </Form.Item>
-                          </div>
-                        </div>
-
-                        <div className="task-md-aside-card">
-                          <p className="task-md-aside-label">Thời gian</p>
-                          <div className="task-md-time-grid">
-                            <div className="task-md-time-item">
-                              <span className="task-md-meta-label">TG tạo</span>
-                              <p className="task-md-time-value">
-                                {normalizeDisplayDate(selected.ngayGiao) || selected.ngayGiao || '—'}
-                              </p>
-                            </div>
-                            <div className="task-md-time-item">
-                              <span className="task-md-meta-label">TG cập nhật</span>
-                              <p className="task-md-time-value">
-                                {normalizeDisplayDate(selected.ngayGioHoanThanh) ||
-                                  selected.ngayGioHoanThanh ||
-                                  '—'}
-                              </p>
-                            </div>
-                          </div>
-                        </div>
-
-                        <div className="task-md-aside-card">
-                          <p className="task-md-aside-label">Tiến độ & ảnh hưởng</p>
                           <div className="task-md-progress-block task-md-progress-block--row">
                             <span className="task-md-progress-caption">
                               Tiến độ <span className="text-red-500">*</span>
@@ -2392,41 +2306,80 @@ const TaskView: React.FC = () => {
                               />
                             </Space.Compact>
                           </div>
-                          <Form.Item
-                            name="anhHuong"
-                            label="Mức ảnh hưởng"
-                            className="mb-0 mt-2"
-                            rules={[{ required: true, message: 'Chọn mức độ' }]}
-                          >
-                            <Select
-                              size="small"
-                              options={[1, 2, 3, 4].map(level => ({
-                                value: level,
-                                label: `${level} sao`,
-                              }))}
-                            />
-                          </Form.Item>
-                        </div>
+                        </section>
 
-                        <div className="task-md-aside-card">
-                          <p className="task-md-aside-label">Thông tin khác</p>
-                          <Form.Item name="vuongMac" label="Vướng mắc" className="mb-2">
-                            <Input.TextArea rows={2} placeholder="Vướng mắc cần hỗ trợ..." />
-                          </Form.Item>
+                        {/* 2. Nhân sự */}
+                        <section className="task-md-section">
+                          <p className="task-md-section-title">2. Nhân sự</p>
+                          <div className="task-md-section-grid">
+                            <Form.Item
+                              name="nguoiGiao"
+                              label="Người phụ trách"
+                              className="mb-2"
+                              rules={[{ required: true, message: 'Chọn người phụ trách' }]}
+                            >
+                              <Select
+                                showSearch
+                                allowClear
+                                optionFilterProp="label"
+                                options={detailAssigneeOptions}
+                                optionLabelProp="value"
+                                placeholder="Chọn nhân sự"
+                              />
+                            </Form.Item>
+                            <Form.Item name="nguoiTheoDoi" label="Người liên quan" className="mb-2">
+                              <PersonnelMultiSelect
+                                options={detailFollowerOptions}
+                                placeholder="Thêm người liên quan"
+                              />
+                            </Form.Item>
+                          </div>
+                        </section>
+
+                        {/* 3. Thời hạn */}
+                        <section className="task-md-section">
+                          <p className="task-md-section-title">3. Thời hạn</p>
+                          <div className="task-md-section-grid">
+                            <Form.Item name="ngayGiao" label="Ngày giao" className="mb-2">
+                              <DatePicker className="w-full" format="DD/MM/YYYY" />
+                            </Form.Item>
+                            <Form.Item name="ycXong" label="Hạn hoàn thành" className="mb-2">
+                              <DatePicker className="w-full" format="DD/MM/YYYY" placeholder="Chọn hạn" />
+                            </Form.Item>
+                          </div>
+                          <p className="task-md-field-caption">Gia hạn (nếu có)</p>
+                          <div className="grid grid-cols-3 gap-x-2 mb-2">
+                            <Form.Item name="giaHan1" label="GH 1" className="mb-0">
+                              <DatePicker className="w-full" format="DD/MM/YYYY" />
+                            </Form.Item>
+                            <Form.Item name="giaHan2" label="GH 2" className="mb-0">
+                              <DatePicker className="w-full" format="DD/MM/YYYY" />
+                            </Form.Item>
+                            <Form.Item name="giaHan3" label="GH 3" className="mb-0">
+                              <DatePicker className="w-full" format="DD/MM/YYYY" />
+                            </Form.Item>
+                          </div>
+                          {selected.ngayGioHoanThanh ? (
+                            <p className="task-md-done-stamp">
+                              <CheckCircleOutlined /> Đã HT:{' '}
+                              {normalizeDisplayDate(selected.ngayGioHoanThanh) ||
+                                selected.ngayGioHoanThanh}
+                            </p>
+                          ) : null}
+                        </section>
+
+                        {/* 4. Kết quả & vướng mắc */}
+                        <section className="task-md-section">
+                          <p className="task-md-section-title">4. Kết quả &amp; vướng mắc</p>
                           <Form.Item name="ketQua" label="Kết quả công việc" className="mb-2">
                             <Input.TextArea rows={2} placeholder="Kết quả đạt được..." />
                           </Form.Item>
-                          <p className="task-md-field-caption">Link tài liệu</p>
-                          <div className="mb-2">
-                            <TaskDocLinksField name="taiLieuLinks" size="small" />
-                          </div>
-                          <div className="grid grid-cols-2 gap-x-2">
-                            <Form.Item name="ngayGiao" label="Ngày giao" className="mb-2">
-                              <DatePicker className="w-full" format="DD/MM/YYYY" size="small" />
-                            </Form.Item>
+                          <Form.Item name="vuongMac" label="Vướng mắc" className="mb-2">
+                            <Input.TextArea rows={2} placeholder="Vướng mắc cần hỗ trợ..." />
+                          </Form.Item>
+                          <div className="task-md-section-grid">
                             <Form.Item name="canLD" label="Cần LĐ tác động" className="mb-2">
                               <Select
-                                size="small"
                                 options={[
                                   { value: 'Không', label: 'Không' },
                                   { value: 'Có', label: 'Có' },
@@ -2437,26 +2390,20 @@ const TaskView: React.FC = () => {
                           <Form.Item
                             name="noiDungCanTacDong"
                             label="Nội dung cần tác động"
-                            className="mb-2"
+                            className="mb-0"
                           >
                             <Input.TextArea
                               rows={2}
                               placeholder="Mô tả nội dung cần lãnh đạo tác động..."
                             />
                           </Form.Item>
-                          <p className="task-md-field-caption">Gia hạn</p>
-                          <div className="grid grid-cols-3 gap-x-2">
-                            <Form.Item name="giaHan1" label="GH 1" className="mb-0">
-                              <DatePicker className="w-full" format="DD/MM/YYYY" size="small" />
-                            </Form.Item>
-                            <Form.Item name="giaHan2" label="GH 2" className="mb-0">
-                              <DatePicker className="w-full" format="DD/MM/YYYY" size="small" />
-                            </Form.Item>
-                            <Form.Item name="giaHan3" label="GH 3" className="mb-0">
-                              <DatePicker className="w-full" format="DD/MM/YYYY" size="small" />
-                            </Form.Item>
-                          </div>
-                        </div>
+                        </section>
+
+                        {/* 5. Tài liệu */}
+                        <section className="task-md-section">
+                          <p className="task-md-section-title">5. Tài liệu</p>
+                          <TaskDocLinksField name="taiLieuLinks" size="small" />
+                        </section>
                       </div>
                     </div>
                   </div>

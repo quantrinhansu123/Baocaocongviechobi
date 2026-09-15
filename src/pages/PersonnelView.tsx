@@ -1,6 +1,7 @@
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   Button,
+  Checkbox,
   Empty,
   Form,
   Input,
@@ -12,15 +13,18 @@ import {
   Typography,
   message,
 } from 'antd';
+import type { TableRowSelection } from 'antd/es/table/interface';
 import {
   CalendarOutlined,
   DeleteOutlined,
+  DownloadOutlined,
   EditOutlined,
   MailOutlined,
   PhoneOutlined,
   PlusOutlined,
   SearchOutlined,
   TeamOutlined,
+  UploadOutlined,
 } from '@ant-design/icons';
 import BackButton from '../components/BackButton';
 import {
@@ -30,6 +34,10 @@ import {
   loadPersonnel,
   type PersonnelRecord,
 } from '../services/auxiliaryData';
+import {
+  downloadPersonnelExcelTemplate,
+  parsePersonnelExcelFile,
+} from '../utils/personnelExcel';
 
 const { Text } = Typography;
 
@@ -96,6 +104,11 @@ const PersonnelView: React.FC = () => {
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [modalOpen, setModalOpen] = useState(false);
   const [editing, setEditing] = useState<PersonnelRecord | null>(null);
+  const [selectedKeys, setSelectedKeys] = useState<React.Key[]>([]);
+  const [bulkDeleting, setBulkDeleting] = useState(false);
+  const [importing, setImporting] = useState(false);
+  const [downloadingTemplate, setDownloadingTemplate] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const [form] = Form.useForm<PersonnelFormValues>();
 
   const refresh = useCallback(async () => {
@@ -148,6 +161,35 @@ const PersonnelView: React.FC = () => {
         .includes(q)
     );
   }, [rows, search, statusFilter]);
+
+  useEffect(() => {
+    const visible = new Set(filtered.map(r => r.key));
+    setSelectedKeys(prev => prev.filter(key => visible.has(String(key))));
+  }, [filtered]);
+
+  const selectedRecords = useMemo(
+    () => filtered.filter(row => selectedKeys.includes(row.key)),
+    [filtered, selectedKeys]
+  );
+
+  const toggleSelect = (key: string, checked: boolean) => {
+    setSelectedKeys(prev =>
+      checked ? Array.from(new Set([...prev, key])) : prev.filter(k => k !== key)
+    );
+  };
+
+  const toggleSelectAllVisible = (checked: boolean) => {
+    if (checked) {
+      setSelectedKeys(filtered.map(r => r.key));
+    } else {
+      setSelectedKeys([]);
+    }
+  };
+
+  const allVisibleSelected =
+    filtered.length > 0 && filtered.every(r => selectedKeys.includes(r.key));
+  const someVisibleSelected =
+    filtered.some(r => selectedKeys.includes(r.key)) && !allVisibleSelected;
 
   const openCreate = () => {
     setEditing(null);
@@ -219,6 +261,7 @@ const PersonnelView: React.FC = () => {
       onOk: async () => {
         try {
           await deletePersonnel(record.key);
+          setSelectedKeys(prev => prev.filter(k => k !== record.key));
           message.success('Đã xóa nhân sự.');
           await refresh();
         } catch (error) {
@@ -226,6 +269,84 @@ const PersonnelView: React.FC = () => {
         }
       },
     });
+  };
+
+  const handleBulkDelete = () => {
+    if (selectedRecords.length === 0) return;
+    Modal.confirm({
+      title: `Xóa ${selectedRecords.length} nhân sự đã chọn?`,
+      content: 'Thao tác này không hoàn tác được.',
+      okText: 'Xóa tất cả',
+      okType: 'danger',
+      cancelText: 'Hủy',
+      onOk: async () => {
+        setBulkDeleting(true);
+        try {
+          for (const record of selectedRecords) {
+            await deletePersonnel(record.key);
+          }
+          message.success(`Đã xóa ${selectedRecords.length} nhân sự.`);
+          setSelectedKeys([]);
+          await refresh();
+        } catch (error) {
+          message.error(error instanceof Error ? error.message : 'Xóa hàng loạt thất bại.');
+        } finally {
+          setBulkDeleting(false);
+        }
+      },
+    });
+  };
+
+  const handleDownloadTemplate = async () => {
+    setDownloadingTemplate(true);
+    try {
+      await downloadPersonnelExcelTemplate();
+      message.success('Đã tải mẫu Excel.');
+    } catch (error) {
+      message.error(error instanceof Error ? error.message : 'Không tải được mẫu Excel.');
+    } finally {
+      setDownloadingTemplate(false);
+    }
+  };
+
+  const handleImportExcel = async (file: File) => {
+    setImporting(true);
+    try {
+      const records = await parsePersonnelExcelFile(file);
+      if (records.length === 0) {
+        message.warning('Không tìm thấy dòng hợp lệ (cần Họ tên, Phòng ban, Chức vụ).');
+        return;
+      }
+
+      let ok = 0;
+      let fail = 0;
+      for (const record of records) {
+        try {
+          await addPersonnel(record);
+          ok += 1;
+        } catch {
+          fail += 1;
+        }
+      }
+
+      if (ok > 0) {
+        message.success(`Đã nhập ${ok} nhân sự từ Excel.${fail ? ` Bỏ qua ${fail} dòng lỗi.` : ''}`);
+        await refresh();
+      } else {
+        message.error('Không nhập được dòng nào từ file Excel.');
+      }
+    } catch (error) {
+      message.error(error instanceof Error ? error.message : 'Đọc file Excel thất bại.');
+    } finally {
+      setImporting(false);
+      if (fileInputRef.current) fileInputRef.current.value = '';
+    }
+  };
+
+  const rowSelection: TableRowSelection<PersonnelRecord> = {
+    selectedRowKeys: selectedKeys,
+    onChange: keys => setSelectedKeys(keys),
+    preserveSelectedRowKeys: true,
   };
 
   const columns = [
@@ -327,16 +448,48 @@ const PersonnelView: React.FC = () => {
               </p>
             </div>
           </div>
-          <Button
-            type="primary"
-            size="middle"
-            icon={<PlusOutlined />}
-            onClick={openCreate}
-            className="shrink-0 !bg-[#F38320] hover:!bg-[#d96f12] !border-none !text-white font-bold !rounded-xl shadow-md flex items-center gap-1 text-xs sm:text-sm px-3 sm:px-4 py-1.5 h-9"
-          >
-            <span className="hidden sm:inline">Thêm nhân sự</span>
-            <span className="sm:hidden">Thêm</span>
-          </Button>
+          <div className="flex items-center gap-2 shrink-0">
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept=".xlsx,.xls,.csv,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.ms-excel,text/csv"
+              className="hidden"
+              onChange={e => {
+                const file = e.target.files?.[0];
+                if (file) void handleImportExcel(file);
+              }}
+            />
+            <Button
+              size="middle"
+              icon={<DownloadOutlined />}
+              loading={downloadingTemplate}
+              onClick={() => void handleDownloadTemplate()}
+              className="!rounded-xl font-semibold !border-white/30 !bg-white/10 !text-white hover:!bg-white/20"
+              title="Tải mẫu Excel"
+            >
+              <span className="hidden sm:inline">Tải mẫu Excel</span>
+            </Button>
+            <Button
+              size="middle"
+              icon={<UploadOutlined />}
+              loading={importing}
+              onClick={() => fileInputRef.current?.click()}
+              className="!rounded-xl font-semibold !border-white/30 !bg-white/10 !text-white hover:!bg-white/20"
+            >
+              <span className="hidden sm:inline">Tải Excel lên</span>
+              <span className="sm:hidden">Excel</span>
+            </Button>
+            <Button
+              type="primary"
+              size="middle"
+              icon={<PlusOutlined />}
+              onClick={openCreate}
+              className="shrink-0 !bg-[#F38320] hover:!bg-[#d96f12] !border-none !text-white font-bold !rounded-xl shadow-md flex items-center gap-1 text-xs sm:text-sm px-3 sm:px-4 py-1.5 h-9"
+            >
+              <span className="hidden sm:inline">Thêm nhân sự</span>
+              <span className="sm:hidden">Thêm</span>
+            </Button>
+          </div>
         </div>
 
         {/* Search & Status Filter Bar */}
@@ -391,6 +544,38 @@ const PersonnelView: React.FC = () => {
               {filtered.length}/{rows.length}
             </span>
           </div>
+
+          {selectedKeys.length > 0 ? (
+            <div className="flex flex-wrap items-center gap-2 pt-1">
+              <Checkbox
+                checked={allVisibleSelected}
+                indeterminate={someVisibleSelected}
+                onChange={e => toggleSelectAllVisible(e.target.checked)}
+              >
+                <span className="text-xs font-semibold text-slate-700">
+                  Đã chọn {selectedKeys.length}
+                </span>
+              </Checkbox>
+              <Button
+                danger
+                size="small"
+                icon={<DeleteOutlined />}
+                loading={bulkDeleting}
+                onClick={handleBulkDelete}
+                className="!rounded-lg font-semibold"
+              >
+                Xóa đã chọn
+              </Button>
+              <Button
+                type="text"
+                size="small"
+                onClick={() => setSelectedKeys([])}
+                className="!text-slate-500 font-medium"
+              >
+                Bỏ chọn
+              </Button>
+            </div>
+          ) : null}
         </div>
 
         {/* Content list / Table */}
@@ -427,18 +612,43 @@ const PersonnelView: React.FC = () => {
                     size="middle"
                     rowKey="key"
                     scroll={{ x: 900 }}
+                    rowSelection={rowSelection}
                   />
                 </div>
 
                 {/* Mobile Stitch Card Layout */}
                 <div className="block md:hidden space-y-3">
+                  {filtered.length > 0 ? (
+                    <div className="flex items-center gap-2 px-1">
+                      <Checkbox
+                        checked={allVisibleSelected}
+                        indeterminate={someVisibleSelected}
+                        onChange={e => toggleSelectAllVisible(e.target.checked)}
+                      >
+                        <span className="text-xs font-semibold text-slate-600">Chọn tất cả</span>
+                      </Checkbox>
+                    </div>
+                  ) : null}
                   {filtered.map(item => {
+                    const checked = selectedKeys.includes(item.key);
                     return (
                       <article
                         key={item.key}
-                        className="bg-white rounded-2xl p-4 border border-slate-200/80 shadow-sm transition-all hover:border-slate-300"
+                        className={`bg-white rounded-2xl p-4 border shadow-sm transition-all ${
+                          checked
+                            ? 'border-[#F38320] ring-1 ring-[#F38320]/30'
+                            : 'border-slate-200/80 hover:border-slate-300'
+                        }`}
                       >
-                        {/* Top: Full Name & Position/Department (NO AVATAR, FULL WIDTH) */}
+                        <div className="flex items-start gap-3">
+                          <Checkbox
+                            checked={checked}
+                            onChange={e => toggleSelect(item.key, e.target.checked)}
+                            className="mt-1"
+                            aria-label={`Chọn ${item.name}`}
+                          />
+                          <div className="min-w-0 flex-1">
+                        {/* Top: Full Name & Position/Department */}
                         <div>
                           <h2 className="text-base font-bold text-slate-900 leading-snug m-0">
                             {item.name}
@@ -514,6 +724,8 @@ const PersonnelView: React.FC = () => {
                               <DeleteOutlined className="text-xs text-rose-500" />
                               <span>Xóa</span>
                             </button>
+                          </div>
+                        </div>
                           </div>
                         </div>
                       </article>

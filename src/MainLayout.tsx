@@ -134,9 +134,20 @@ const MainLayoutInner: React.FC = () => {
   const location = useLocation();
   const { toolbar } = useHeaderToolbar();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false); // Mobile Menu State
-  const [collapsed, setCollapsed] = useState(false); // Desktop Sider State
+  const [collapsed, setCollapsed] = useState(() => {
+    if (typeof window === 'undefined') return false;
+    return window.matchMedia('(max-width: 1199px)').matches;
+  }); // Desktop Sider — iPad mặc định thu gọn
   const [menuOpenKeys, setMenuOpenKeys] = useState<string[]>(['/tasks']);
   const [incompleteByDept, setIncompleteByDept] = useState<Record<string, number>>({});
+
+  useEffect(() => {
+    const mq = window.matchMedia('(max-width: 1199px)');
+    const sync = () => setCollapsed(mq.matches);
+    sync();
+    mq.addEventListener('change', sync);
+    return () => mq.removeEventListener('change', sync);
+  }, []);
 
   useEffect(() => {
     let cancelled = false;
@@ -321,7 +332,7 @@ const MainLayoutInner: React.FC = () => {
 
   return (
     <MobileShellProvider openMenu={() => setMobileMenuOpen(true)}>
-    <Layout style={{ minHeight: '100vh', display: 'flex', flexDirection: 'row' }}>
+    <Layout style={{ height: '100vh', minHeight: '100vh', display: 'flex', flexDirection: 'row', overflow: 'hidden' }}>
 
       {/* --- DESKTOP SIDER (Ẩn trên màn hình mobile) --- */}
       <Sider
@@ -387,9 +398,9 @@ const MainLayoutInner: React.FC = () => {
         </div>
       </Sider>
 
-      <Layout className="main flex flex-col min-w-0" style={{ flex: 1 }}>
+      <Layout className="main flex flex-col min-w-0 min-h-0 overflow-hidden" style={{ flex: 1, height: '100vh' }}>
         {/* --- COMMON HEADER --- */}
-        <Header className="p-0 flex items-center justify-between shadow-sm px-2.5 md:px-4 z-10 min-h-14 md:min-h-16 h-14 md:h-16 border-b bg-white border-gray-200 gap-1.5 md:gap-3">
+        <Header className="p-0 flex items-center justify-between shadow-sm px-2.5 md:px-4 z-30 shrink-0 min-h-14 md:min-h-16 h-14 md:h-16 border-b bg-white border-gray-200 gap-1.5 md:gap-3">
 
           <div className="flex items-center shrink-0">
             {/* Desktop: Nút gập Sider */}
@@ -441,7 +452,7 @@ const MainLayoutInner: React.FC = () => {
         </Header>
 
         {showTopicLinks ? (
-          <div className="topic-link-bar">
+          <div className="topic-link-bar topic-link-bar--sticky">
             <div className="topic-link-row">
               <Link
                 to="/tasks"
@@ -563,10 +574,10 @@ const MainLayoutInner: React.FC = () => {
 
         {/* --- CONTENT AREA --- */}
         <Content
-          className={`overflow-auto flex-1 flex flex-col relative main-content-mobile-pad bg-gray-50 ${
+          className={`flex-1 flex flex-col relative main-content-mobile-pad bg-gray-50 min-h-0 ${
             isFullBleedMobileRoute
-              ? 'main-content-fullbleed p-0 md:p-6'
-              : 'p-4 md:p-6'
+              ? 'main-content-fullbleed p-0 md:p-0 overflow-hidden'
+              : 'p-4 md:p-6 overflow-auto'
           }`}
           style={{ minHeight: 280 }}
         >
@@ -577,6 +588,13 @@ const MainLayoutInner: React.FC = () => {
               </div>
             }
           >
+            <div
+              className={
+                isFullBleedMobileRoute
+                  ? 'flex-1 flex flex-col min-h-0 overflow-hidden'
+                  : 'flex-1 min-h-0'
+              }
+            >
             <Routes>
               <Route path="/" element={<Dashboard />} />
               <Route path="/navigation" element={<Navigate to="/" replace />} />
@@ -594,6 +612,7 @@ const MainLayoutInner: React.FC = () => {
               <Route path="/personnel" element={<PersonnelView />} />
               <Route path="/work-report-detail" element={<WorkReportDetail />} />
             </Routes>
+            </div>
           </Suspense>
         </Content>
         <MobileBottomNav />
