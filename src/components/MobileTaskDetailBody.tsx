@@ -10,6 +10,7 @@ import dayjs from 'dayjs';
 import type { FormInstance } from 'antd/es/form';
 import TaskDocLinksField from './TaskDocLinksField';
 import PersonnelMultiSelect from './PersonnelMultiSelect';
+import TaskCompleteTick from './TaskCompleteTick';
 import { clampProgressPercent } from './TaskProgressBar';
 import type { PersonnelSelectOption } from '../services/auxiliaryData';
 import { TIEN_DO_EDIT_OPTIONS } from '../services/taskData';
@@ -30,6 +31,9 @@ type MobileTaskDetailBodyProps = {
   followerOptions: PersonnelSelectOption[];
   saving: boolean;
   canSave: boolean;
+  completed?: boolean;
+  completing?: boolean;
+  onComplete?: () => void;
   onBack: () => void;
   onSave: () => void;
   personInitial: (name: string) => string;
@@ -57,6 +61,9 @@ const MobileTaskDetailBody: React.FC<MobileTaskDetailBodyProps> = ({
   followerOptions,
   saving,
   canSave,
+  completed = false,
+  completing = false,
+  onComplete,
   onBack,
   onSave,
   personInitial,
@@ -167,6 +174,20 @@ const MobileTaskDetailBody: React.FC<MobileTaskDetailBodyProps> = ({
           ))}
           <span className="mtd-star-label">{IMPACT_LABELS[impact] || `${impact} sao`}</span>
         </div>
+
+        {onComplete ? (
+          <div className="mtd-complete-row">
+            <TaskCompleteTick
+              completed={completed}
+              loading={completing}
+              disabled={!canSave}
+              onComplete={onComplete}
+            />
+            <span className="mtd-complete-label">
+              {completed ? 'Đã hoàn thành' : 'Hoàn thành'}
+            </span>
+          </div>
+        ) : null}
 
         <p className="mtd-kicker">Người liên quan</p>
         <div className="mtd-people">

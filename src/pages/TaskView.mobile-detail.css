@@ -278,8 +278,24 @@
 .mtd-stars {
   display: flex;
   align-items: center;
-  margin-bottom: 28px;
+  margin-bottom: 12px;
   gap: 0;
+}
+
+.mtd-complete-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin: 0 0 24px;
+  padding: 12px 0;
+  border-top: 1px dashed rgba(32, 30, 29, 0.12);
+  border-bottom: 1px dashed rgba(32, 30, 29, 0.12);
+}
+
+.mtd-complete-label {
+  font-size: 15px;
+  font-weight: 800;
+  color: var(--mtd-ink, #1e386b);
 }
 
 .mtd-star {

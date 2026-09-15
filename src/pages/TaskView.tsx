@@ -1387,82 +1387,29 @@ const TaskView: React.FC = () => {
         </div>
       );
     } else if (detailTask) {
-      if (listScope) {
-        setToolbar(
-          <div className="flex items-center gap-2 md:gap-3 w-full min-w-0">
-            <BackButton size="small" onClick={() => setDetailTask(null)} />
-            <div className="min-w-0 flex-1 hidden sm:block">
-              <p className="text-[10px] uppercase tracking-widest text-gray-500 m-0 leading-tight truncate">
-                {listTitle}
-              </p>
-              <p className="m-0 text-sm font-extrabold text-[#1E386B] leading-snug truncate">
-                {detailTask.congViec}
-              </p>
-            </div>
-            <div className="flex items-center gap-2 shrink-0 ml-auto flex-wrap justify-end">
-              {addTaskButton({ size: 'small' })}
-              <div className="flex items-center gap-1.5">
-                <TaskCompleteTick
-                  completed={isTaskRecordCompleted(detailTask)}
-                  loading={completingTaskKey === detailTask.key}
-                  disabled={!supabaseConnected}
-                  onComplete={() => void handleMarkComplete(detailTask.key, detailTask.deptKey)}
-                />
-                <span className="text-xs font-semibold text-[#1E386B] hidden sm:inline">
-                  {isTaskRecordCompleted(detailTask) ? 'Đã hoàn thành' : 'Hoàn thành'}
-                </span>
-              </div>
-              <Button
-                type="primary"
-                size="small"
-                className="bg-[#F38320] border-[#F38320] font-semibold"
-                loading={savingDetail}
-                onClick={handleDetailSave}
-              >
-                Lưu
-              </Button>
-              {weekControls}
-            </div>
+      setToolbar(
+        <div className="flex items-center gap-2 md:gap-3 w-full min-w-0">
+          <BackButton size="small" onClick={() => setDetailTask(null)} />
+          <div className="min-w-0 flex-1 hidden sm:block">
+            <p className="m-0 text-sm font-extrabold text-[#1E386B] leading-snug truncate">
+              {detailTask.congViec}
+            </p>
           </div>
-        );
-      } else {
-        setToolbar(
-          <div className="flex items-center gap-2 md:gap-3 w-full min-w-0">
-            <BackButton size="small" onClick={() => setDetailTask(null)} />
-            <div className="min-w-0 flex-1 hidden sm:block">
-              <p className="text-[10px] uppercase tracking-widest text-gray-500 m-0 leading-tight">
-                Chi tiết công việc
-              </p>
-              <p className="m-0 text-sm font-extrabold text-[#1E386B] leading-snug truncate">
-                {detailTask.congViec}
-              </p>
-            </div>
-            <div className="flex items-center gap-2 shrink-0 ml-auto flex-wrap justify-end">
-              <div className="flex items-center gap-1.5">
-                <TaskCompleteTick
-                  completed={isTaskRecordCompleted(detailTask)}
-                  loading={completingTaskKey === detailTask.key}
-                  disabled={!supabaseConnected}
-                  onComplete={() => void handleMarkComplete(detailTask.key, detailTask.deptKey)}
-                />
-                <span className="text-xs font-semibold text-[#1E386B] hidden sm:inline">
-                  {isTaskRecordCompleted(detailTask) ? 'Đã hoàn thành' : 'Hoàn thành'}
-                </span>
-              </div>
-              <Button
-                type="primary"
-                size="small"
-                className="bg-[#F38320] border-[#F38320] font-semibold"
-                loading={savingDetail}
-                onClick={handleDetailSave}
-              >
-                Lưu
-              </Button>
-              {weekControls}
-            </div>
+          <div className="flex items-center gap-2 shrink-0 ml-auto flex-wrap justify-end">
+            {listScope ? addTaskButton({ size: 'small' }) : null}
+            <Button
+              type="primary"
+              size="small"
+              className="bg-[#F38320] border-[#F38320] font-semibold"
+              loading={savingDetail}
+              onClick={handleDetailSave}
+            >
+              Lưu
+            </Button>
+            {weekControls}
           </div>
-        );
-      }
+        </div>
+      );
     } else {
       setToolbar(
         <div className="flex items-center gap-2 md:gap-3 min-w-0 ml-auto">{weekControls}</div>
@@ -2067,37 +2014,13 @@ const TaskView: React.FC = () => {
                         >
                           <span className="task-list-card-rail" aria-hidden />
                           <div className="task-list-card-body">
-                            <div className="task-list-card-head">
-                              <div className="flex-1 min-w-0 pr-2">
-                                <p className="task-list-name" title={row.congViec}>
-                                  {row.congViec}
-                                </p>
-                                <p className="task-list-dept-line">
-                                  {(deptMeta?.deptName || row.phongBan || row.deptKey || '').toUpperCase()}
-                                </p>
-                              </div>
-                              <div className="flex items-center gap-1.5 shrink-0">
-                                <span className={`task-list-badge ${badge.cls}`}>{badge.label}</span>
-                                <span
-                                  role="checkbox"
-                                  aria-checked={done}
-                                  aria-label={done ? 'Đã hoàn thành' : 'Đánh dấu hoàn thành'}
-                                  title={done ? 'Đã hoàn thành' : 'Tích để hoàn thành'}
-                                  className={`task-list-quick-check${done ? ' is-done' : ''}${
-                                    completingTaskKey === row.key ? ' is-loading' : ''
-                                  }`}
-                                  onClick={event => {
-                                    event.preventDefault();
-                                    event.stopPropagation();
-                                    if (done || !supabaseConnected || completingTaskKey === row.key) {
-                                      return;
-                                    }
-                                    void handleMarkComplete(row.key, row.deptKey);
-                                  }}
-                                >
-                                  {done ? <CheckOutlined /> : null}
-                                </span>
-                              </div>
+                            <div className="task-list-card-title-block">
+                              <p className="task-list-name" title={row.congViec}>
+                                {row.congViec}
+                              </p>
+                              <p className="task-list-dept-line">
+                                {(deptMeta?.deptName || row.phongBan || row.deptKey || '').toUpperCase()}
+                              </p>
                             </div>
 
                             <div className="task-list-card-progress">
@@ -2124,6 +2047,29 @@ const TaskView: React.FC = () => {
                               {deadlineLabel ? (
                                 <span className="task-list-sub shrink-0">Hạn: {deadlineLabel}</span>
                               ) : null}
+                            </div>
+
+                            <div className="task-list-card-actions">
+                              <span className={`task-list-badge ${badge.cls}`}>{badge.label}</span>
+                              <span
+                                role="checkbox"
+                                aria-checked={done}
+                                aria-label={done ? 'Đã hoàn thành' : 'Đánh dấu hoàn thành'}
+                                title={done ? 'Đã hoàn thành' : 'Tích để hoàn thành'}
+                                className={`task-list-quick-check${done ? ' is-done' : ''}${
+                                  completingTaskKey === row.key ? ' is-loading' : ''
+                                }`}
+                                onClick={event => {
+                                  event.preventDefault();
+                                  event.stopPropagation();
+                                  if (done || !supabaseConnected || completingTaskKey === row.key) {
+                                    return;
+                                  }
+                                  void handleMarkComplete(row.key, row.deptKey);
+                                }}
+                              >
+                                {done ? <CheckOutlined /> : null}
+                              </span>
                             </div>
                           </div>
                         </button>
@@ -2170,6 +2116,9 @@ const TaskView: React.FC = () => {
                     canSave={Boolean(supabaseConnected)}
                     onBack={() => setDetailTask(null)}
                     onSave={handleDetailSave}
+                    completed={isTaskRecordCompleted(selected)}
+                    completing={completingTaskKey === selected.key}
+                    onComplete={() => void handleMarkComplete(selected.key, selected.deptKey)}
                     personInitial={personInitial}
                   />
                 ) : (
@@ -2305,6 +2254,19 @@ const TaskView: React.FC = () => {
                                 tabIndex={-1}
                               />
                             </Space.Compact>
+                          </div>
+                          <div className="task-md-complete-row">
+                            <TaskCompleteTick
+                              completed={isTaskRecordCompleted(selected)}
+                              loading={completingTaskKey === selected.key}
+                              disabled={!supabaseConnected}
+                              onComplete={() =>
+                                void handleMarkComplete(selected.key, selected.deptKey)
+                              }
+                            />
+                            <span className="task-md-complete-label">
+                              {isTaskRecordCompleted(selected) ? 'Đã hoàn thành' : 'Hoàn thành'}
+                            </span>
                           </div>
                         </section>
 

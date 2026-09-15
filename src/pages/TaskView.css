@@ -305,14 +305,28 @@
   min-width: 0;
   display: flex;
   flex-direction: column;
-  gap: 10px;
+  gap: 8px;
   padding: 12px 12px 11px 12px;
+}
+
+.task-list-card-title-block {
+  min-width: 0;
+  width: 100%;
 }
 
 .task-list-card-head {
   display: flex;
   align-items: flex-start;
   gap: 10px;
+}
+
+.task-list-card-actions {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding-top: 2px;
+  border-top: 1px dashed rgba(30, 56, 107, 0.12);
 }
 
 .task-list-card-avatar {
@@ -406,7 +420,7 @@
 
 .task-list-name {
   margin: 0;
-  flex: 1;
+  width: 100%;
   min-width: 0;
   font-size: 14.5px;
   font-weight: 700;
@@ -414,9 +428,10 @@
   color: var(--tv-ink);
   line-height: 1.35;
   display: -webkit-box;
-  -webkit-line-clamp: 2;
+  -webkit-line-clamp: 3;
   -webkit-box-orient: vertical;
   overflow: hidden;
+  word-break: break-word;
 }
 
 .task-list-item.is-active .task-list-name {
@@ -1050,6 +1065,21 @@
   display: flex;
   align-items: center;
   gap: 6px;
+}
+
+.task-md-complete-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-top: 10px;
+  padding-top: 10px;
+  border-top: 1px dashed var(--tv-line);
+}
+
+.task-md-complete-label {
+  font-size: 14px;
+  font-weight: 800;
+  color: var(--tv-cobalt);
 }
 
 .task-md-title-input.ant-input {
