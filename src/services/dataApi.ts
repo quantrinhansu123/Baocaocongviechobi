@@ -109,10 +109,19 @@ export async function findDataRows(options?: {
 }
 
 export async function addDataRow(row: Record<string, unknown>, table?: string): Promise<unknown> {
+  return addDataRows([row], table);
+}
+
+export async function addDataRows(
+  rows: Record<string, unknown>[],
+  table?: string
+): Promise<unknown> {
+  if (rows.length === 0) return [];
+
   const response = await fetch(`${API_BASE}/add`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ table, rows: [row] }),
+    body: JSON.stringify({ table, rows }),
   });
 
   const text = await readResponseText(response);

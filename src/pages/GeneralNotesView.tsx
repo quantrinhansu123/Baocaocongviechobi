@@ -33,6 +33,7 @@ import PersonnelMentionMenu, {
   type MentionMatch,
 } from '../components/PersonnelMentionMenu';
 import {
+  deleteGeneralNoteFromSupabase,
   loadGeneralNotesFromSupabase,
   loadWorkNotesFromSupabase,
   syncGeneralNotesToSupabase,
@@ -217,7 +218,8 @@ const GeneralNotesView: React.FC = () => {
   const syncReadyRef = useRef(false);
   const syncTimerRef = useRef<number | null>(null);
   const notesRef = useRef(notes);
-  notesRef.current = notes;
+  const supabaseConnectedRef = useRef(supabaseConnected);
+  supabaseConnectedRef.current = supabaseConnected;
   const { setToolbar, clearToolbar } = useHeaderToolbar();
 
   const [archiveOpen, setArchiveOpen] = useState(false);
@@ -234,6 +236,32 @@ const GeneralNotesView: React.FC = () => {
     [mentionState, personnelOptions]
   );
 
+  const persist = useCallback((next: GeneralNote[]) => {
+    const sorted = [...next].sort((a, b) => a.createdAt - b.createdAt);
+    // Cập nhật ref ngay để Enter/Thêm ý liên tục không bị mất ý do state React cũ.
+    notesRef.current = sorted;
+    setNotes(sorted);
+    saveNotes(sorted);
+  }, []);
+
+  const flushSyncToSupabase = useCallback((snapshot: GeneralNote[]) => {
+    if (!syncReadyRef.current || supabaseConnectedRef.current === false) {
+      return;
+    }
+    setSyncing(true);
+    void syncGeneralNotesToSupabase(snapshot)
+      .then(() => {
+        setSupabaseConnected(true);
+      })
+      .catch(error => {
+        setSupabaseConnected(false);
+        message.error(error instanceof Error ? error.message : 'Không đồng bộ được lên Supabase.');
+      })
+      .finally(() => {
+        setSyncing(false);
+      });
+  }, []);
+
   useEffect(() => {
     let cancelled = false;
 
@@ -243,16 +271,17 @@ const GeneralNotesView: React.FC = () => {
         const remote = await loadGeneralNotesFromSupabase();
         if (cancelled) return;
         setSupabaseConnected(true);
-        if (remote.length > 0) {
-          setNotes(remote);
-          saveNotes(remote);
-        } else {
-          const local = loadNotes();
-          if (local.length > 0) {
-            await syncGeneralNotesToSupabase(local);
-            if (!cancelled) {
-              message.success('Đã đẩy ghi chú chung từ máy lên Supabase.');
-            }
+        const local = loadNotes();
+        // Gộp local + remote theo id — local thắng khi trùng (vừa sửa trên máy).
+        const byId = new Map<string, GeneralNote>();
+        for (const note of remote) byId.set(note.id, note);
+        for (const note of local) byId.set(note.id, note);
+        const merged = [...byId.values()].sort((a, b) => a.createdAt - b.createdAt);
+        persist(merged);
+        if (merged.length > 0) {
+          await syncGeneralNotesToSupabase(merged);
+          if (!cancelled && remote.length === 0 && local.length > 0) {
+            message.success('Đã đẩy ghi chú chung từ máy lên Supabase.');
           }
         }
       } catch {
@@ -280,13 +309,7 @@ const GeneralNotesView: React.FC = () => {
     return () => {
       cancelled = true;
     };
-  }, []);
-
-  const persist = useCallback((next: GeneralNote[]) => {
-    const sorted = [...next].sort((a, b) => a.createdAt - b.createdAt);
-    setNotes(sorted);
-    saveNotes(sorted);
-  }, []);
+  }, [persist]);
 
   useEffect(() => {
     if (!syncReadyRef.current || supabaseConnected === false) {
@@ -298,27 +321,34 @@ const GeneralNotesView: React.FC = () => {
     }
 
     syncTimerRef.current = window.setTimeout(() => {
-      const snapshot = notesRef.current;
-      setSyncing(true);
-      void syncGeneralNotesToSupabase(snapshot)
-        .then(() => {
-          setSupabaseConnected(true);
-        })
-        .catch(error => {
-          setSupabaseConnected(false);
-          message.error(error instanceof Error ? error.message : 'Không đồng bộ được lên Supabase.');
-        })
-        .finally(() => {
-          setSyncing(false);
-        });
+      flushSyncToSupabase(notesRef.current);
     }, SYNC_DEBOUNCE_MS);
 
     return () => {
       if (syncTimerRef.current) {
         window.clearTimeout(syncTimerRef.current);
+        syncTimerRef.current = null;
       }
     };
-  }, [notes, supabaseConnected]);
+  }, [notes, supabaseConnected, flushSyncToSupabase]);
+
+  // Rời trang: đẩy sync ngay, không hủy mất ý vừa tạo.
+  useEffect(() => {
+    const flushNow = () => {
+      if (syncTimerRef.current) {
+        window.clearTimeout(syncTimerRef.current);
+        syncTimerRef.current = null;
+      }
+      if (syncReadyRef.current && supabaseConnectedRef.current !== false) {
+        void syncGeneralNotesToSupabase(notesRef.current).catch(() => undefined);
+      }
+    };
+    window.addEventListener('beforeunload', flushNow);
+    return () => {
+      window.removeEventListener('beforeunload', flushNow);
+      flushNow();
+    };
+  }, []);
 
   const timelineNotes = useMemo(() => {
     return notes
@@ -327,7 +357,7 @@ const GeneralNotesView: React.FC = () => {
   }, [notes, showHidden]);
 
   const updateNote = (noteId: string, patch: Partial<GeneralNote>) => {
-    persist(notes.map(note => (note.id === noteId ? { ...note, ...patch } : note)));
+    persist(notesRef.current.map(note => (note.id === noteId ? { ...note, ...patch } : note)));
   };
 
   const syncMentionFromCaret = useCallback(
@@ -388,7 +418,7 @@ const GeneralNotesView: React.FC = () => {
 
   const appendNote = (text = '') => {
     const created = createNote(text);
-    persist([...notes, created]);
+    persist([...notesRef.current, created]);
     setFocusNoteId(created.id);
     return created;
   };
@@ -452,9 +482,10 @@ const GeneralNotesView: React.FC = () => {
 
   const handleIdeaKeyDown = (noteId: string, event: React.KeyboardEvent<HTMLTextAreaElement>) => {
     const el = event.currentTarget;
-    const index = notes.findIndex(note => note.id === noteId);
+    const currentNotes = notesRef.current;
+    const index = currentNotes.findIndex(note => note.id === noteId);
     if (index < 0) return;
-    const note = notes[index];
+    const note = currentNotes[index];
 
     const mentionOpen =
       mentionState?.noteId === noteId &&
@@ -536,10 +567,11 @@ const GeneralNotesView: React.FC = () => {
       const created = createNote(after);
       created.createdAt = note.createdAt + 0.001;
 
-      const next = notes.map(item => (item.id === note.id ? updatedCurrent : item));
+      const next = currentNotes.map(item => (item.id === note.id ? updatedCurrent : item));
       const insertAt = next.findIndex(item => item.id === note.id) + 1;
       next.splice(insertAt, 0, created);
-      const normalized = next.map((item, i) => ({ ...item, createdAt: i + 1 }));
+      const base = Date.now();
+      const normalized = next.map((item, i) => ({ ...item, createdAt: base + i }));
       persist(normalized);
       setFocusNoteId(created.id);
       return;
@@ -547,7 +579,7 @@ const GeneralNotesView: React.FC = () => {
 
     if (event.key === 'Backspace' && el.selectionStart === 0 && el.selectionEnd === 0) {
       const isEmpty = note.lines.every(line => !line.trim());
-      const visible = notes.filter(n => showHidden || !n.hidden);
+      const visible = currentNotes.filter(n => showHidden || !n.hidden);
       const pos = visible.findIndex(n => n.id === noteId);
       if (!isEmpty || visible.length <= 1 || pos <= 0) {
         return;
@@ -555,7 +587,11 @@ const GeneralNotesView: React.FC = () => {
       event.preventDefault();
       setMentionState(null);
       const prev = visible[pos - 1];
-      persist(notes.filter(n => n.id !== noteId));
+      const removedId = noteId;
+      persist(currentNotes.filter(n => n.id !== noteId));
+      if (supabaseConnectedRef.current !== false) {
+        void deleteGeneralNoteFromSupabase(removedId).catch(() => undefined);
+      }
       setFocusNoteId(prev.id);
       requestAnimationFrame(() => {
         const node = textareaRefs.current[prev.id];

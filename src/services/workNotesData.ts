@@ -1,4 +1,4 @@
-import { addDataRow, deleteDataRow, findDataRows } from './dataApi';
+import { addDataRows, deleteDataRow, findDataRows } from './dataApi';
 
 export const TABLE_GHI_CHU_PHONG_BAN = 'Ghi chú phòng ban';
 export const TABLE_GHI_CHU_CHUNG = 'Ghi chú chung';
@@ -94,13 +94,11 @@ export async function loadGeneralNotesFromSupabase(): Promise<GeneralNoteIdea[]>
     .sort((a, b) => a.createdAt - b.createdAt);
 }
 
-/** Ghi từng dòng bằng upsert (onConflict id) — tránh lỗi duplicate key khi sync song song. */
+/** Upsert hàng loạt (onConflict id) — một request, tránh mất ý khi tạo nhiều cái liên tiếp. */
 async function upsertAllRows(table: string, localRows: Record<string, unknown>[]) {
-  for (const row of localRows) {
-    const id = String(row.id ?? '').trim();
-    if (!id) continue;
-    await addDataRow(row, table);
-  }
+  const rows = localRows.filter(row => String(row.id ?? '').trim());
+  if (rows.length === 0) return;
+  await addDataRows(rows, table);
 }
 
 let workNotesSyncChain: Promise<void> = Promise.resolve();
@@ -110,20 +108,13 @@ function enqueueSync(chain: Promise<void>, run: () => Promise<void>): Promise<vo
   return chain.then(run, run);
 }
 
+/**
+ * Chỉ upsert — không xóa remote theo snapshot.
+ * Trước đây sync "mirror" (xóa id không có trong local) khiến tạo 4–5 ý rồi
+ * một snapshot cũ/đứt quãng xóa sạch, quay lại chỉ còn 1 ý.
+ */
 export async function syncWorkNotesToSupabase(notes: WorkNoteIdea[]): Promise<void> {
   const run = async () => {
-    const result = await findDataRows({ table: TABLE_GHI_CHU_PHONG_BAN });
-    const remoteIds = new Set(
-      result.rows.map(row => String(row.id ?? row.key ?? '').trim()).filter(Boolean)
-    );
-    const localIds = new Set(notes.map(note => note.id));
-
-    for (const id of remoteIds) {
-      if (!localIds.has(id)) {
-        await deleteDataRow({ id }, TABLE_GHI_CHU_PHONG_BAN);
-      }
-    }
-
     await upsertAllRows(TABLE_GHI_CHU_PHONG_BAN, notes.map(workNoteToRow));
   };
 
@@ -134,21 +125,32 @@ export async function syncWorkNotesToSupabase(notes: WorkNoteIdea[]): Promise<vo
 
 export async function syncGeneralNotesToSupabase(notes: GeneralNoteIdea[]): Promise<void> {
   const run = async () => {
-    const result = await findDataRows({ table: TABLE_GHI_CHU_CHUNG });
-    const remoteIds = new Set(
-      result.rows.map(row => String(row.id ?? row.key ?? '').trim()).filter(Boolean)
-    );
-    const localIds = new Set(notes.map(note => note.id));
-
-    for (const id of remoteIds) {
-      if (!localIds.has(id)) {
-        await deleteDataRow({ id }, TABLE_GHI_CHU_CHUNG);
-      }
-    }
-
     await upsertAllRows(TABLE_GHI_CHU_CHUNG, notes.map(generalNoteToRow));
   };
 
+  const next = enqueueSync(generalNotesSyncChain, run);
+  generalNotesSyncChain = next.catch(() => undefined);
+  await next;
+}
+
+/** Xóa đúng 1 ý khi người dùng Backspace / xóa chủ động. */
+export async function deleteWorkNoteFromSupabase(id: string): Promise<void> {
+  const trimmed = id.trim();
+  if (!trimmed) return;
+  const run = async () => {
+    await deleteDataRow({ id: trimmed }, TABLE_GHI_CHU_PHONG_BAN);
+  };
+  const next = enqueueSync(workNotesSyncChain, run);
+  workNotesSyncChain = next.catch(() => undefined);
+  await next;
+}
+
+export async function deleteGeneralNoteFromSupabase(id: string): Promise<void> {
+  const trimmed = id.trim();
+  if (!trimmed) return;
+  const run = async () => {
+    await deleteDataRow({ id: trimmed }, TABLE_GHI_CHU_CHUNG);
+  };
   const next = enqueueSync(generalNotesSyncChain, run);
   generalNotesSyncChain = next.catch(() => undefined);
   await next;

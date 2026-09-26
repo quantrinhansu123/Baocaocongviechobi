@@ -9,6 +9,7 @@ import {
 import { ORG_BLOCKS } from '../data/orgBlocks';
 import { useHeaderToolbar } from '../contexts/HeaderToolbarContext';
 import {
+  deleteWorkNoteFromSupabase,
   loadWorkNotesFromSupabase,
   syncWorkNotesToSupabase,
   type WorkNoteIdea,
@@ -170,7 +171,8 @@ const WorkNotesView: React.FC = () => {
   const syncReadyRef = useRef(false);
   const syncTimerRef = useRef<number | null>(null);
   const notesRef = useRef(notes);
-  notesRef.current = notes;
+  const supabaseConnectedRef = useRef(supabaseConnected);
+  supabaseConnectedRef.current = supabaseConnected;
   const { setToolbar, clearToolbar } = useHeaderToolbar();
 
   const mentionOptions = useMemo(
@@ -212,6 +214,32 @@ const WorkNotesView: React.FC = () => {
     return () => mq.removeEventListener('change', syncCollapsed);
   }, []);
 
+  const persist = useCallback((next: NoteIdea[]) => {
+    const sorted = [...next].sort((a, b) => a.createdAt - b.createdAt);
+    // Cập nhật ref ngay để Enter/Thêm ý liên tục không bị mất ý do state React cũ.
+    notesRef.current = sorted;
+    setNotes(sorted);
+    saveNotes(sorted);
+  }, []);
+
+  const flushSyncToSupabase = useCallback((snapshot: NoteIdea[]) => {
+    if (!syncReadyRef.current || supabaseConnectedRef.current === false) {
+      return;
+    }
+    setSyncing(true);
+    void syncWorkNotesToSupabase(snapshot)
+      .then(() => {
+        setSupabaseConnected(true);
+      })
+      .catch(error => {
+        setSupabaseConnected(false);
+        message.error(error instanceof Error ? error.message : 'Không đồng bộ được lên Supabase.');
+      })
+      .finally(() => {
+        setSyncing(false);
+      });
+  }, []);
+
   useEffect(() => {
     let cancelled = false;
 
@@ -221,16 +249,17 @@ const WorkNotesView: React.FC = () => {
         const remote = await loadWorkNotesFromSupabase();
         if (cancelled) return;
         setSupabaseConnected(true);
-        if (remote.length > 0) {
-          setNotes(remote);
-          saveNotes(remote);
-        } else {
-          const local = loadNotes();
-          if (local.length > 0) {
-            await syncWorkNotesToSupabase(local);
-            if (!cancelled) {
-              message.success('Đã đẩy ghi chú phòng ban từ máy lên Supabase.');
-            }
+        const local = loadNotes();
+        // Gộp local + remote theo id — local thắng khi trùng (vừa sửa trên máy).
+        const byId = new Map<string, NoteIdea>();
+        for (const note of remote) byId.set(note.id, note);
+        for (const note of local) byId.set(note.id, note);
+        const merged = [...byId.values()].sort((a, b) => a.createdAt - b.createdAt);
+        persist(merged);
+        if (merged.length > 0) {
+          await syncWorkNotesToSupabase(merged);
+          if (!cancelled && remote.length === 0 && local.length > 0) {
+            message.success('Đã đẩy ghi chú phòng ban từ máy lên Supabase.');
           }
         }
       } catch {
@@ -258,13 +287,7 @@ const WorkNotesView: React.FC = () => {
     return () => {
       cancelled = true;
     };
-  }, []);
-
-  const persist = useCallback((next: NoteIdea[]) => {
-    const sorted = [...next].sort((a, b) => a.createdAt - b.createdAt);
-    setNotes(sorted);
-    saveNotes(sorted);
-  }, []);
+  }, [persist]);
 
   useEffect(() => {
     if (!syncReadyRef.current || supabaseConnected === false) {
@@ -276,27 +299,34 @@ const WorkNotesView: React.FC = () => {
     }
 
     syncTimerRef.current = window.setTimeout(() => {
-      const snapshot = notesRef.current;
-      setSyncing(true);
-      void syncWorkNotesToSupabase(snapshot)
-        .then(() => {
-          setSupabaseConnected(true);
-        })
-        .catch(error => {
-          setSupabaseConnected(false);
-          message.error(error instanceof Error ? error.message : 'Không đồng bộ được lên Supabase.');
-        })
-        .finally(() => {
-          setSyncing(false);
-        });
+      flushSyncToSupabase(notesRef.current);
     }, SYNC_DEBOUNCE_MS);
 
     return () => {
       if (syncTimerRef.current) {
         window.clearTimeout(syncTimerRef.current);
+        syncTimerRef.current = null;
       }
     };
-  }, [notes, supabaseConnected]);
+  }, [notes, supabaseConnected, flushSyncToSupabase]);
+
+  // Rời trang: đẩy sync ngay, không hủy mất ý vừa tạo.
+  useEffect(() => {
+    const flushNow = () => {
+      if (syncTimerRef.current) {
+        window.clearTimeout(syncTimerRef.current);
+        syncTimerRef.current = null;
+      }
+      if (syncReadyRef.current && supabaseConnectedRef.current !== false) {
+        void syncWorkNotesToSupabase(notesRef.current).catch(() => undefined);
+      }
+    };
+    window.addEventListener('beforeunload', flushNow);
+    return () => {
+      window.removeEventListener('beforeunload', flushNow);
+      flushNow();
+    };
+  }, []);
 
   const resolveDeptMeta = useCallback(
     (deptKey: string) => {
@@ -373,7 +403,7 @@ const WorkNotesView: React.FC = () => {
   }, [activeDeptKey, leftDepts]);
 
   const updateIdea = (ideaId: string, patch: Partial<NoteIdea>) => {
-    persist(notes.map(idea => (idea.id === ideaId ? { ...idea, ...patch } : idea)));
+    persist(notesRef.current.map(idea => (idea.id === ideaId ? { ...idea, ...patch } : idea)));
   };
 
   const syncMentionFromCaret = useCallback(
@@ -441,7 +471,7 @@ const WorkNotesView: React.FC = () => {
       title: meta.title,
       text,
     });
-    persist([...notes, created]);
+    persist([...notesRef.current, created]);
     setActiveDeptKey(deptKey);
     setFocusIdeaId(created.id);
     return created;
@@ -449,9 +479,10 @@ const WorkNotesView: React.FC = () => {
 
   const handleIdeaKeyDown = (ideaId: string, event: React.KeyboardEvent<HTMLTextAreaElement>) => {
     const el = event.currentTarget;
-    const index = notes.findIndex(idea => idea.id === ideaId);
+    const currentNotes = notesRef.current;
+    const index = currentNotes.findIndex(idea => idea.id === ideaId);
     if (index < 0) return;
-    const idea = notes[index];
+    const idea = currentNotes[index];
 
     const mentionOpen =
       mentionState?.ideaId === ideaId &&
@@ -544,11 +575,12 @@ const WorkNotesView: React.FC = () => {
       // Chèn ngay sau ý hiện tại theo thứ tự gõ
       created.createdAt = idea.createdAt + 0.001;
 
-      const next = notes.map(item => (item.id === idea.id ? updatedCurrent : item));
+      const next = currentNotes.map(item => (item.id === idea.id ? updatedCurrent : item));
       const insertAt = next.findIndex(item => item.id === idea.id) + 1;
       next.splice(insertAt, 0, created);
       // Chuẩn hóa createdAt thành số nguyên tăng dần theo vị trí
-      const normalized = next.map((item, i) => ({ ...item, createdAt: i + 1 }));
+      const base = Date.now();
+      const normalized = next.map((item, i) => ({ ...item, createdAt: base + i }));
       persist(normalized);
       setActiveDeptKey(idea.deptKey);
       setFocusIdeaId(created.id);
@@ -557,7 +589,7 @@ const WorkNotesView: React.FC = () => {
 
     if (event.key === 'Backspace' && el.selectionStart === 0 && el.selectionEnd === 0) {
       const isEmpty = idea.lines.every(line => !line.trim());
-      const visible = notes.filter(n => showHidden || !n.hidden);
+      const visible = currentNotes.filter(n => showHidden || !n.hidden);
       const pos = visible.findIndex(n => n.id === ideaId);
       if (!isEmpty || visible.length <= 1 || pos <= 0) {
         return;
@@ -565,7 +597,11 @@ const WorkNotesView: React.FC = () => {
       event.preventDefault();
       setMentionState(null);
       const prev = visible[pos - 1];
-      persist(notes.filter(n => n.id !== ideaId));
+      const removedId = ideaId;
+      persist(currentNotes.filter(n => n.id !== ideaId));
+      if (supabaseConnectedRef.current !== false) {
+        void deleteWorkNoteFromSupabase(removedId).catch(() => undefined);
+      }
       setFocusIdeaId(prev.id);
       requestAnimationFrame(() => {
         const node = textareaRefs.current[prev.id];
