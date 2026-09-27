@@ -7,12 +7,12 @@ import {
   TASK_ROW_KEY_COLUMN,
 } from './rowKey';
 import { ORG_BLOCKS } from '../data/orgBlocks';
-import type { TaskChatMessage, TaskDocLink, TaskRecord } from '../types/task';
+import type { TaskChatMessage, TaskDocLink, TaskMilestone, TaskRecord } from '../types/task';
+import { parseMilestonesField } from '../utils/taskSmart';
 import {
   formatRecordDate,
   formatUnknownAsDisplayDate,
   normalizeDisplayDateTime,
-  TASK_COMPLETED_STATUS_LABEL,
   getEffectiveDueDate,
 } from '../utils/taskDate';
 
@@ -199,6 +199,12 @@ const CHAT_MESSAGES_KEYS = [
   'ChatMessages',
   'CHAT',
 ];
+const MILESTONE_KEYS = ['MỐC CÔNG VIỆC', 'Moc cong viec', 'milestones', 'Milestones'];
+const LY_DO_GH_KEYS = [
+  ['LÝ DO GIA HẠN 1', 'Ly do gia han 1', 'lyDoGiaHan1'],
+  ['LÝ DO GIA HẠN 2', 'Ly do gia han 2', 'lyDoGiaHan2'],
+  ['LÝ DO GIA HẠN 3', 'Ly do gia han 3', 'lyDoGiaHan3'],
+] as const;
 
 export { hasRowKey, pickRowKey, TASK_ROW_KEY_COLUMN } from './rowKey';
 
@@ -245,6 +251,19 @@ function applyChatMessagesToRow(
   messagesInput?: TaskChatMessage[] | null
 ): void {
   row['LỊCH SỬ CHAT'] = JSON.stringify(normalizeChatMessages(messagesInput));
+}
+
+function applyMilestonesToRow(row: Record<string, unknown>, milestones?: TaskMilestone[] | null): void {
+  row['MỐC CÔNG VIỆC'] = JSON.stringify(parseMilestonesField(milestones ?? []));
+}
+
+function applyExtensionReasonsToRow(
+  row: Record<string, unknown>,
+  reasons: { lyDoGiaHan1?: string; lyDoGiaHan2?: string; lyDoGiaHan3?: string }
+): void {
+  row['LÝ DO GIA HẠN 1'] = (reasons.lyDoGiaHan1 || '').trim();
+  row['LÝ DO GIA HẠN 2'] = (reasons.lyDoGiaHan2 || '').trim();
+  row['LÝ DO GIA HẠN 3'] = (reasons.lyDoGiaHan3 || '').trim();
 }
 
 export function normalizeTaiLieuLinks(
@@ -823,6 +842,12 @@ export function mapRowToTaskRecord(
       giaHan1: pickFormattedDate(row, ['GIA HẠN 1', 'Gia hạn 1', 'Gia han 1', 'GiaHan1', 'giaHan1']),
       giaHan2: pickFormattedDate(row, ['GIA HẠN 2', 'Gia hạn 2', 'Gia han 2', 'GiaHan2', 'giaHan2']),
       giaHan3: pickFormattedDate(row, ['GIA HẠN 3', 'Gia hạn 3', 'Gia han 3', 'GiaHan3', 'giaHan3']),
+      lyDoGiaHan1: pickField(row, [...LY_DO_GH_KEYS[0]]),
+      lyDoGiaHan2: pickField(row, [...LY_DO_GH_KEYS[1]]),
+      lyDoGiaHan3: pickField(row, [...LY_DO_GH_KEYS[2]]),
+      milestones: parseMilestonesField(pickField(row, MILESTONE_KEYS)),
+      moTa: pickField(row, ['MÔ TẢ', 'Mo ta', 'moTa', 'MoTa']),
+      ketQuaMongDoi: pickField(row, ['KẾT QUẢ MONG ĐỢI', 'Ket qua mong doi', 'ketQuaMongDoi']),
       ketQua: pickField(row, ['KẾT QUẢ', 'Kết quả', 'Ket qua', 'KetQua', 'ketQua', 'Result']),
       linkKQ: primaryLink.link,
       tenTaiLieu: primaryLink.ten,
@@ -917,6 +942,10 @@ export function buildTaskEditRow(
   row['GIA HẠN 1'] = formatRecordDate(task.giaHan1);
   row['GIA HẠN 2'] = formatRecordDate(task.giaHan2);
   row['GIA HẠN 3'] = formatRecordDate(task.giaHan3);
+  applyExtensionReasonsToRow(row, task);
+  applyMilestonesToRow(row, task.milestones);
+  row['MÔ TẢ'] = (task.moTa || '').trim();
+  row['KẾT QUẢ MONG ĐỢI'] = (task.ketQuaMongDoi || '').trim();
   row['KẾT QUẢ'] = task.ketQua;
   applyTaiLieuLinksToRow(
     row,

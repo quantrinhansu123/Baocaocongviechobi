@@ -11,6 +11,14 @@ export type TaskChatMessage = {
   createdAt: number;
 };
 
+/** Mốc kết quả — tiến độ % tính theo số mốc đã xong. */
+export type TaskMilestone = {
+  id: string;
+  label: string;
+  done: boolean;
+  required: boolean;
+};
+
 export type TaskRecord = {
   stt: number;
   kyBaoCao: string;
@@ -23,6 +31,14 @@ export type TaskRecord = {
   giaHan1: string;
   giaHan2: string;
   giaHan3: string;
+  lyDoGiaHan1?: string;
+  lyDoGiaHan2?: string;
+  lyDoGiaHan3?: string;
+  /** Mốc công việc. Rỗng = chưa lưu, form sẽ gợi ý mẫu. */
+  milestones?: TaskMilestone[];
+  /** Mô tả dài, tách khỏi tên công việc trên header. */
+  moTa?: string;
+  ketQuaMongDoi?: string;
   ketQua: string;
   linkKQ: string;
   /** Tên tài liệu gắn với linkKQ (link đầu tiên — tương thích cũ) */
