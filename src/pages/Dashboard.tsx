@@ -1758,8 +1758,8 @@ const Dashboard: React.FC = () => {
       {displayIssues.length > 0 ? (
         <div className="flex flex-col h-full min-h-0">
           <div className="flex-1 overflow-y-auto pr-1 dashboard-scroll">
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-              {displayIssues.slice((issuePage - 1) * 6, issuePage * 6).map(issue => {
+            <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-2">
+              {displayIssues.slice((issuePage - 1) * 12, issuePage * 12).map(issue => {
                 const overdue = issue.status === 'Quá hạn';
                 return (
                   <div
@@ -1773,59 +1773,53 @@ const Dashboard: React.FC = () => {
                         handleRowClick(issue);
                       }
                     }}
-                    className={`dashboard-issue-card group relative flex flex-col gap-2 rounded-xl border bg-white p-3 pl-3.5 shadow-sm cursor-pointer transition-all duration-150 hover:-translate-y-0.5 hover:shadow-md active:scale-[0.99] ${
+                    className={`dashboard-issue-card group relative flex flex-col gap-1 rounded-lg border bg-white p-2 pl-2.5 shadow-sm cursor-pointer transition-all duration-150 hover:-translate-y-0.5 hover:shadow-md active:scale-[0.99] ${
                       overdue
                         ? 'border-red-200 hover:border-red-300'
                         : 'border-orange-200 hover:border-orange-300'
                     }`}
                   >
                     <span
-                      className={`absolute left-0 top-2 bottom-2 w-1 rounded-full ${
+                      className={`absolute left-0 top-1.5 bottom-1.5 w-0.5 rounded-full ${
                         overdue ? 'bg-red-500' : 'bg-[#F38320]'
                       }`}
                       aria-hidden
                     />
-                    <div className="flex items-start gap-2 min-w-0">
+                    <div className="flex items-start gap-1.5 min-w-0">
                       <span
-                        className={`mt-0.5 shrink-0 inline-flex h-5 w-5 items-center justify-center rounded-full border-2 ${
+                        className={`mt-0.5 shrink-0 inline-flex h-3.5 w-3.5 items-center justify-center rounded-full border-2 ${
                           overdue ? 'border-red-400 bg-red-50' : 'border-orange-400 bg-orange-50'
                         }`}
                         aria-hidden
                       />
                       <div className="min-w-0 flex-1">
                         <p
-                          className={`m-0 font-bold text-sm leading-snug line-clamp-2 group-hover:underline ${
+                          className={`m-0 font-bold text-xs leading-snug line-clamp-2 group-hover:underline ${
                             overdue ? 'text-red-600' : 'text-[#1E386B]'
                           }`}
                         >
                           {issue.name}
                         </p>
                         {issue.history ? (
-                          <p className="m-0 mt-1 text-xs text-gray-600 line-clamp-2 leading-relaxed">
+                          <p className="m-0 mt-0.5 text-[11px] text-gray-500 line-clamp-1 leading-snug">
                             {issue.history}
                           </p>
                         ) : null}
                       </div>
                     </div>
-                    <div className="mt-auto flex items-center justify-between gap-2 pt-1">
-                      <Tag
-                        className={`m-0 text-xs font-bold uppercase tracking-wide border-none px-2 py-0.5 ${
-                          overdue
-                            ? 'bg-red-50 text-red-600'
-                            : 'bg-orange-50 text-orange-700'
-                        }`}
-                      >
-                        {overdue ? 'Quá hạn' : 'Vướng mắc'}
-                      </Tag>
+                    <div className="flex items-center justify-end gap-1.5">
+                      {overdue ? (
+                        <span className="mr-auto text-[10px] font-bold uppercase text-red-600">Quá hạn</span>
+                      ) : null}
                       <button
                         type="button"
-                        className="shrink-0 rounded-md bg-slate-100 px-2.5 py-1.5 text-xs font-semibold text-slate-600 transition hover:bg-emerald-50 hover:text-emerald-700 min-h-9"
+                        className="shrink-0 rounded bg-slate-100 px-2 py-0.5 text-[11px] font-semibold text-slate-600 transition hover:bg-emerald-50 hover:text-emerald-700"
                         onClick={e => {
                           e.stopPropagation();
                           handleResolveIssue(issue.id);
                         }}
                       >
-                        Đã Giải quyết
+                        Đã giải quyết
                       </button>
                     </div>
                   </div>
@@ -1837,7 +1831,7 @@ const Dashboard: React.FC = () => {
           <div className="mt-3 pt-3 border-t border-gray-100 flex justify-center shrink-0">
             <Pagination
               current={issuePage}
-              pageSize={6}
+              pageSize={12}
               total={displayIssues.length}
               onChange={page => setIssuePage(page)}
               size="small"
@@ -2044,50 +2038,46 @@ const Dashboard: React.FC = () => {
                     >
                       {displayIssues.length > 0 ? (
                         <>
-                          <div className="grid grid-cols-1 gap-2.5 flex-1 overflow-y-auto dashboard-scroll pr-0.5">
-                            {displayIssues.slice((issuePage - 1) * 6, issuePage * 6).map(issue => {
+                          <div className="grid grid-cols-1 gap-1.5 flex-1 overflow-y-auto dashboard-scroll pr-0.5">
+                            {displayIssues.slice((issuePage - 1) * 12, issuePage * 12).map(issue => {
                               const overdue = issue.status === 'Quá hạn';
                               return (
                                 <div
                                   key={issue.id}
                                   onClick={() => handleRowClick(issue)}
-                                  className={`dashboard-issue-card relative flex flex-col gap-2 rounded-xl border bg-white p-3 pl-3.5 shadow-sm cursor-pointer active:scale-[0.99] transition-transform ${
+                                  className={`dashboard-issue-card relative flex flex-col gap-1 rounded-lg border bg-white p-2 pl-2.5 shadow-sm cursor-pointer active:scale-[0.99] transition-transform ${
                                     overdue ? 'border-red-200' : 'border-orange-200'
                                   }`}
                                 >
                                   <span
-                                    className={`absolute left-0 top-2 bottom-2 w-1 rounded-full ${
+                                    className={`absolute left-0 top-1.5 bottom-1.5 w-0.5 rounded-full ${
                                       overdue ? 'bg-red-500' : 'bg-[#F38320]'
                                     }`}
                                     aria-hidden
                                   />
                                   <p
-                                    className={`m-0 font-bold text-sm leading-snug line-clamp-2 ${
+                                    className={`m-0 font-bold text-xs leading-snug line-clamp-2 ${
                                       overdue ? 'text-red-600' : 'text-[#1E386B]'
                                     }`}
                                   >
                                     {issue.name}
                                   </p>
                                   {issue.history ? (
-                                    <p className="m-0 text-xs text-gray-600 line-clamp-2">{issue.history}</p>
+                                    <p className="m-0 text-[11px] text-gray-500 line-clamp-1">{issue.history}</p>
                                   ) : null}
-                                  <div className="flex items-center justify-between gap-2">
-                                    <Tag
-                                      className={`m-0 text-xs font-bold uppercase border-none px-2 py-0.5 ${
-                                        overdue ? 'bg-red-50 text-red-600' : 'bg-orange-50 text-orange-700'
-                                      }`}
-                                    >
-                                      {overdue ? 'Quá hạn' : 'Vướng mắc'}
-                                    </Tag>
+                                  <div className="flex items-center justify-end gap-1.5">
+                                    {overdue ? (
+                                      <span className="mr-auto text-[10px] font-bold uppercase text-red-600">Quá hạn</span>
+                                    ) : null}
                                     <button
                                       type="button"
-                                      className="shrink-0 rounded-md bg-slate-100 px-2.5 py-1.5 text-xs font-semibold text-slate-600 min-h-9"
+                                      className="shrink-0 rounded bg-slate-100 px-2 py-0.5 text-[11px] font-semibold text-slate-600"
                                       onClick={e => {
                                         e.stopPropagation();
                                         handleResolveIssue(issue.id);
                                       }}
                                     >
-                                      Đã Giải quyết
+                                      Đã giải quyết
                                     </button>
                                   </div>
                                 </div>
@@ -2098,7 +2088,7 @@ const Dashboard: React.FC = () => {
                             <div className="mt-2 pt-2 border-t border-red-100 flex justify-center shrink-0">
                               <Pagination
                                 current={issuePage}
-                                pageSize={6}
+                                pageSize={12}
                                 total={displayIssues.length}
                                 onChange={setIssuePage}
                                 size="small"

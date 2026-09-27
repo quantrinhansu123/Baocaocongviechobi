@@ -440,7 +440,7 @@ const MainLayoutInner: React.FC = () => {
 
       <Layout className="main flex flex-col min-w-0 min-h-0 overflow-hidden" style={{ flex: 1, height: '100vh' }}>
         {/* --- COMMON HEADER --- */}
-        <Header className="p-0 flex items-center justify-between shadow-sm px-2.5 md:px-4 z-30 shrink-0 min-h-14 md:min-h-16 h-14 md:h-16 border-b bg-white border-gray-200 gap-1.5 md:gap-3">
+        <Header className="p-0 flex items-center justify-between shadow-sm px-2.5 md:px-4 z-30 shrink-0 min-h-14 md:min-h-16 h-auto py-1.5 border-b bg-white border-gray-200 gap-1.5 md:gap-3">
 
           <div className="flex items-center shrink-0">
             {/* Desktop: Nút gập Sider */}

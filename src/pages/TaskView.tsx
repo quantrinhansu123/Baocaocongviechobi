@@ -1479,7 +1479,7 @@ const TaskView: React.FC = () => {
         <div className="flex items-center gap-2 md:gap-3 w-full min-w-0">
           <BackButton size="small" onClick={handleBackToParentScope} />
           <div className="min-w-0 flex-1 hidden sm:block">
-            <p className="m-0 text-sm font-extrabold text-[#1E386B] leading-snug truncate">
+            <p className="m-0 text-sm font-extrabold text-[#1E386B] leading-snug line-clamp-2 whitespace-normal break-words">
               {detailTask.congViec}
             </p>
           </div>
