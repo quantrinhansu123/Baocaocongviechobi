@@ -40,7 +40,6 @@ export function dataApiPlugin(): Plugin {
           return;
         }
 
-        syncDataEnv();
         try {
           const handled = await handleDataRoute(req as IncomingMessage, res as ServerResponse);
           if (!handled) {

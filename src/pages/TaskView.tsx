@@ -53,7 +53,7 @@ import {
   type TaskDueDatesInput,
   calculateAutomaticStatus,
 } from '../utils/taskDate';
-import { addDataRow, deleteDataRow, editDataRow, findDataRows } from '../services/dataApi';
+import { addDataRow, deleteDataRow, deleteDataRows, editDataRow, findDataRows } from '../services/dataApi';
 import { invalidateDashboardTasksCache } from '../services/dashboardData';
 import {
   loadPersonnel,
@@ -298,6 +298,10 @@ const LIST_STATUS_FILTER_OPTIONS = [
   { value: 'ext_3', label: 'Hoàn thành gia hạn 3' },
 ];
 
+function taskPickId(deptKey: string, key: string): string {
+  return `${deptKey}::${key}`;
+}
+
 function matchListStatusFilter(tienDo: string, filter: string): boolean {
   if (filter === 'all') return true;
   const raw = (tienDo || '').trim();
@@ -421,6 +425,8 @@ const TaskView: React.FC = () => {
   const [tienDoModalOpen, setTienDoModalOpen] = useState(false);
   const [savingTienDo, setSavingTienDo] = useState(false);
   const [deletingTaskKey, setDeletingTaskKey] = useState<string | null>(null);
+  const [selectedTaskIds, setSelectedTaskIds] = useState<string[]>([]);
+  const [bulkDeleting, setBulkDeleting] = useState(false);
   const [completingTaskKey, setCompletingTaskKey] = useState<string | null>(null);
   const [savingTienDoKey, setSavingTienDoKey] = useState<string | null>(null);
   const [tienDoDraft, setTienDoDraft] = useState('Chưa bắt đầu');
@@ -560,6 +566,10 @@ const TaskView: React.FC = () => {
       cancelled = true;
     };
   }, [loadScopeKey, taskTable, blockTables]);
+
+  useEffect(() => {
+    setSelectedTaskIds([]);
+  }, [loadScopeKey]);
 
   useEffect(() => {
     if (!blockKeyParam) {
@@ -1415,6 +1425,56 @@ const TaskView: React.FC = () => {
     }
   };
 
+  const toggleTaskPick = (deptKey: string, key: string, checked: boolean) => {
+    const id = taskPickId(deptKey, key);
+    setSelectedTaskIds(prev => {
+      if (checked) return prev.includes(id) ? prev : [...prev, id];
+      return prev.filter(item => item !== id);
+    });
+  };
+
+  const handleBulkDelete = async (rows: TableRow[]) => {
+    if (!rows.length || !supabaseConnected) return;
+
+    const byTable = new Map<string, Record<string, unknown>[]>();
+    for (const row of rows) {
+      const task = tasksByDept[row.deptKey]?.[row.key];
+      const activeTable = resolveActiveTable(row.deptKey);
+      if (!task?.sourceRow || !activeTable) continue;
+      const sourceRow = await hydrateSourceRowKey(task.sourceRow, activeTable);
+      if (!hasRowKey(sourceRow, task.rowKey, activeTable)) continue;
+      const bucket = byTable.get(activeTable) ?? [];
+      bucket.push(buildTaskDeleteRow(sourceRow, task.rowKey, activeTable));
+      byTable.set(activeTable, bucket);
+    }
+
+    if (byTable.size === 0) {
+      message.error('Không tìm thấy khóa TT để xóa. Hãy tải lại danh sách.');
+      return;
+    }
+
+    setBulkDeleting(true);
+    try {
+      let removed = 0;
+      for (const [table, deleteRows] of byTable) {
+        await deleteDataRows(deleteRows, table);
+        removed += deleteRows.length;
+      }
+      await reloadTasks();
+      if (detailTask && rows.some(row => row.key === detailTask.key && row.deptKey === detailTask.deptKey)) {
+        setDetailTask(null);
+      }
+      const removedIds = new Set(rows.map(row => taskPickId(row.deptKey, row.key)));
+      setSelectedTaskIds(prev => prev.filter(id => !removedIds.has(id)));
+      message.success(`Đã xóa ${removed} công việc.`);
+      invalidateDashboardTasksCache();
+    } catch (error) {
+      message.error(error instanceof Error ? error.message : 'Không thể xóa các công việc đã chọn.');
+    } finally {
+      setBulkDeleting(false);
+    }
+  };
+
   const handleWeekChange = (weekValue: string) => {
     setSelectedWeek(weekValue);
   };
@@ -1999,6 +2059,50 @@ const TaskView: React.FC = () => {
                     <Text type="secondary" className="task-list-count">
                       {listSearchFiltered.length}/{tableRows.length}
                     </Text>
+                    <label className="task-list-pick-all">
+                      <input
+                        type="checkbox"
+                        checked={
+                          listSearchFiltered.length > 0 &&
+                          listSearchFiltered.every(row =>
+                            selectedTaskIds.includes(taskPickId(row.deptKey, row.key))
+                          )
+                        }
+                        onChange={event => {
+                          const ids = listSearchFiltered.map(row => taskPickId(row.deptKey, row.key));
+                          setSelectedTaskIds(prev => {
+                            if (event.target.checked) return Array.from(new Set([...prev, ...ids]));
+                            const hide = new Set(ids);
+                            return prev.filter(id => !hide.has(id));
+                          });
+                        }}
+                      />
+                      Chọn
+                    </label>
+                    {selectedTaskIds.length > 0 ? (
+                      <Button
+                        danger
+                        size="small"
+                        className="task-list-bulk-delete"
+                        loading={bulkDeleting}
+                        disabled={!supabaseConnected}
+                        onClick={() => {
+                          const rows = tableRows.filter(row =>
+                            selectedTaskIds.includes(taskPickId(row.deptKey, row.key))
+                          );
+                          Modal.confirm({
+                            title: `Xóa ${rows.length} công việc đã chọn?`,
+                            content: 'Các công việc này sẽ bị xóa và không khôi phục được.',
+                            okText: 'Xóa',
+                            okType: 'danger',
+                            cancelText: 'Hủy',
+                            onOk: () => handleBulkDelete(rows),
+                          });
+                        }}
+                      >
+                        Xóa ({selectedTaskIds.length})
+                      </Button>
+                    ) : null}
                     {hasActiveListFilters ? (
                       <Button
                         type="text"
@@ -2053,13 +2157,21 @@ const TaskView: React.FC = () => {
                       const deadlineLabel = deadlineRaw
                         ? normalizeDisplayDate(deadlineRaw) || deadlineRaw
                         : '';
+                      const picked = selectedTaskIds.includes(taskPickId(row.deptKey, row.key));
                       return (
+                        <div key={`${row.deptKey}-${row.key}`} className="task-list-row">
+                        <input
+                          type="checkbox"
+                          className="task-list-pick"
+                          checked={picked}
+                          aria-label={`Chọn ${row.congViec}`}
+                          onChange={event => toggleTaskPick(row.deptKey, row.key, event.target.checked)}
+                        />
                         <button
-                          key={row.key}
                           type="button"
                           className={`task-list-item task-list-card${active ? ' is-active' : ''}${
                             done ? ' is-done' : ''
-                          }`}
+                          }${picked ? ' is-picked' : ''}`}
                           onClick={() => openDetail(row.key, row.deptKey)}
                         >
                           <span className="task-list-card-rail" aria-hidden />
@@ -2120,6 +2232,7 @@ const TaskView: React.FC = () => {
                             </div>
                           </div>
                         </button>
+                        </div>
                       );
                     })}
                   </div>

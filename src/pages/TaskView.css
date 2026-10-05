@@ -102,6 +102,7 @@
 .task-list-filters {
   display: flex;
   align-items: center;
+  flex-wrap: wrap;
   gap: 6px;
   min-width: 0;
 }
@@ -344,6 +345,53 @@
 
 .task-list-scroll > div:first-child > .task-list-group-label {
   margin-top: 0;
+}
+
+.task-list-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 6px;
+}
+
+.task-list-row .task-list-item {
+  flex: 1;
+  min-width: 0;
+}
+
+.task-list-pick,
+.task-list-pick-all input {
+  width: 16px;
+  height: 16px;
+  margin: 12px 0 0;
+  accent-color: #d91f2d;
+  cursor: pointer;
+  flex-shrink: 0;
+}
+
+.task-list-pick-all {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 12px;
+  font-weight: 700;
+  color: #334155;
+  flex-shrink: 0;
+}
+
+.task-list-pick-all input {
+  margin: 0;
+}
+
+.task-list-bulk-delete.ant-btn {
+  height: 28px !important;
+  padding-inline: 8px !important;
+  font-weight: 700 !important;
+  flex-shrink: 0;
+}
+
+.task-list-item.is-picked {
+  border-color: rgba(217, 31, 45, 0.45);
+  background: #fff7f7;
 }
 
 .task-list-item {

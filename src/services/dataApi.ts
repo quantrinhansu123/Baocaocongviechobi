@@ -154,11 +154,16 @@ export async function editDataRow(row: Record<string, unknown>, table?: string):
 }
 
 export async function deleteDataRow(row: Record<string, unknown>, table?: string): Promise<unknown> {
-  const payload = prepareWriteRow(row, table);
+  return deleteDataRows([row], table);
+}
+
+export async function deleteDataRows(rows: Record<string, unknown>[], table?: string): Promise<unknown> {
+  if (rows.length === 0) return null;
+  const payload = rows.map(row => prepareWriteRow(row, table));
   const response = await fetch(`${API_BASE}/delete`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ table, rows: [payload] }),
+    body: JSON.stringify({ table, rows: payload }),
   });
 
   const text = await readResponseText(response);

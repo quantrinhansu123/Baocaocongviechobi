@@ -70,6 +70,15 @@ function recordRowToDb(row: Record<string, unknown>): DbTaskRow {
   return { tt, data };
 }
 
+export async function pingSupabaseTaskTable(logicalTable: string): Promise<void> {
+  const table = resolveSupabaseTableName(logicalTable);
+  const supabase = getSupabaseClient();
+  const { error } = await supabase.from(table).select('tt').limit(1);
+  if (error) {
+    throwSupabaseError(error.message, table);
+  }
+}
+
 export async function findSupabaseTaskRows(
   logicalTable: string,
   options?: { selector?: string }

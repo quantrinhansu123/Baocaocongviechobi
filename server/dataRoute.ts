@@ -1,5 +1,6 @@
 import type { IncomingMessage, ServerResponse } from 'node:http';
 import { describeSupabaseConfiguration, isSupabaseConfigured } from './supabaseConfig';
+import { pingSupabaseTaskTable } from '../api/_lib/data/supabaseTaskStore';
 import {
   addSupabaseRows,
   deleteSupabaseRows,
@@ -92,12 +93,11 @@ export async function handleDataRoute(req: IncomingMessage, res: ServerResponse)
     }
 
     try {
-      const result = await findSupabaseRows(tableName);
+      await pingSupabaseTaskTable(tableName);
       sendJson(res, 200, {
         configured: true,
         connected: true,
         table: tableName,
-        rowCount: result.rows.length,
         backend: 'supabase',
       });
     } catch (error) {
