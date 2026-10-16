@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import {
   Button,
   Checkbox,
@@ -105,6 +105,12 @@ function saveNotes(notes: GeneralNote[]) {
 
 function noteBodyText(note: GeneralNote): string {
   return (note.lines.length ? note.lines : ['']).join('\n');
+}
+
+function autosizeNoteTextarea(el: HTMLTextAreaElement | null) {
+  if (!el) return;
+  el.style.height = 'auto';
+  el.style.height = `${el.scrollHeight}px`;
 }
 
 function dayKeyFromTs(ts: number): string {
@@ -384,7 +390,12 @@ const GeneralNotesView: React.FC = () => {
     updateNote(noteId, { lines: lines.length ? lines : [''] });
     const nextCaret = typeof caret === 'number' ? caret : raw.length;
     syncMentionFromCaret(noteId, raw, nextCaret);
+    requestAnimationFrame(() => autosizeNoteTextarea(textareaRefs.current[noteId]));
   };
+
+  useLayoutEffect(() => {
+    Object.values(textareaRefs.current).forEach(node => autosizeNoteTextarea(node));
+  }, [timelineNotes]);
 
   const insertMention = useCallback(
     (noteId: string, option: PersonnelSelectOption) => {
@@ -705,7 +716,7 @@ const GeneralNotesView: React.FC = () => {
             timelineNotes.map(note => (
               <div
                 key={note.id}
-                className={`flex items-start gap-2 rounded-lg border px-3 py-2 transition ${
+                className={`work-notes-idea-row flex items-start gap-2 rounded-lg border px-3 py-2 transition ${
                   note.hidden
                     ? 'bg-gray-100 border-gray-200 opacity-75'
                     : 'bg-white border-gray-200 shadow-sm'
@@ -719,10 +730,11 @@ const GeneralNotesView: React.FC = () => {
                 >
                   −
                 </span>
-                <div className="relative flex-1 min-w-0">
+                <div className="work-notes-idea-body relative flex-1 min-w-0">
                   <textarea
                     ref={node => {
                       textareaRefs.current[note.id] = node;
+                      autosizeNoteTextarea(node);
                     }}
                     value={noteBodyText(note)}
                     onChange={e =>
@@ -738,7 +750,7 @@ const GeneralNotesView: React.FC = () => {
                       }, 120);
                     }}
                     onKeyDown={e => handleIdeaKeyDown(note.id, e)}
-                    rows={Math.max(1, note.lines.length)}
+                    rows={1}
                     spellCheck={false}
                     disabled={note.hidden && !showHidden}
                     className={`work-notes-idea-input w-full min-w-0 resize-none outline-none bg-transparent ${
@@ -794,7 +806,7 @@ const GeneralNotesView: React.FC = () => {
         onCancel={() => setArchiveOpen(false)}
         footer={null}
         width={920}
-        destroyOnClose
+        destroyOnHidden
         styles={{ body: { paddingTop: 12 } }}
       >
         <div className="flex flex-wrap items-center gap-2 mb-3">

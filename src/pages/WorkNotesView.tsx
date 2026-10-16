@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { Button, Checkbox, Empty, Spin, Tag, Typography, message } from 'antd';
 import {
   CheckOutlined,
@@ -137,6 +137,12 @@ function saveNotes(notes: NoteIdea[]) {
 
 function ideaBodyText(idea: NoteIdea): string {
   return (idea.lines.length ? idea.lines : ['']).join('\n');
+}
+
+function autosizeNoteTextarea(el: HTMLTextAreaElement | null) {
+  if (!el) return;
+  el.style.height = 'auto';
+  el.style.height = `${el.scrollHeight}px`;
 }
 
 function deptDisplayTitle(_index: number, name: string): string {
@@ -430,7 +436,12 @@ const WorkNotesView: React.FC = () => {
     updateIdea(ideaId, { lines: lines.length ? lines : [''] });
     const nextCaret = typeof caret === 'number' ? caret : raw.length;
     syncMentionFromCaret(ideaId, raw, nextCaret);
+    requestAnimationFrame(() => autosizeNoteTextarea(textareaRefs.current[ideaId]));
   };
+
+  useLayoutEffect(() => {
+    Object.values(textareaRefs.current).forEach(node => autosizeNoteTextarea(node));
+  }, [timelineNotes]);
 
   const insertMention = useCallback(
     (ideaId: string, option: PersonnelSelectOption) => {
@@ -879,7 +890,7 @@ const WorkNotesView: React.FC = () => {
 
                       <div className="space-y-2">
                         {group.ideas.map(idea => (
-                          <div key={idea.id} className="flex items-start gap-2">
+                          <div key={idea.id} className="work-notes-idea-row flex items-start gap-2">
                             <span
                               className={`work-notes-bullet select-none mt-0.5 ${
                                 idea.hidden ? 'text-gray-400' : 'text-[#1E386B]'
@@ -888,10 +899,11 @@ const WorkNotesView: React.FC = () => {
                             >
                               −
                             </span>
-                            <div className="relative flex-1 min-w-0">
+                            <div className="work-notes-idea-body relative flex-1 min-w-0">
                               <textarea
                                 ref={node => {
                                   textareaRefs.current[idea.id] = node;
+                                  autosizeNoteTextarea(node);
                                 }}
                                 value={ideaBodyText(idea)}
                                 onChange={e =>
@@ -917,7 +929,7 @@ const WorkNotesView: React.FC = () => {
                                   }, 120);
                                 }}
                                 onKeyDown={e => handleIdeaKeyDown(idea.id, e)}
-                                rows={Math.max(1, idea.lines.length)}
+                                rows={1}
                                 spellCheck={false}
                                 disabled={idea.hidden && !showHidden}
                                 className={`work-notes-idea-input w-full min-w-0 resize-none outline-none bg-transparent ${

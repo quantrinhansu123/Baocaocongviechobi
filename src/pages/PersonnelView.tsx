@@ -762,7 +762,7 @@ const PersonnelView: React.FC = () => {
           className: '!rounded-xl font-medium',
         }}
         confirmLoading={saving}
-        destroyOnClose
+        destroyOnHidden
         width={600}
       >
         <Form form={form} layout="vertical" size="middle" className="task-detail-form mt-2">

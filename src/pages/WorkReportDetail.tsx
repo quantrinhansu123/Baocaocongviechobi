@@ -411,7 +411,7 @@ export default function ReportDetailScreen() {
           onCancel={() => setSelectedTask(null)}
           footer={null}
           width={720}
-          destroyOnClose
+          destroyOnHidden
           styles={{
             header: {
               background: 'linear-gradient(135deg, #00327D 0%, #0047AB 100%)',

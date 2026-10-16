@@ -544,16 +544,48 @@ body {
 .work-notes-idea-input {
   font-family: "Segoe UI", "Be Vietnam Pro", system-ui, sans-serif;
   border: 0;
-  min-height: 32px;
+  min-height: 1.55em;
+  height: auto;
   font-size: 18px;
   font-weight: 700;
   line-height: 1.55;
   color: #111827;
+  overflow: hidden;
+  white-space: pre-wrap;
+  word-break: break-word;
+  overflow-wrap: anywhere;
+  box-sizing: border-box;
+  field-sizing: content;
+  padding: 0;
+  margin: 0;
 }
 
 @media (min-width: 768px) {
   .work-notes-idea-input {
     font-size: 19px;
+  }
+}
+
+@media (max-width: 767px) {
+  .work-notes-idea-row {
+    flex-wrap: wrap;
+  }
+
+  .work-notes-idea-body {
+    flex: 1 1 calc(100% - 22px);
+    min-width: 0;
+  }
+
+  .work-notes-idea-row .work-notes-done-btn.ant-btn {
+    margin-left: auto;
+    min-width: 0;
+    height: 32px !important;
+    font-size: 13px !important;
+    padding-inline: 10px !important;
+  }
+
+  .work-notes-idea-input {
+    font-size: 16px;
   }
 }
 

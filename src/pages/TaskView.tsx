@@ -2467,7 +2467,7 @@ const TaskView: React.FC = () => {
             onClose={() => setChatDrawerOpen(false)}
             height={isMobileDetail ? '42vh' : undefined}
             width={isMobileDetail ? undefined : 380}
-            destroyOnClose={false}
+            destroyOnHidden={false}
             className="task-chat-drawer"
             styles={{
               body: { padding: 0, display: 'flex', flexDirection: 'column', height: '100%', overflow: 'hidden' },

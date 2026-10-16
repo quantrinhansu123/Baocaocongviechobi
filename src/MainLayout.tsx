@@ -558,7 +558,7 @@ const MainLayoutInner: React.FC = () => {
           onClose={() => setMobileMenuOpen(false)}
           open={mobileMenuOpen}
           width={280}
-          destroyOnClose={false}
+          destroyOnHidden={false}
           styles={{
             body: {
               padding: 0,
