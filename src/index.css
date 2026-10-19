@@ -593,6 +593,30 @@ body {
   cursor: default;
 }
 
+.work-notes-fab {
+  position: fixed;
+  right: 18px;
+  bottom: calc(var(--mobile-content-pb, 72px) + 16px);
+  z-index: 45;
+  width: 68px;
+  height: 68px;
+  border: 0;
+  border-radius: 999px;
+  background: #f38320;
+  color: #fff;
+  font-size: 30px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 10px 28px rgba(243, 131, 32, 0.5);
+  cursor: pointer;
+}
+
+.work-notes-fab:active {
+  transform: scale(0.96);
+  background: #d96f12;
+}
+
 .work-notes-mention-menu {
   position: absolute;
   left: 0;

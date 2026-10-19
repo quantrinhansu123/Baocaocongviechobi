@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
-import { Button, Checkbox, Empty, Spin, Tag, Typography, message } from 'antd';
+import { Button, Checkbox, Empty, Input, Modal, Select, Spin, Tag, Typography, message } from 'antd';
 import {
   CheckOutlined,
   MenuFoldOutlined,
@@ -173,6 +173,9 @@ const WorkNotesView: React.FC = () => {
     match: MentionMatch;
     index: number;
   } | null>(null);
+  const [addOpen, setAddOpen] = useState(false);
+  const [addText, setAddText] = useState('');
+  const [addDeptKey, setAddDeptKey] = useState<string | null>(null);
   const textareaRefs = useRef<Record<string, HTMLTextAreaElement | null>>({});
   const syncReadyRef = useRef(false);
   const syncTimerRef = useRef<number | null>(null);
@@ -488,6 +491,29 @@ const WorkNotesView: React.FC = () => {
     return created;
   };
 
+  const openAddPopup = () => {
+    setAddDeptKey(activeDeptKey ?? leftDepts[0]?.key ?? null);
+    setAddText('');
+    setAddOpen(true);
+  };
+
+  const submitAddPopup = () => {
+    const deptKey = addDeptKey;
+    const text = addText.trim();
+    if (!deptKey) {
+      message.info('Chọn phòng ban để thêm ý.');
+      return;
+    }
+    if (!text) {
+      message.info('Nhập nội dung ý trước khi thêm.');
+      return;
+    }
+    appendIdea(deptKey, text);
+    setAddOpen(false);
+    setAddText('');
+    message.success('Đã thêm ý.');
+  };
+
   const handleIdeaKeyDown = (ideaId: string, event: React.KeyboardEvent<HTMLTextAreaElement>) => {
     const el = event.currentTarget;
     const currentNotes = notesRef.current;
@@ -699,13 +725,7 @@ const WorkNotesView: React.FC = () => {
             size="small"
             icon={<PlusOutlined />}
             className="font-bold bg-[#F38320] border-[#F38320]"
-            onClick={() => {
-              if (!activeDeptKey) {
-                message.info('Chọn một phòng ban bên trái rồi bấm Thêm ý.');
-                return;
-              }
-              appendIdea(activeDeptKey, '');
-            }}
+            onClick={openAddPopup}
           >
             Thêm ý
           </Button>
@@ -848,17 +868,7 @@ const WorkNotesView: React.FC = () => {
                       : 'Chưa có ghi chú trong khối này — chọn phòng rồi Thêm ý'
                   }
                 >
-                  <Button
-                    type="primary"
-                    icon={<PlusOutlined />}
-                    onClick={() => {
-                      if (!activeDeptKey) {
-                        message.info('Chọn một phòng ban bên trái rồi bấm Thêm ý.');
-                        return;
-                      }
-                      appendIdea(activeDeptKey, '');
-                    }}
-                  >
+                  <Button type="primary" icon={<PlusOutlined />} onClick={openAddPopup}>
                     Thêm ý
                   </Button>
                 </Empty>
@@ -995,6 +1005,59 @@ const WorkNotesView: React.FC = () => {
           </div>
         </main>
       </div>
+
+      <button
+        type="button"
+        className="work-notes-fab md:hidden"
+        aria-label="Thêm ý"
+        title="Thêm ý"
+        onClick={openAddPopup}
+      >
+        <PlusOutlined />
+      </button>
+
+      <Modal
+        title="Thêm ý nhanh"
+        open={addOpen}
+        onCancel={() => setAddOpen(false)}
+        onOk={submitAddPopup}
+        okText="Thêm"
+        cancelText="Hủy"
+        destroyOnHidden
+        okButtonProps={{ className: 'font-bold', style: { background: '#F38320', borderColor: '#F38320' } }}
+      >
+        <div className="space-y-3 pt-1">
+          <div>
+            <p className="m-0 mb-1 text-xs font-bold uppercase text-slate-500">Phòng ban</p>
+            <Select
+              className="w-full"
+              value={addDeptKey ?? undefined}
+              onChange={value => setAddDeptKey(value)}
+              options={leftDepts.map(dept => ({ value: dept.key, label: dept.name }))}
+              placeholder="Chọn phòng ban"
+              showSearch
+              optionFilterProp="label"
+            />
+          </div>
+          <div>
+            <p className="m-0 mb-1 text-xs font-bold uppercase text-slate-500">Nội dung</p>
+            <Input.TextArea
+              value={addText}
+              onChange={e => setAddText(e.target.value)}
+              placeholder="Nhập nội dung ý..."
+              autoSize={{ minRows: 3, maxRows: 8 }}
+              autoFocus
+              onPressEnter={e => {
+                if (!e.shiftKey) {
+                  e.preventDefault();
+                  submitAddPopup();
+                }
+              }}
+            />
+            <p className="m-0 mt-1 text-xs text-slate-400">Enter để thêm · Shift+Enter xuống dòng</p>
+          </div>
+        </div>
+      </Modal>
     </div>
   );
 };
