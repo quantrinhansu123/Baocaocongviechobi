@@ -701,7 +701,7 @@ const GeneralNotesView: React.FC = () => {
         </label>
       </div>
 
-      <div className="flex-1 overflow-y-auto p-3 md:p-4 space-y-2">
+      <div className="flex-1 overflow-y-auto p-3 pb-20 md:p-4 space-y-2">
         <Spin spinning={loadingRemote} tip="Đang tải từ Supabase...">
           {timelineNotes.length === 0 && !loadingRemote ? (
             <Empty
@@ -799,6 +799,16 @@ const GeneralNotesView: React.FC = () => {
           )}
         </Spin>
       </div>
+
+      <button
+        type="button"
+        className="work-notes-fab md:hidden"
+        aria-label="Thêm ý"
+        title="Thêm ý"
+        onClick={() => appendNote('')}
+      >
+        <PlusOutlined />
+      </button>
 
       <Modal
         title="Danh sách việc theo ngày"
