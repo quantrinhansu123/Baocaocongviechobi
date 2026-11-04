@@ -1,3 +1,39 @@
+.ipad-reload-button {
+    display: none;
+}
+
+@media (min-width: 768px) {
+    .ipad-reload-button {
+        position: fixed;
+        left: calc(20px + env(safe-area-inset-left, 0px));
+        bottom: calc(20px + env(safe-area-inset-bottom, 0px));
+        z-index: 40;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        width: 44px;
+        height: 44px;
+        padding: 0;
+        border: 1px solid #fed7aa;
+        border-radius: 10px;
+        background: #fff7ed;
+        color: #1E386B;
+        font-size: 20px;
+        cursor: pointer;
+        touch-action: manipulation;
+        box-shadow: 0 4px 12px rgba(30, 56, 107, 0.16);
+    }
+
+    .ipad-reload-button:active {
+        background: #ffedd5;
+    }
+
+    .ipad-reload-button:focus-visible {
+        outline: 2px solid #F38320;
+        outline-offset: 2px;
+    }
+}
+
 /* --- TOP BAR (Tầng 1) — cam chủ đạo --- */
 .custom-header-top {
     display: flex;

@@ -12,6 +12,7 @@ import {
   MenuUnfoldOutlined,
   MenuFoldOutlined,
   TeamOutlined,
+  ReloadOutlined,
 } from '@ant-design/icons';
 import { Navigate, Routes, Route, useNavigate, useLocation, Link } from 'react-router-dom';
 import './MainLayout.css';
@@ -488,6 +489,15 @@ const MainLayoutInner: React.FC = () => {
                 </div>
               </Space>
             </Dropdown>
+            <button
+              type="button"
+              className="ipad-reload-button"
+              aria-label="Tải lại trang"
+              title="Tải lại trang"
+              onClick={() => window.location.reload()}
+            >
+              <ReloadOutlined />
+            </button>
           </Space>
         </Header>
 
