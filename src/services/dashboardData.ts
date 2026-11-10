@@ -252,14 +252,7 @@ function resolveBlockKey(deptKey: string): string {
   return '';
 }
 
-function mapTaskRecordToDashboardTask(
-  taskKey: string,
-  deptKey: string,
-  department: string,
-  table: string,
-  task: TaskRecord
-): DashboardTask {
-  const deadline = normalizeDisplayDate(task.giaHan3 || task.giaHan2 || task.giaHan1 || task.ycXong);
+export function resolveDashboardTaskStatus(task: TaskRecord): string {
   // Ưu tiên TIẾN ĐỘ đã lưu (để form sửa Trạng thái có hiệu lực); không thì mới tự tính.
   const storedTienDo = (task.tienDo || '').trim();
   let status: string;
@@ -291,6 +284,19 @@ function mapTaskRecordToDashboardTask(
       ngayHoanThanh: task.ngayGioHoanThanh,
     });
   }
+
+  return status;
+}
+
+function mapTaskRecordToDashboardTask(
+  taskKey: string,
+  deptKey: string,
+  department: string,
+  table: string,
+  task: TaskRecord
+): DashboardTask {
+  const deadline = normalizeDisplayDate(task.giaHan3 || task.giaHan2 || task.giaHan1 || task.ycXong);
+  const status = resolveDashboardTaskStatus(task);
 
   return {
     id: `${deptKey}-${taskKey}`,

@@ -54,7 +54,7 @@ import {
   calculateAutomaticStatus,
 } from '../utils/taskDate';
 import { addDataRow, deleteDataRow, deleteDataRows, editDataRow, findDataRows } from '../services/dataApi';
-import { invalidateDashboardTasksCache } from '../services/dashboardData';
+import { invalidateDashboardTasksCache, normalizeDashboardChartStatus, resolveDashboardTaskStatus } from '../services/dashboardData';
 import {
   loadPersonnel,
   personnelToSelectOptions,
@@ -306,6 +306,7 @@ function matchListStatusFilter(tienDo: string, filter: string): boolean {
   if (filter === 'all') return true;
   const raw = (tienDo || '').trim();
   const lower = raw.toLowerCase();
+  if (filter === 'unfinished') return normalizeDashboardChartStatus(raw) !== 'Hoàn thành';
   if (filter === 'chua_bat_dau') return lower.includes('chưa bắt đầu') || lower === 'chua bat dau';
   if (filter === 'dang_lam') {
     return raw === 'Đang làm' || lower.includes('đang làm') || lower.includes('đang thực hiện');
@@ -435,7 +436,7 @@ const TaskView: React.FC = () => {
   const [mentionPersonnel, setMentionPersonnel] = useState<PersonnelSelectOption[]>([]);
   const [form] = Form.useForm();
   const [detailForm] = Form.useForm();
-  const [filterStatus, setFilterStatus] = useState('all');
+  const [filterStatus, setFilterStatus] = useState('unfinished');
   const [filterPersonnel, setFilterPersonnel] = useState<string>('all');
   const [filterNgayGiaoRange, setFilterNgayGiaoRange] = useState<
     [dayjs.Dayjs | null, dayjs.Dayjs | null] | null
@@ -569,6 +570,7 @@ const TaskView: React.FC = () => {
 
   useEffect(() => {
     setSelectedTaskIds([]);
+    setFilterStatus('unfinished');
   }, [loadScopeKey]);
 
   useEffect(() => {
@@ -655,35 +657,8 @@ const TaskView: React.FC = () => {
   }, [taskTable, blockTables]);
 
   const resolveDisplayTienDo = useCallback((t: TaskRecord): string => {
-    const stored = (t.tienDo || '').trim();
-    // Ưu tiên giá trị đã lưu trên Supabase để sửa cột Tiến độ có hiệu lực ngay
-    if (stored) {
-      const normalized = stored.toLowerCase();
-      if (
-        stored === 'Đang làm' ||
-        stored === 'Đang thực hiện' ||
-        stored === 'Hoàn thành' ||
-        stored === 'Quá hạn' ||
-        stored === 'Hủy' ||
-        stored === 'Huỷ' ||
-        stored === 'Tạm dừng' ||
-        stored === 'Chưa bắt đầu' ||
-        normalized.includes('gia hạn')
-      ) {
-        if (stored === 'Đang làm') return 'Đang thực hiện';
-        if (stored === 'Huỷ') return 'Hủy';
-        return stored;
-      }
-    }
-
-    const auto = calculateAutomaticStatus({
-      deadline: t.ycXong,
-      giaHan1: t.giaHan1,
-      giaHan2: t.giaHan2,
-      giaHan3: t.giaHan3,
-      ngayHoanThanh: t.ngayGioHoanThanh,
-    });
-    return auto === 'Đang làm' ? 'Đang thực hiện' : auto;
+    const status = resolveDashboardTaskStatus(t);
+    return status === 'Đang làm' ? 'Đang thực hiện' : status;
   }, []);
 
   const collectRowsForScope = useCallback(
@@ -2037,6 +2012,7 @@ const TaskView: React.FC = () => {
                       onChange={setFilterStatus}
                       popupMatchSelectWidth={false}
                       options={[
+                        { value: 'unfinished', label: 'Chưa hoàn thành' },
                         { value: 'all', label: 'Tất cả' },
                         { value: 'dang_lam', label: 'Đang thực hiện' },
                         { value: 'hoan_thanh', label: 'Hoàn thành' },
